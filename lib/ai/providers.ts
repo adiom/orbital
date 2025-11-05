@@ -5,6 +5,12 @@ import {
   wrapLanguageModel,
 } from "ai";
 import { isTestEnvironment } from "../constants";
+import { createOpenAI } from '@ai-sdk/openai';
+
+const openai = createOpenAI({
+  apiKey: process.env.MEGALLM_API_KEY,
+  baseURL: 'https://ai.megallm.io/v1',
+});
 
 export const myProvider = isTestEnvironment
   ? (() => {
@@ -25,12 +31,12 @@ export const myProvider = isTestEnvironment
     })()
   : customProvider({
       languageModels: {
-        "chat-model": gateway.languageModel("xai/grok-2-vision-1212"),
+        "chat-model": openai.chat("gpt-5-mini"),
         "chat-model-reasoning": wrapLanguageModel({
-          model: gateway.languageModel("xai/grok-3-mini"),
+          model: openai.languageModel("gpt-5-mini"),
           middleware: extractReasoningMiddleware({ tagName: "think" }),
         }),
-        "title-model": gateway.languageModel("xai/grok-2-1212"),
-        "artifact-model": gateway.languageModel("xai/grok-2-1212"),
+        "title-model": openai.languageModel("gpt-5-mini"),
+        "artifact-model": openai.languageModel("gpt-5-mini"),
       },
     });

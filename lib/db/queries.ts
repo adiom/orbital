@@ -10,6 +10,7 @@ import {
   gte,
   inArray,
   lt,
+  or,
   type SQL,
 } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -20,8 +21,13 @@ import { ChatSDKError } from "../errors";
 import type { AppUsage } from "../usage";
 import { generateUUID } from "../utils";
 import {
+  area,
+  areaDocument,
+  areaMember,
+  areaMergeProposal,
   type Chat,
   chat,
+  chatMember,
   type DBMessage,
   document,
   message,
@@ -588,6 +594,296 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get stream ids by chat id"
+    );
+  }
+}
+
+// ============ AVRORA: Area Queries ============
+
+export async function createArea({
+  title,
+  description,
+  ownerId,
+  visibility,
+  parentAreaId,
+  inheritedSummary,
+}: {
+  title: string;
+  description?: string;
+  ownerId: string;
+  visibility: "public" | "private" | "dao";
+  parentAreaId?: string;
+  inheritedSummary?: string;
+}) {
+  try {
+    const [newArea] = await db
+      .insert(area)
+      .values({
+        title,
+        description,
+        ownerId,
+        visibility,
+        parentAreaId,
+        inheritedSummary,
+        forkedAt: parentAreaId ? new Date() : null,
+        createdAt: new Date(),
+      })
+      .returning();
+
+    // Automatically add owner as member
+    await db.insert(areaMember).values({
+      areaId: newArea.id,
+      userId: ownerId,
+      role: "owner",
+      joinedAt: new Date(),
+    });
+
+    // Create default group chat for the Area
+    const [defaultChat] = await db
+      .insert(chat)
+      .values({
+        title: `${title} - General`,
+        chatType: "group",
+        userId: ownerId,
+        areaId: newArea.id,
+        visibility: visibility === "public" ? "public" : "private",
+        createdAt: new Date(),
+      })
+      .returning();
+
+    // Add owner as admin of the default chat
+    await db.insert(chatMember).values({
+      chatId: defaultChat.id,
+      userId: ownerId,
+      role: "admin",
+      joinedAt: new Date(),
+    });
+
+    return newArea;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to create area");
+  }
+}
+
+export async function getAreaById({ id }: { id: string }) {
+  try {
+    const [selectedArea] = await db.select().from(area).where(eq(area.id, id));
+    return selectedArea || null;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to get area by id");
+  }
+}
+
+export async function getAreasByUserId({ userId }: { userId: string }) {
+  try {
+    const areas = await db
+      .select({
+        id: area.id,
+        title: area.title,
+        description: area.description,
+        visibility: area.visibility,
+        createdAt: area.createdAt,
+        ownerId: area.ownerId,
+        parentAreaId: area.parentAreaId,
+        forkedAt: area.forkedAt,
+        inheritedSummary: area.inheritedSummary,
+        mergeStatus: area.mergeStatus,
+        role: areaMember.role,
+      })
+      .from(area)
+      .innerJoin(areaMember, eq(area.id, areaMember.areaId))
+      .where(eq(areaMember.userId, userId))
+      .orderBy(desc(area.createdAt));
+
+    return areas;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get areas by user id"
+    );
+  }
+}
+
+export async function deleteAreaById({ id }: { id: string }) {
+  try {
+    // Delete members
+    await db.delete(areaMember).where(eq(areaMember.areaId, id));
+    // Delete area documents
+    await db.delete(areaDocument).where(eq(areaDocument.areaId, id));
+    // Delete merge proposals
+    await db
+      .delete(areaMergeProposal)
+      .where(
+        and(
+          or(
+            eq(areaMergeProposal.sourceAreaId, id),
+            eq(areaMergeProposal.targetAreaId, id)
+          )
+        )
+      );
+    // Delete the area
+    const [deleted] = await db
+      .delete(area)
+      .where(eq(area.id, id))
+      .returning();
+    return deleted;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to delete area by id"
+    );
+  }
+}
+
+export async function updateAreaById({
+  id,
+  title,
+  description,
+  visibility,
+}: {
+  id: string;
+  title?: string;
+  description?: string;
+  visibility?: "public" | "private" | "dao";
+}) {
+  try {
+    const updates: Record<string, any> = {};
+    if (title) updates.title = title;
+    if (description !== undefined) updates.description = description;
+    if (visibility) updates.visibility = visibility;
+
+    const [updated] = await db
+      .update(area)
+      .set(updates)
+      .where(eq(area.id, id))
+      .returning();
+
+    return updated;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update area by id"
+    );
+  }
+}
+
+// ============ AVRORA: Area Members Queries ============
+
+export async function addAreaMember({
+  areaId,
+  userId,
+  role,
+}: {
+  areaId: string;
+  userId: string;
+  role: "owner" | "admin" | "member" | "viewer";
+}) {
+  try {
+    // Add to Area
+    await db.insert(areaMember).values({
+      areaId,
+      userId,
+      role,
+      joinedAt: new Date(),
+    });
+
+    // Find default chat for this Area (the first group chat created)
+    const [defaultChat] = await db
+      .select()
+      .from(chat)
+      .where(and(eq(chat.areaId, areaId), eq(chat.chatType, "group")))
+      .orderBy(asc(chat.createdAt))
+      .limit(1);
+
+    // Add member to default chat if it exists
+    if (defaultChat) {
+      // Check if user is already a member
+      const [existingMember] = await db
+        .select()
+        .from(chatMember)
+        .where(
+          and(
+            eq(chatMember.chatId, defaultChat.id),
+            eq(chatMember.userId, userId)
+          )
+        );
+
+      if (!existingMember) {
+        await db.insert(chatMember).values({
+          chatId: defaultChat.id,
+          userId,
+          role: role === "owner" || role === "admin" ? "admin" : "member",
+          joinedAt: new Date(),
+        });
+      }
+    }
+
+    return true;
+  } catch (_error) {
+    throw new ChatSDKError("bad_request:database", "Failed to add area member");
+  }
+}
+
+export async function removeAreaMember({
+  areaId,
+  userId,
+}: {
+  areaId: string;
+  userId: string;
+}) {
+  try {
+    return await db
+      .delete(areaMember)
+      .where(and(eq(areaMember.areaId, areaId), eq(areaMember.userId, userId)));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to remove area member"
+    );
+  }
+}
+
+export async function getAreaMembers({ areaId }: { areaId: string }) {
+  try {
+    const members = await db
+      .select({
+        userId: user.id,
+        email: user.email,
+        role: areaMember.role,
+        joinedAt: areaMember.joinedAt,
+      })
+      .from(areaMember)
+      .innerJoin(user, eq(areaMember.userId, user.id))
+      .where(eq(areaMember.areaId, areaId))
+      .orderBy(asc(areaMember.joinedAt));
+
+    return members;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get area members"
+    );
+  }
+}
+
+export async function updateAreaMemberRole({
+  areaId,
+  userId,
+  role,
+}: {
+  areaId: string;
+  userId: string;
+  role: "owner" | "admin" | "member" | "viewer";
+}) {
+  try {
+    return await db
+      .update(areaMember)
+      .set({ role })
+      .where(and(eq(areaMember.areaId, areaId), eq(areaMember.userId, userId)));
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to update area member role"
     );
   }
 }

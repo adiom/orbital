@@ -104,6 +104,7 @@ export function convertToUIMessages(messages: DBMessage[]): ChatMessage[] {
     parts: message.parts as UIMessagePart<CustomUIDataTypes, ChatTools>[],
     metadata: {
       createdAt: formatISO(message.createdAt),
+      userId: message.userId || undefined, // AVRORA: Pass author for group chats
     },
   }));
 }

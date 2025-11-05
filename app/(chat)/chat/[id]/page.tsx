@@ -7,6 +7,9 @@ import { DataStreamHandler } from "@/components/data-stream-handler";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { convertToUIMessages } from "@/lib/utils";
+import { db } from "@/lib/db";
+import { chatMember } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -39,6 +42,26 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   const uiMessages = convertToUIMessages(messagesFromDb);
 
+  // For group chats, check if user is a member
+  let isReadonly = session?.user?.id !== chat.userId; // Default: only owner can write
+
+  if (chat.chatType === "group" && session?.user?.id) {
+    const [membership] = await db
+      .select()
+      .from(chatMember)
+      .where(
+        and(
+          eq(chatMember.chatId, chat.id),
+          eq(chatMember.userId, session.user.id)
+        )
+      );
+
+    // If user is a member of the group chat, they can write
+    if (membership) {
+      isReadonly = false;
+    }
+  }
+
   const cookieStore = await cookies();
   const chatModelFromCookie = cookieStore.get("chat-model");
 
@@ -52,7 +75,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           initialLastContext={chat.lastContext ?? undefined}
           initialMessages={uiMessages}
           initialVisibilityType={chat.visibility}
-          isReadonly={session?.user?.id !== chat.userId}
+          isReadonly={isReadonly}
         />
         <DataStreamHandler />
       </>
@@ -68,7 +91,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         initialLastContext={chat.lastContext ?? undefined}
         initialMessages={uiMessages}
         initialVisibilityType={chat.visibility}
-        isReadonly={session?.user?.id !== chat.userId}
+        isReadonly={isReadonly}
       />
       <DataStreamHandler />
     </>

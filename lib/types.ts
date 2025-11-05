@@ -12,6 +12,7 @@ export type DataPart = { type: "append-message"; message: string };
 
 export const messageMetadataSchema = z.object({
   createdAt: z.string(),
+  userId: z.string().optional(), // AVRORA: Track message author for group chats
 });
 
 export type MessageMetadata = z.infer<typeof messageMetadataSchema>;

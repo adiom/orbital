@@ -21,6 +21,42 @@ export const user = pgTable("User", {
 
 export type User = InferSelectModel<typeof user>;
 
+// ============ AVRORA: Area Support (declared before Chat) ============
+
+export const area = pgTable("Area", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  createdAt: timestamp("createdAt").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  ownerId: uuid("ownerId")
+    .notNull()
+    .references(() => user.id),
+  visibility: varchar("visibility", {
+    enum: ["public", "private", "dao"],
+  })
+    .notNull()
+    .default("private"),
+
+  // DAO governance
+  daoTokenAddress: text("daoTokenAddress"),
+
+  // Fork/Merge support - self-reference
+  parentAreaId: uuid("parentAreaId"),
+  inheritedSummary: text("inheritedSummary"),
+  forkedAt: timestamp("forkedAt"),
+  mergeStatus: varchar("mergeStatus", {
+    enum: ["independent", "synced", "diverged", "merge_proposed"],
+  }).default("independent"),
+}, (table) => ({
+  // Self-referencing foreign key
+  parentRef: foreignKey({
+    columns: [table.parentAreaId],
+    foreignColumns: [table.id],
+  }),
+}));
+
+export type Area = InferSelectModel<typeof area>;
+
 export const chat = pgTable("Chat", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
   createdAt: timestamp("createdAt").notNull(),
@@ -32,6 +68,12 @@ export const chat = pgTable("Chat", {
     .notNull()
     .default("private"),
   lastContext: jsonb("lastContext").$type<AppUsage | null>(),
+
+  // AVRORA: Area & Group Chat Support
+  areaId: uuid("areaId").references(() => area.id),
+  chatType: varchar("chatType", { enum: ["personal", "group"] })
+    .notNull()
+    .default("personal"),
 });
 
 export type Chat = InferSelectModel<typeof chat>;
@@ -56,6 +98,8 @@ export const message = pgTable("Message_v2", {
     .notNull()
     .references(() => chat.id),
   role: varchar("role").notNull(),
+  // AVRORA: Author tracking for group chats
+  userId: uuid("userId").references(() => user.id),
   parts: json("parts").notNull(),
   attachments: json("attachments").notNull(),
   createdAt: timestamp("createdAt").notNull(),
@@ -171,3 +215,111 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+// ============ AVRORA: Additional Tables for Group Chats & Collaboration ============
+
+export const areaMember = pgTable(
+  "AreaMember",
+  {
+    areaId: uuid("areaId")
+      .notNull()
+      .references(() => area.id),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => user.id),
+    role: varchar("role", { enum: ["owner", "admin", "member", "viewer"] })
+      .notNull()
+      .default("member"),
+    joinedAt: timestamp("joinedAt").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.areaId, table.userId] }),
+  })
+);
+
+export type AreaMember = InferSelectModel<typeof areaMember>;
+
+export const chatMember = pgTable(
+  "ChatMember",
+  {
+    chatId: uuid("chatId")
+      .notNull()
+      .references(() => chat.id),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => user.id),
+    role: varchar("role", { enum: ["admin", "member"] })
+      .notNull()
+      .default("member"),
+    joinedAt: timestamp("joinedAt").notNull(),
+    lastReadAt: timestamp("lastReadAt"),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.chatId, table.userId] }),
+  })
+);
+
+export type ChatMember = InferSelectModel<typeof chatMember>;
+
+export const areaDocument = pgTable(
+  "AreaDocument",
+  {
+    areaId: uuid("areaId")
+      .notNull()
+      .references(() => area.id),
+    documentId: uuid("documentId").notNull(),
+    documentCreatedAt: timestamp("documentCreatedAt").notNull(),
+    addedAt: timestamp("addedAt").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.areaId, table.documentId] }),
+    documentRef: foreignKey({
+      columns: [table.documentId, table.documentCreatedAt],
+      foreignColumns: [document.id, document.createdAt],
+    }),
+  })
+);
+
+export type AreaDocument = InferSelectModel<typeof areaDocument>;
+
+export const areaMergeProposal = pgTable("AreaMergeProposal", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  sourceAreaId: uuid("sourceAreaId")
+    .notNull()
+    .references(() => area.id),
+  targetAreaId: uuid("targetAreaId")
+    .notNull()
+    .references(() => area.id),
+  createdBy: uuid("createdBy")
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp("createdAt").notNull(),
+
+  title: text("title").notNull(),
+  description: text("description"),
+  changesSummary: text("changesSummary"),
+
+  status: varchar("status", {
+    enum: ["open", "approved", "rejected", "merged"],
+  })
+    .notNull()
+    .default("open"),
+
+  reviewedBy: uuid("reviewedBy").references(() => user.id),
+  reviewedAt: timestamp("reviewedAt"),
+});
+
+export type AreaMergeProposal = InferSelectModel<typeof areaMergeProposal>;
+
+export const messageMention = pgTable("MessageMention", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  messageId: uuid("messageId")
+    .notNull()
+    .references(() => message.id),
+  mentionedUserId: uuid("mentionedUserId").references(() => user.id),
+  mentionType: varchar("mentionType", { enum: ["user", "avrora"] }).notNull(),
+  mentionText: text("mentionText").notNull(),
+  createdAt: timestamp("createdAt").notNull(),
+});
+
+export type MessageMention = InferSelectModel<typeof messageMention>;

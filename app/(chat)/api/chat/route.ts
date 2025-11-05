@@ -38,6 +38,9 @@ import {
   updateChatLastContextById,
 } from "@/lib/db/queries";
 import type { DBMessage } from "@/lib/db/schema";
+import { db } from "@/lib/db";
+import { chatMember } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { ChatSDKError } from "@/lib/errors";
 import type { ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
@@ -129,7 +132,25 @@ export async function POST(request: Request) {
     let messagesFromDb: DBMessage[] = [];
 
     if (chat) {
-      if (chat.userId !== session.user.id) {
+      // Check access permissions
+      let hasAccess = chat.userId === session.user.id; // Owner has access
+
+      // For group chats, also check if user is a member
+      if (!hasAccess && chat.chatType === "group") {
+        const [membership] = await db
+          .select()
+          .from(chatMember)
+          .where(
+            and(
+              eq(chatMember.chatId, chat.id),
+              eq(chatMember.userId, session.user.id)
+            )
+          );
+
+        hasAccess = !!membership;
+      }
+
+      if (!hasAccess) {
         return new ChatSDKError("forbidden:chat").toResponse();
       }
       // Only fetch messages if chat already exists
@@ -165,6 +186,7 @@ export async function POST(request: Request) {
           chatId: id,
           id: message.id,
           role: "user",
+          userId: session.user.id, // Track author for group chats
           parts: message.parts,
           attachments: [],
           createdAt: new Date(),
@@ -255,6 +277,7 @@ export async function POST(request: Request) {
           messages: messages.map((currentMessage) => ({
             id: currentMessage.id,
             role: currentMessage.role,
+            userId: null, // AI messages don't have a user author
             parts: currentMessage.parts,
             createdAt: new Date(),
             attachments: [],
@@ -309,6 +332,54 @@ export async function POST(request: Request) {
     console.error("Unhandled error in chat API:", error, { vercelId });
     return new ChatSDKError("offline:chat").toResponse();
   }
+}
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+
+  if (!id) {
+    return new ChatSDKError("bad_request:api").toResponse();
+  }
+
+  const session = await auth();
+
+  if (!session?.user) {
+    return new ChatSDKError("unauthorized:chat").toResponse();
+  }
+
+  const chat = await getChatById({ id });
+
+  if (!chat) {
+    return new ChatSDKError("bad_request:api").toResponse();
+  }
+
+  // Check access permissions
+  let hasAccess = chat.userId === session.user.id; // Owner has access
+
+  // For group chats, also check if user is a member
+  if (!hasAccess && chat.chatType === "group") {
+    const [membership] = await db
+      .select()
+      .from(chatMember)
+      .where(
+        and(
+          eq(chatMember.chatId, chat.id),
+          eq(chatMember.userId, session.user.id)
+        )
+      );
+
+    hasAccess = !!membership;
+  }
+
+  if (!hasAccess) {
+    return new ChatSDKError("forbidden:chat").toResponse();
+  }
+
+  const messagesFromDb = await getMessagesByChatId({ id });
+  const uiMessages = convertToUIMessages(messagesFromDb);
+
+  return Response.json({ chat, messages: uiMessages }, { status: 200 });
 }
 
 export async function DELETE(request: Request) {
