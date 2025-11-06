@@ -9,6 +9,7 @@ import {
   gt,
   gte,
   inArray,
+  isNull,
   lt,
   or,
   type SQL,
@@ -180,8 +181,17 @@ export async function getChatsByUserId({
         .from(chat)
         .where(
           whereCondition
-            ? and(whereCondition, eq(chat.userId, id))
-            : eq(chat.userId, id)
+            ? and(
+                whereCondition,
+                eq(chat.userId, id),
+                // Exclude group chats from personal history
+                or(eq(chat.chatType, "personal"), isNull(chat.chatType))
+              )
+            : and(
+                eq(chat.userId, id),
+                // Exclude group chats from personal history
+                or(eq(chat.chatType, "personal"), isNull(chat.chatType))
+              )
         )
         .orderBy(desc(chat.createdAt))
         .limit(extendedLimit);
@@ -232,6 +242,86 @@ export async function getChatsByUserId({
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get chats by user id"
+    );
+  }
+}
+
+export async function getChatsByAreaId({
+  areaId,
+  limit,
+  startingAfter,
+  endingBefore,
+}: {
+  areaId: string;
+  limit: number;
+  startingAfter: string | null;
+  endingBefore: string | null;
+}) {
+  try {
+    const extendedLimit = limit + 1;
+
+    const query = (whereCondition?: SQL<any>) =>
+      db
+        .select()
+        .from(chat)
+        .where(
+          whereCondition
+            ? and(
+                whereCondition,
+                eq(chat.areaId, areaId),
+                eq(chat.chatType, "group")
+              )
+            : and(eq(chat.areaId, areaId), eq(chat.chatType, "group"))
+        )
+        .orderBy(desc(chat.createdAt))
+        .limit(extendedLimit);
+
+    let filteredChats: Chat[] = [];
+
+    if (startingAfter) {
+      const [selectedChat] = await db
+        .select()
+        .from(chat)
+        .where(eq(chat.id, startingAfter))
+        .limit(1);
+
+      if (!selectedChat) {
+        throw new ChatSDKError(
+          "not_found:database",
+          `Chat with id ${startingAfter} not found`
+        );
+      }
+
+      filteredChats = await query(gt(chat.createdAt, selectedChat.createdAt));
+    } else if (endingBefore) {
+      const [selectedChat] = await db
+        .select()
+        .from(chat)
+        .where(eq(chat.id, endingBefore))
+        .limit(1);
+
+      if (!selectedChat) {
+        throw new ChatSDKError(
+          "not_found:database",
+          `Chat with id ${endingBefore} not found`
+        );
+      }
+
+      filteredChats = await query(lt(chat.createdAt, selectedChat.createdAt));
+    } else {
+      filteredChats = await query();
+    }
+
+    const hasMore = filteredChats.length > limit;
+
+    return {
+      chats: hasMore ? filteredChats.slice(0, limit) : filteredChats,
+      hasMore,
+    };
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get chats by area id"
     );
   }
 }

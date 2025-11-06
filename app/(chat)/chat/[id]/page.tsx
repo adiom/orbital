@@ -23,28 +23,13 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     redirect("/api/auth/guest");
   }
 
-  // For group chats, all users can read and write (public access for now)
-  let isReadonly = false;
-  let hasAccess = true;
+  if (chat.visibility === "private") {
+    if (!session.user) {
+      return notFound();
+    }
 
-  if (chat.chatType === "group") {
-    // All group chats are open - anyone can participate
-    isReadonly = false;
-    hasAccess = true;
-  } else {
-    // For non-group chats, check ownership
-    isReadonly = session?.user?.id !== chat.userId;
-    hasAccess = session.user?.id === chat.userId;
-
-    // Check access for private chats
-    if (chat.visibility === "private") {
-      if (!session.user) {
-        return notFound();
-      }
-
-      if (!hasAccess) {
-        return notFound();
-      }
+    if (session.user.id !== chat.userId) {
+      return notFound();
     }
   }
 
@@ -67,9 +52,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           initialLastContext={chat.lastContext ?? undefined}
           initialMessages={uiMessages}
           initialVisibilityType={chat.visibility}
-          isReadonly={isReadonly}
-          areaId={chat.areaId}
-          chatType={chat.chatType}
+          isReadonly={session?.user?.id !== chat.userId}
         />
         <DataStreamHandler />
       </>
@@ -85,9 +68,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         initialLastContext={chat.lastContext ?? undefined}
         initialMessages={uiMessages}
         initialVisibilityType={chat.visibility}
-        isReadonly={isReadonly}
-        areaId={chat.areaId}
-        chatType={chat.chatType}
+        isReadonly={session?.user?.id !== chat.userId}
       />
       <DataStreamHandler />
     </>

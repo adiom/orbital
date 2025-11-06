@@ -57,6 +57,7 @@ export function Chat({
   const { visibilityType } = useChatVisibility({
     chatId: id,
     initialVisibilityType,
+    areaId,
   });
 
   const { mutate } = useSWRConfig();
@@ -107,7 +108,15 @@ export function Chat({
       }
     },
     onFinish: () => {
-      mutate(unstable_serialize(getChatHistoryPaginationKey));
+      mutate(
+        unstable_serialize((pageIndex, previousPageData) =>
+          getChatHistoryPaginationKey(
+            pageIndex,
+            previousPageData,
+            areaId || undefined
+          )
+        )
+      );
     },
     onError: (error) => {
       if (error instanceof ChatSDKError) {

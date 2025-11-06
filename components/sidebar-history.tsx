@@ -78,14 +78,18 @@ const groupChatsByDate = (chats: Chat[]): GroupedChats => {
 
 export function getChatHistoryPaginationKey(
   pageIndex: number,
-  previousPageData: ChatHistory
+  previousPageData: ChatHistory,
+  areaId?: string
 ) {
   if (previousPageData && previousPageData.hasMore === false) {
     return null;
   }
 
+  const baseUrl = areaId ? "/api/area-chats" : "/api/history";
+  const areaParam = areaId ? `&areaId=${areaId}` : "";
+
   if (pageIndex === 0) {
-    return `/api/history?limit=${PAGE_SIZE}`;
+    return `${baseUrl}?limit=${PAGE_SIZE}${areaParam}`;
   }
 
   const firstChatFromPage = previousPageData.chats.at(-1);
@@ -94,10 +98,16 @@ export function getChatHistoryPaginationKey(
     return null;
   }
 
-  return `/api/history?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}`;
+  return `${baseUrl}?ending_before=${firstChatFromPage.id}&limit=${PAGE_SIZE}${areaParam}`;
 }
 
-export function SidebarHistory({ user }: { user: User | undefined }) {
+export function SidebarHistory({
+  user,
+  areaId,
+}: {
+  user: User | undefined;
+  areaId?: string;
+}) {
   const { setOpenMobile } = useSidebar();
   const { id } = useParams();
 
@@ -107,9 +117,14 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     isValidating,
     isLoading,
     mutate,
-  } = useSWRInfinite<ChatHistory>(getChatHistoryPaginationKey, fetcher, {
-    fallbackData: [],
-  });
+  } = useSWRInfinite<ChatHistory>(
+    (pageIndex, previousPageData) =>
+      getChatHistoryPaginationKey(pageIndex, previousPageData, areaId),
+    fetcher,
+    {
+      fallbackData: [],
+    }
+  );
 
   const chatsFromHistory = useMemo(() => {
     if (!paginatedChatHistories) return [];

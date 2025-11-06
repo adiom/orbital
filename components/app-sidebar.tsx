@@ -31,7 +31,13 @@ import {
   AlertDialogTitle,
 } from "./ui/alert-dialog";
 
-export function AppSidebar({ user }: { user: User | undefined }) {
+export function AppSidebar({
+  user,
+  areaId,
+}: {
+  user: User | undefined;
+  areaId?: string;
+}) {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
   const { mutate } = useSWRConfig();
@@ -45,7 +51,11 @@ export function AppSidebar({ user }: { user: User | undefined }) {
     toast.promise(deletePromise, {
       loading: "Deleting all chats...",
       success: () => {
-        mutate(unstable_serialize(getChatHistoryPaginationKey));
+        mutate(
+          unstable_serialize((pageIndex, previousPageData) =>
+            getChatHistoryPaginationKey(pageIndex, previousPageData, areaId)
+          )
+        );
         router.push("/");
         setShowDeleteAllDialog(false);
         return "All chats deleted successfully";
@@ -113,7 +123,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarHistory user={user} />
+          <SidebarHistory user={user} areaId={areaId} />
         </SidebarContent>
         <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
       </Sidebar>

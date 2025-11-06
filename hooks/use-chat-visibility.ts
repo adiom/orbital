@@ -13,12 +13,15 @@ import type { VisibilityType } from "@/components/visibility-selector";
 export function useChatVisibility({
   chatId,
   initialVisibilityType,
+  areaId,
 }: {
   chatId: string;
   initialVisibilityType: VisibilityType;
+  areaId?: string | null;
 }) {
   const { mutate, cache } = useSWRConfig();
-  const history: ChatHistory = cache.get("/api/history")?.data;
+  const cacheKey = areaId ? `/api/area-chats?areaId=${areaId}` : "/api/history";
+  const history: ChatHistory = cache.get(cacheKey)?.data;
 
   const { data: localVisibility, mutate: setLocalVisibility } = useSWR(
     `${chatId}-visibility`,
@@ -41,7 +44,15 @@ export function useChatVisibility({
 
   const setVisibilityType = (updatedVisibilityType: VisibilityType) => {
     setLocalVisibility(updatedVisibilityType);
-    mutate(unstable_serialize(getChatHistoryPaginationKey));
+    mutate(
+      unstable_serialize((pageIndex, previousPageData) =>
+        getChatHistoryPaginationKey(
+          pageIndex,
+          previousPageData,
+          areaId || undefined
+        )
+      )
+    );
 
     updateChatVisibility({
       chatId,

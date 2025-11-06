@@ -1,15 +1,29 @@
+import { cookies } from "next/headers";
+import { AppSidebar } from "@/components/app-sidebar";
 import { DataStreamProvider } from "@/components/data-stream-provider";
-import { SidebarProvider } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { auth } from "../(auth)/auth";
 
-export default function AreaLayout({
+export default async function AreaLayout({
   children,
+  params,
 }: {
   children: React.ReactNode;
+  params: Promise<{ id?: string }>;
 }) {
+  const [session, cookieStore, resolvedParams] = await Promise.all([
+    auth(),
+    cookies(),
+    params,
+  ]);
+  const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
+  const areaId = resolvedParams?.id;
+
   return (
     <DataStreamProvider>
-      <SidebarProvider>
-        {children}
+      <SidebarProvider defaultOpen={!isCollapsed}>
+        <AppSidebar user={session?.user} areaId={areaId} />
+        <SidebarInset>{children}</SidebarInset>
       </SidebarProvider>
     </DataStreamProvider>
   );

@@ -61,7 +61,7 @@ function PureChatHeader({
           variant="outline"
         >
           <Link href={`/area/${areaId}`}>
-            View Area
+            View Area           {areaId}
           </Link>
         </Button>
       ) : (
