@@ -22,7 +22,7 @@ export default async function AreaLayout({
   return (
     <DataStreamProvider>
       <SidebarProvider defaultOpen={!isCollapsed}>
-        <AppSidebar user={session?.user} areaId={areaId} />
+        <AppSidebar areaId={areaId} user={session?.user} />
         <SidebarInset>{children}</SidebarInset>
       </SidebarProvider>
     </DataStreamProvider>

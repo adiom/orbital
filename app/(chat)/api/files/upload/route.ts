@@ -38,7 +38,8 @@ const FileSchema = z.object({
         return allowedTypes.includes(file.type);
       },
       {
-        message: "File type not supported. Supported types: images (JPEG, PNG, GIF, WebP, SVG), documents (PDF, TXT, MD, CSV), videos (MP4, WebM, MOV), audio (MP3, WAV, WebM, OGG)",
+        message:
+          "File type not supported. Supported types: images (JPEG, PNG, GIF, WebP, SVG), documents (PDF, TXT, MD, CSV), videos (MP4, WebM, MOV), audio (MP3, WAV, WebM, OGG)",
       }
     ),
 });

@@ -1,9 +1,6 @@
-import { auth } from "@/app/(auth)/auth";
-import {
-  createArea,
-  getAreasByUserId,
-} from "@/lib/db/queries";
 import { NextResponse } from "next/server";
+import { auth } from "@/app/(auth)/auth";
+import { createArea, getAreasByUserId } from "@/lib/db/queries";
 
 // GET /api/areas - Get all areas for current user
 export async function GET() {
@@ -18,10 +15,7 @@ export async function GET() {
     return NextResponse.json({ areas });
   } catch (error) {
     console.error("Failed to get areas:", error);
-    return NextResponse.json(
-      { error: "Failed to get areas" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to get areas" }, { status: 500 });
   }
 }
 
@@ -38,10 +32,7 @@ export async function POST(request: Request) {
     const { title, description, visibility = "private" } = body;
 
     if (!title) {
-      return NextResponse.json(
-        { error: "Title is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
     const area = await createArea({

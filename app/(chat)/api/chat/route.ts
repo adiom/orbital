@@ -19,6 +19,8 @@ import { getUsage } from "tokenlens/helpers";
 import { auth, type UserType } from "@/app/(auth)/auth";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
+import { callMegaLLMWithImages, hasImages } from "@/lib/ai/megallm-direct";
+import { parseMegaLLMStream } from "@/lib/ai/megallm-stream-parser";
 import type { ChatModel } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
@@ -44,10 +46,11 @@ import type { AppUsage } from "@/lib/usage";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
-import { hasImages, callMegaLLMWithImages } from "@/lib/ai/megallm-direct";
-import { parseMegaLLMStream } from "@/lib/ai/megallm-stream-parser";
 
 export const maxDuration = 60;
+
+// Regex constants for performance
+const AVRORA_MENTION_REGEX = /@avrora|@аврора/i;
 
 let globalStreamContext: ResumableStreamContext | null = null;
 
@@ -94,7 +97,7 @@ export async function POST(request: Request) {
     const json = await request.json();
     requestBody = postRequestBodySchema.parse(json);
   } catch (error) {
-      console.error("Request validation failed:", error);
+    console.error("Request validation failed:", error);
 
     return new ChatSDKError("bad_request:api").toResponse();
   }
@@ -136,7 +139,8 @@ export async function POST(request: Request) {
       // Check access permissions
       // For group chats - all are open (no permission check)
       // For other chats - only owner has access
-      const hasAccess = chat.chatType === "group" || chat.userId === session.user.id;
+      const hasAccess =
+        chat.chatType === "group" || chat.userId === session.user.id;
 
       if (!hasAccess) {
         return new ChatSDKError("forbidden:chat").toResponse();
@@ -185,18 +189,22 @@ export async function POST(request: Request) {
     // For group chats, check if Avrora is mentioned
     if (chat?.chatType === "group") {
       const messageText = message.parts
-        .filter((part): part is { type: "text"; text: string } => part.type === "text")
-        .map(part => part.text)
+        .filter(
+          (part): part is { type: "text"; text: string } => part.type === "text"
+        )
+        .map((part) => part.text)
         .join(" ");
 
-      const mentionsAvrora = /@avrora|@аврора/i.test(messageText);
+      const mentionsAvrora = AVRORA_MENTION_REGEX.test(messageText);
 
       if (!mentionsAvrora) {
         // Just save the message without AI response
         return new Response(
           new ReadableStream({
             start(controller) {
-              controller.enqueue(new TextEncoder().encode("data: {\"type\":\"message-saved\"}\n\n"));
+              controller.enqueue(
+                new TextEncoder().encode('data: {"type":"message-saved"}\n\n')
+              );
               controller.close();
             },
           }),
@@ -204,7 +212,7 @@ export async function POST(request: Request) {
             headers: {
               "Content-Type": "text/event-stream",
               "Cache-Control": "no-cache",
-              "Connection": "keep-alive",
+              Connection: "keep-alive",
             },
           }
         );
@@ -216,7 +224,9 @@ export async function POST(request: Request) {
       uiMessages.length = 0;
       uiMessages.push(...last20Messages);
 
-      console.log(`[Group Chat] @Avrora mentioned, using last ${last20Messages.length} messages as context`);
+      console.log(
+        `[Group Chat] @Avrora mentioned, using last ${last20Messages.length} messages as context`
+      );
     }
 
     const streamId = generateUUID();
@@ -229,29 +239,29 @@ export async function POST(request: Request) {
     // Check if messages contain images
     const containsImages = hasImages(uiMessages);
 
-    console.log('=== DEBUG: Message Analysis ===');
-    console.log('Contains Images:', containsImages);
-    console.log('UIMessages:', JSON.stringify(uiMessages, null, 2));
-    console.log('================================');
+    console.log("=== DEBUG: Message Analysis ===");
+    console.log("Contains Images:", containsImages);
+    console.log("UIMessages:", JSON.stringify(uiMessages, null, 2));
+    console.log("================================");
 
     // Use custom MegaLLM API for messages with images (temporary workaround)
     if (containsImages) {
-      console.log('Using custom MegaLLM API for image support');
+      console.log("Using custom MegaLLM API for image support");
 
       const stream = createUIMessageStream({
         execute: async ({ writer: dataStream }) => {
           try {
             const apiKey = process.env.MEGALLM_API_KEY;
             if (!apiKey) {
-              throw new Error('MEGALLM_API_KEY is not configured');
+              throw new Error("MEGALLM_API_KEY is not configured");
             }
 
             // Get model ID from selected chat model
             const modelIdMap: Record<string, string> = {
-              'chat-model': 'gpt-4o-mini',
-              'chat-model-reasoning': 'gpt-4o-mini',
+              "chat-model": "gpt-4o-mini",
+              "chat-model-reasoning": "gpt-4o-mini",
             };
-            const modelId = modelIdMap[selectedChatModel] || 'gpt-4o-mini';
+            const modelId = modelIdMap[selectedChatModel] || "gpt-4o-mini";
 
             // Call MegaLLM API with images
             const response = await callMegaLLMWithImages({
@@ -269,17 +279,17 @@ export async function POST(request: Request) {
             // Start assistant message
             const assistantMessageId = generateUUID();
             dataStream.write({
-              type: 'text-start',
+              type: "text-start",
               id: assistantMessageId,
             });
 
-            let fullText = '';
+            let fullText = "";
 
             // Stream response chunks
             for await (const textChunk of parseMegaLLMStream(response)) {
               fullText += textChunk;
               dataStream.write({
-                type: 'text-delta',
+                type: "text-delta",
                 id: assistantMessageId,
                 delta: textChunk,
               });
@@ -287,27 +297,31 @@ export async function POST(request: Request) {
 
             // End assistant message
             dataStream.write({
-              type: 'text-end',
+              type: "text-end",
               id: assistantMessageId,
             });
 
             // Save assistant message to database
             await saveMessages({
-              messages: [{
-                id: assistantMessageId,
-                role: 'assistant',
-                userId: null,
-                parts: [{ type: 'text', text: fullText }],
-                createdAt: new Date(),
-                attachments: [],
-                chatId: id,
-              }],
+              messages: [
+                {
+                  id: assistantMessageId,
+                  role: "assistant",
+                  userId: null,
+                  parts: [{ type: "text", text: fullText }],
+                  createdAt: new Date(),
+                  attachments: [],
+                  chatId: id,
+                },
+              ],
             });
-
           } catch (error) {
-            console.error('Error in custom MegaLLM API call:', error);
+            console.error("Error in custom MegaLLM API call:", error);
             hasStreamError = true;
-            errorMessage = error instanceof Error ? error.message : 'Failed to process image request';
+            errorMessage =
+              error instanceof Error
+                ? error.message
+                : "Failed to process image request";
             throw error;
           }
         },
@@ -326,7 +340,10 @@ export async function POST(request: Request) {
         },
         onError: (error: unknown) => {
           hasStreamError = true;
-          errorMessage = error instanceof Error ? error.message : "Произошла ошибка при генерации ответа.";
+          errorMessage =
+            error instanceof Error
+              ? error.message
+              : "Произошла ошибка при генерации ответа.";
           return errorMessage;
         },
       });
@@ -338,13 +355,16 @@ export async function POST(request: Request) {
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
         // Отладка: логируем параметры перед отправкой в модель
-        console.log('=== DEBUG: StreamText Params ===');
+        console.log("=== DEBUG: StreamText Params ===");
         //console.log('Selected Chat Model:', selectedChatModel);
-        console.log('UIMessages:', JSON.stringify(uiMessages, null, 2));
-        console.log('Converted Model Messages:', JSON.stringify(convertToModelMessages(uiMessages), null, 2));
+        console.log("UIMessages:", JSON.stringify(uiMessages, null, 2));
+        console.log(
+          "Converted Model Messages:",
+          JSON.stringify(convertToModelMessages(uiMessages), null, 2)
+        );
         //console.log('System Prompt:', systemPrompt({ selectedChatModel, requestHints }));
 
-        console.log('================================');
+        console.log("================================");
 
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
@@ -355,9 +375,9 @@ export async function POST(request: Request) {
           }),
           providerOptions: {
             openai: {
-              textVerbosity: 'low', // 'low' for concise, 'medium' (default), or 'high' for verbose
-                },
-              },
+              textVerbosity: "low", // 'low' for concise, 'medium' (default), or 'high' for verbose
+            },
+          },
           messages: convertToModelMessages(uiMessages),
           stopWhen: stepCountIs(5),
           experimental_activeTools:
@@ -433,20 +453,24 @@ export async function POST(request: Request) {
       onFinish: async ({ responseMessage }) => {
         // Save only the assistant's response message (not all messages)
         // responseMessage contains the complete message with populated parts
-        const parts = (hasStreamError && (!responseMessage.parts || responseMessage.parts.length === 0))
-          ? [{ type: "text", text: errorMessage }]
-          : responseMessage.parts;
+        const parts =
+          hasStreamError &&
+          (!responseMessage.parts || responseMessage.parts.length === 0)
+            ? [{ type: "text", text: errorMessage }]
+            : responseMessage.parts;
 
         await saveMessages({
-          messages: [{
-            id: responseMessage.id,
-            role: responseMessage.role,
-            userId: null, // AI messages don't have a user author
-            parts: parts,
-            createdAt: new Date(),
-            attachments: [],
-            chatId: id,
-          }],
+          messages: [
+            {
+              id: responseMessage.id,
+              role: responseMessage.role,
+              userId: null, // AI messages don't have a user author
+              parts,
+              createdAt: new Date(),
+              attachments: [],
+              chatId: id,
+            },
+          ],
         });
 
         if (finalMergedUsage) {
@@ -462,7 +486,10 @@ export async function POST(request: Request) {
       },
       onError: (error: unknown) => {
         hasStreamError = true;
-        errorMessage = error instanceof Error ? error.message : "Произошла ошибка при генерации ответа.";
+        errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Произошла ошибка при генерации ответа.";
         return errorMessage;
       },
     });
@@ -523,7 +550,8 @@ export async function GET(request: Request) {
   // Check access permissions
   // For group chats - all are open (no permission check)
   // For other chats - only owner has access
-  const hasAccess = chat.chatType === "group" || chat.userId === session.user.id;
+  const hasAccess =
+    chat.chatType === "group" || chat.userId === session.user.id;
 
   if (!hasAccess) {
     return new ChatSDKError("forbidden:chat").toResponse();

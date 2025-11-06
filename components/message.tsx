@@ -2,6 +2,7 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
 import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
 import { memo, useState } from "react";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
@@ -9,8 +10,7 @@ import { cn, sanitizeText } from "@/lib/utils";
 import { useDataStream } from "./data-stream-provider";
 import { DocumentToolResult } from "./document";
 import { DocumentPreview } from "./document-preview";
-import { MessageContent } from "./elements/message";
-import { MessageAvatar } from "./elements/message";
+import { MessageAvatar, MessageContent } from "./elements/message";
 import { Response } from "./elements/response";
 import {
   Tool,
@@ -25,7 +25,6 @@ import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 import { Weather } from "./weather";
-import { useSession } from "next-auth/react";
 
 const PurePreviewMessage = ({
   chatId,
@@ -75,17 +74,22 @@ const PurePreviewMessage = ({
           </div>
         )}
 
-{message.role === "user" && (
-  <div>
-    <MessageAvatar
-      src={`https://avatar.vercel.sh/${message.metadata?.userId || session?.user?.email || 'user'}`}
-      name={message.metadata?.userId === session?.user?.id
-        ? (session?.user?.name || session?.user?.email || 'User')
-        : `User ${message.metadata?.userId?.slice(0, 8) || ''}`}
-      className="-mt-1"
-    /> <span className="text-sm text-muted-foreground">{message.metadata?.userId}</span>
-  </div>
-)}
+        {message.role === "user" && (
+          <div>
+            <MessageAvatar
+              className="-mt-1"
+              name={
+                message.metadata?.userId === session?.user?.id
+                  ? session?.user?.name || session?.user?.email || "User"
+                  : `User ${message.metadata?.userId?.slice(0, 8) || ""}`
+              }
+              src={`https://avatar.vercel.sh/${message.metadata?.userId || session?.user?.email || "user"}`}
+            />{" "}
+            <span className="text-muted-foreground text-sm">
+              {message.metadata?.userId}
+            </span>
+          </div>
+        )}
 
         <div
           className={cn("flex flex-col", {
@@ -351,4 +355,3 @@ export const ThinkingMessage = () => {
     </motion.div>
   );
 };
-

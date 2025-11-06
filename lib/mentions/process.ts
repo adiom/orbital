@@ -1,6 +1,6 @@
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { messageMention } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 import type { Mention } from "../mentions/parser";
 import { parseMentions } from "../mentions/parser";
 
@@ -10,7 +10,7 @@ import { parseMentions } from "../mentions/parser";
 export async function processMentions(
   messageId: string,
   messageText: string,
-  chatId: string
+  _chatId: string
 ): Promise<Mention[]> {
   const mentions = parseMentions(messageText);
 
@@ -43,14 +43,14 @@ export async function processMentions(
 /**
  * Get all mentions for a message
  */
-export async function getMessageMentions(
-  messageId: string
-): Promise<Array<{
-  id: string;
-  mentionType: string;
-  mentionText: string;
-  mentionedUserId: string | null;
-}>> {
+export async function getMessageMentions(messageId: string): Promise<
+  Array<{
+    id: string;
+    mentionType: string;
+    mentionText: string;
+    mentionedUserId: string | null;
+  }>
+> {
   const mentions = await db
     .select({
       id: messageMention.id,

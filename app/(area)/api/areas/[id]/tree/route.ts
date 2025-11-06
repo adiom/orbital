@@ -1,8 +1,8 @@
+import { NextResponse } from "next/server";
 import { auth } from "@/app/(auth)/auth";
 import { getAreaById, getAreasByUserId } from "@/lib/db/queries";
-import { NextResponse } from "next/server";
 
-interface AreaTreeNode {
+type AreaTreeNode = {
   id: string;
   title: string;
   description: string | null;
@@ -10,7 +10,7 @@ interface AreaTreeNode {
   forkedAt: Date | null;
   children: AreaTreeNode[];
   hasAccess: boolean;
-}
+};
 
 async function buildAreaTree(
   areaId: string,
@@ -19,7 +19,9 @@ async function buildAreaTree(
 ): Promise<AreaTreeNode | null> {
   try {
     const area = await getAreaById({ id: areaId });
-    if (!area) return null;
+    if (!area) {
+      return null;
+    }
 
     const hasAccess = userAreas.has(area.id);
 
@@ -54,7 +56,7 @@ async function buildAreaTree(
 
 // GET /api/areas/[id]/tree - Get area tree (parent + children)
 export async function GET(
-  request: Request,
+  _request: Request,
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
@@ -86,7 +88,9 @@ export async function GET(
     // Find root area
     while (currentArea.parentAreaId) {
       const parent = await getAreaById({ id: currentArea.parentAreaId });
-      if (!parent) break;
+      if (!parent) {
+        break;
+      }
       rootAreaId = parent.id;
       currentArea = parent;
     }
@@ -99,9 +103,13 @@ export async function GET(
     let pathArea = area;
     while (pathArea) {
       path.unshift(pathArea.id);
-      if (!pathArea.parentAreaId) break;
+      if (!pathArea.parentAreaId) {
+        break;
+      }
       const parent = await getAreaById({ id: pathArea.parentAreaId });
-      if (!parent) break;
+      if (!parent) {
+        break;
+      }
       pathArea = parent;
     }
 

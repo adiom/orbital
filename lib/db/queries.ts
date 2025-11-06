@@ -141,7 +141,7 @@ export async function deleteAllChatsByUserId({ userId }: { userId: string }) {
       return { deletedCount: 0 };
     }
 
-    const chatIds = userChats.map(c => c.id);
+    const chatIds = userChats.map((c) => c.id);
 
     await db.delete(vote).where(inArray(vote.chatId, chatIds));
     await db.delete(message).where(inArray(message.chatId, chatIds));
@@ -812,10 +812,7 @@ export async function deleteAreaById({ id }: { id: string }) {
         )
       );
     // Delete the area
-    const [deleted] = await db
-      .delete(area)
-      .where(eq(area.id, id))
-      .returning();
+    const [deleted] = await db.delete(area).where(eq(area.id, id)).returning();
     return deleted;
   } catch (_error) {
     throw new ChatSDKError(
@@ -838,9 +835,15 @@ export async function updateAreaById({
 }) {
   try {
     const updates: Record<string, any> = {};
-    if (title) updates.title = title;
-    if (description !== undefined) updates.description = description;
-    if (visibility) updates.visibility = visibility;
+    if (title) {
+      updates.title = title;
+    }
+    if (description !== undefined) {
+      updates.description = description;
+    }
+    if (visibility) {
+      updates.visibility = visibility;
+    }
 
     const [updated] = await db
       .update(area)

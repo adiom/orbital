@@ -4,7 +4,11 @@ import { notFound, redirect } from "next/navigation";
 import { auth } from "@/app/(auth)/auth";
 import { Chat } from "@/components/chat";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
-import { getChatById, getMessagesByChatId, getAreaById } from "@/lib/db/queries";
+import {
+  getAreaById,
+  getChatById,
+  getMessagesByChatId,
+} from "@/lib/db/queries";
 import { convertToUIMessages } from "@/lib/utils";
 
 export default async function GroupChatPage(props: {
@@ -58,15 +62,15 @@ export default async function GroupChatPage(props: {
 
   return (
     <Chat
+      areaId={chat.areaId}
       autoResume={true}
+      chatType={chat.chatType}
       id={chat.id}
       initialChatModel={chatModel}
       initialLastContext={chat.lastContext ?? undefined}
       initialMessages={uiMessages}
       initialVisibilityType={chat.visibility}
       isReadonly={isReadonly}
-      areaId={chat.areaId}
-      chatType={chat.chatType}
     />
   );
 }

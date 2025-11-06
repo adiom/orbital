@@ -1,7 +1,6 @@
+import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
-
-import { config } from "dotenv";
 
 config({
   path: ".env.local",
@@ -13,7 +12,7 @@ if (!process.env.POSTGRES_URL) {
 
 const client = postgres(process.env.POSTGRES_URL, {
   prepare: false,
-  max: Number.parseInt(process.env.POSTGRES_MAX_CONNECTIONS || "1"),
+  max: Number.parseInt(process.env.POSTGRES_MAX_CONNECTIONS || "1", 10),
 });
 
 export const db = drizzle(client);

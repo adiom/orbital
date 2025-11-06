@@ -3,35 +3,35 @@
  * Temporary workaround for image support via base64 encoding
  */
 
-import { imageUrlToBase64, getMediaType, isImagePart } from './image-utils';
+import { getMediaType, imageUrlToBase64, isImagePart } from "./image-utils";
 
-interface MessagePart {
-  type: 'text' | 'file';
+type MessagePart = {
+  type: "text" | "file";
   text?: string;
   url?: string;
   name?: string;
   mediaType?: string;
-}
+};
 
-interface UIMessage {
+type UIMessage = {
   role: string;
   parts: MessagePart[];
-}
+};
 
-interface MegaLLMContentPart {
-  type: 'text' | 'image';
+type MegaLLMContentPart = {
+  type: "text" | "image";
   text?: string;
   source?: {
-    type: 'base64';
+    type: "base64";
     media_type: string;
     data: string;
   };
-}
+};
 
-interface MegaLLMMessage {
+type MegaLLMMessage = {
   role: string;
   content: MegaLLMContentPart[];
-}
+};
 
 /**
  * Converts UI messages to MegaLLM API format with base64 images
@@ -45,9 +45,9 @@ export async function convertToMegaLLMMessages(
     const content: MegaLLMContentPart[] = [];
 
     for (const part of message.parts) {
-      if (part.type === 'text' && part.text) {
+      if (part.type === "text" && part.text) {
         content.push({
-          type: 'text',
+          type: "text",
           text: part.text,
         });
       } else if (isImagePart(part) && part.url && part.mediaType) {
@@ -57,18 +57,18 @@ export async function convertToMegaLLMMessages(
           const mediaType = getMediaType(part.mediaType);
 
           content.push({
-            type: 'image',
+            type: "image",
             source: {
-              type: 'base64',
+              type: "base64",
               media_type: mediaType,
               data: base64Data,
             },
           });
         } catch (error) {
-          console.error('Failed to convert image to base64:', error);
+          console.error("Failed to convert image to base64:", error);
           // Add error message instead of image
           content.push({
-            type: 'text',
+            type: "text",
             text: `[Failed to load image: ${part.name || part.url}]`,
           });
         }
@@ -90,8 +90,8 @@ export async function convertToMegaLLMMessages(
  * Checks if messages contain images
  */
 export function hasImages(messages: UIMessage[]): boolean {
-  return messages.some(message =>
-    message.parts.some(part => isImagePart(part))
+  return messages.some((message) =>
+    message.parts.some((part) => isImagePart(part))
   );
 }
 
@@ -123,12 +123,12 @@ export async function callMegaLLMWithImages(params: {
   }
 
   // Call MegaLLM API directly
-  const response = await fetch('https://ai.megallm.io/v1/messages', {
-    method: 'POST',
+  const response = await fetch("https://ai.megallm.io/v1/messages", {
+    method: "POST",
     headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "content-type": "application/json",
     },
     body: JSON.stringify(requestBody),
   });

@@ -1,15 +1,15 @@
+import { NextResponse } from "next/server";
 import { auth } from "@/app/(auth)/auth";
 import {
-  getAreaById,
   deleteAreaById,
-  updateAreaById,
+  getAreaById,
   getAreaMembers,
+  updateAreaById,
 } from "@/lib/db/queries";
-import { NextResponse } from "next/server";
 
 // GET /api/areas/[id] - Get area by ID
 export async function GET(
-  request: Request,
+  _request: Request,
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
@@ -90,7 +90,7 @@ export async function PATCH(
 
 // DELETE /api/areas/[id] - Delete area
 export async function DELETE(
-  request: Request,
+  _request: Request,
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;

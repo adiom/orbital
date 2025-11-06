@@ -76,7 +76,11 @@ You are mentioned with @avrora. Respond directly to the question while being awa
 `;
 
 // System prompt for forked Area context
-export const forkedAreaPrompt = (inheritedSummary: string, areaTitle: string, parentTitle?: string) => `
+export const forkedAreaPrompt = (
+  inheritedSummary: string,
+  areaTitle: string,
+  parentTitle?: string
+) => `
 **Current Area Context:**
 Area: "${areaTitle}"
 ${parentTitle ? `Forked from: "${parentTitle}"` : "Root Area"}
@@ -196,4 +200,4 @@ export const titlePrompt = `\n
     - you will generate a short title based on the first message a user begins a conversation with
     - ensure it is not more than 80 characters long
     - the title should be a summary of the user's message
-    - do not use quotes or colons`
+    - do not use quotes or colons`;

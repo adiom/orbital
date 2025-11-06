@@ -1,10 +1,18 @@
 "use client";
 
+import { FolderTree } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -14,19 +22,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { FolderTree } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Textarea } from "@/components/ui/textarea";
 
-interface CreateAreaDialogProps {
+type CreateAreaDialogProps = {
   trigger?: React.ReactNode;
-}
+};
 
 export function CreateAreaDialog({ trigger }: CreateAreaDialogProps) {
   const [open, setOpen] = useState(false);
@@ -85,11 +85,11 @@ export function CreateAreaDialog({ trigger }: CreateAreaDialogProps) {
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet onOpenChange={setOpen} open={open}>
       <SheetTrigger asChild>
         {trigger || (
           <Button>
-            <FolderTree className="w-4 h-4 mr-2" />
+            <FolderTree className="mr-2 h-4 w-4" />
             New Area
           </Button>
         )}
@@ -106,34 +106,34 @@ export function CreateAreaDialog({ trigger }: CreateAreaDialogProps) {
             <div className="space-y-2">
               <Label htmlFor="title">Title *</Label>
               <Input
+                disabled={loading}
                 id="title"
+                onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g. Project Alpha"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                disabled={loading}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="description">Description</Label>
               <Textarea
-                id="description"
-                placeholder="What is this area about?"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
                 disabled={loading}
+                id="description"
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What is this area about?"
                 rows={3}
+                value={description}
               />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="visibility">Visibility</Label>
               <Select
-                value={visibility}
+                disabled={loading}
                 onValueChange={(value: "private" | "public" | "dao") =>
                   setVisibility(value)
                 }
-                disabled={loading}
+                value={visibility}
               >
                 <SelectTrigger id="visibility">
                   <SelectValue />
@@ -153,15 +153,17 @@ export function CreateAreaDialog({ trigger }: CreateAreaDialogProps) {
             </div>
 
             {error && (
-              <div className="text-sm text-red-500 bg-red-50 dark:bg-red-950 p-2 rounded">
+              <div className="rounded bg-red-50 p-2 text-red-500 text-sm dark:bg-red-950">
                 {error}
               </div>
             )}
 
-            <div className="text-sm text-muted-foreground bg-muted p-3 rounded">
-              <p className="font-medium mb-1">Auto-created:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>Default group chat &quot;{title || "Title"} - General&quot;</li>
+            <div className="rounded bg-muted p-3 text-muted-foreground text-sm">
+              <p className="mb-1 font-medium">Auto-created:</p>
+              <ul className="list-inside list-disc space-y-1">
+                <li>
+                  Default group chat &quot;{title || "Title"} - General&quot;
+                </li>
                 <li>You as owner and admin</li>
               </ul>
             </div>
@@ -169,13 +171,13 @@ export function CreateAreaDialog({ trigger }: CreateAreaDialogProps) {
         </div>
         <SheetFooter>
           <Button
-            variant="outline"
-            onClick={() => setOpen(false)}
             disabled={loading}
+            onClick={() => setOpen(false)}
+            variant="outline"
           >
             Cancel
           </Button>
-          <Button onClick={handleCreate} disabled={loading}>
+          <Button disabled={loading} onClick={handleCreate}>
             {loading ? "Creating..." : "Create Area"}
           </Button>
         </SheetFooter>

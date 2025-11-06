@@ -1,12 +1,7 @@
-import { auth } from "@/app/(auth)/auth";
-import {
-  getAreaById,
-  createArea,
-  getAreaMembers,
-  getMessagesByChatId,
-} from "@/lib/db/queries";
-import { generateAreaSummary } from "@/lib/ai/area-summary";
 import { NextResponse } from "next/server";
+import { auth } from "@/app/(auth)/auth";
+import { generateAreaSummary } from "@/lib/ai/area-summary";
+import { createArea, getAreaById, getAreaMembers } from "@/lib/db/queries";
 
 // POST /api/areas/[id]/fork - Fork an area
 export async function POST(
@@ -42,10 +37,7 @@ export async function POST(
     const { title, description } = body;
 
     if (!title) {
-      return NextResponse.json(
-        { error: "Title is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
     // TODO: Gather chat history from parent area

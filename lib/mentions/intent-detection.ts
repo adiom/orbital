@@ -1,6 +1,6 @@
 import { hasAvroraMention, removeMentions } from "./parser";
 
-export interface IntentResult {
+export type IntentResult = {
   shouldRespond: boolean;
   confidence: "high" | "medium" | "low";
   reason: string;
@@ -11,7 +11,26 @@ export interface IntentResult {
     | "discussion"
     | "greeting"
     | "other";
-}
+};
+
+// Regex constants for performance
+const QUESTION_PATTERNS = [
+  /^(what|when|where|who|why|how|which|whose|whom)\b/i,
+  /\?$/,
+  /можешь|можете|как|что|когда|где|почему|зачем/i,
+];
+
+const COMMAND_PATTERNS = [
+  /^(create|make|generate|build|write|add|remove|delete|update|change|modify)\b/i,
+  /^(создай|сделай|напиши|добавь|удали|измени|обнови)\b/i,
+];
+
+const REQUEST_PATTERNS = [
+  /^(please|could you|can you|would you|помоги|помогите|пожалуйста)\b/i,
+  /помоч|помощ|нужно|надо/i,
+];
+
+const GREETING_PATTERNS = [/^(hi|hello|hey|привет|здравствуй|добр)/i];
 
 /**
  * Detect if Avrora should respond to a message
@@ -20,7 +39,7 @@ export interface IntentResult {
 export function detectIntent(
   messageText: string,
   isGroupChat: boolean,
-  chatHistory?: { role: string; content: string }[]
+  _chatHistory?: { role: string; content: string }[]
 ): IntentResult {
   const hasMention = hasAvroraMention(messageText);
   const textWithoutMention = removeMentions(messageText).trim();
@@ -60,52 +79,26 @@ export function detectIntent(
  */
 function classifyIntent(
   text: string
-):
-  | "question"
-  | "command"
-  | "request"
-  | "discussion"
-  | "greeting"
-  | "other" {
+): "question" | "command" | "request" | "discussion" | "greeting" | "other" {
   const lowerText = text.toLowerCase();
 
   // Question patterns
-  const questionPatterns = [
-    /^(what|when|where|who|why|how|which|whose|whom)\b/i,
-    /\?$/,
-    /можешь|можете|как|что|когда|где|почему|зачем/i,
-  ];
-
-  if (questionPatterns.some((pattern) => pattern.test(lowerText))) {
+  if (QUESTION_PATTERNS.some((pattern) => pattern.test(lowerText))) {
     return "question";
   }
 
   // Command patterns
-  const commandPatterns = [
-    /^(create|make|generate|build|write|add|remove|delete|update|change|modify)\b/i,
-    /^(создай|сделай|напиши|добавь|удали|измени|обнови)\b/i,
-  ];
-
-  if (commandPatterns.some((pattern) => pattern.test(lowerText))) {
+  if (COMMAND_PATTERNS.some((pattern) => pattern.test(lowerText))) {
     return "command";
   }
 
   // Request patterns
-  const requestPatterns = [
-    /^(please|could you|can you|would you|помоги|помогите|пожалуйста)\b/i,
-    /помоч|помощ|нужно|надо/i,
-  ];
-
-  if (requestPatterns.some((pattern) => pattern.test(lowerText))) {
+  if (REQUEST_PATTERNS.some((pattern) => pattern.test(lowerText))) {
     return "request";
   }
 
   // Greeting patterns
-  const greetingPatterns = [
-    /^(hi|hello|hey|привет|здравствуй|добр)/i,
-  ];
-
-  if (greetingPatterns.some((pattern) => pattern.test(lowerText))) {
+  if (GREETING_PATTERNS.some((pattern) => pattern.test(lowerText))) {
     return "greeting";
   }
 
@@ -119,10 +112,12 @@ function classifyIntent(
 export function isConversationContinuation(
   chatHistory?: { role: string; content: string }[]
 ): boolean {
-  if (!chatHistory || chatHistory.length === 0) return false;
+  if (!chatHistory || chatHistory.length === 0) {
+    return false;
+  }
 
   // Check if last message was from assistant
-  const lastMessage = chatHistory[chatHistory.length - 1];
+  const lastMessage = chatHistory.at(-1);
   return lastMessage?.role === "assistant";
 }
 

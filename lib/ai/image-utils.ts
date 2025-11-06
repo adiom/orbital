@@ -16,10 +16,12 @@ export async function imageUrlToBase64(url: string): Promise<string> {
 
     const arrayBuffer = await response.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    return buffer.toString('base64');
+    return buffer.toString("base64");
   } catch (error) {
-    console.error('Error converting image to base64:', error);
-    throw new Error(`Failed to convert image to base64: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    console.error("Error converting image to base64:", error);
+    throw new Error(
+      `Failed to convert image to base64: ${error instanceof Error ? error.message : "Unknown error"}`
+    );
   }
 }
 
@@ -30,10 +32,10 @@ export async function imageUrlToBase64(url: string): Promise<string> {
  */
 export function getMediaType(contentType: string): string {
   // Remove any parameters from content type
-  const baseType = contentType.split(';')[0].trim();
+  const baseType = contentType.split(";")[0].trim();
 
   // Validate it's an image type
-  if (!baseType.startsWith('image/')) {
+  if (!baseType.startsWith("image/")) {
     throw new Error(`Invalid image content type: ${contentType}`);
   }
 
@@ -45,6 +47,9 @@ export function getMediaType(contentType: string): string {
  * @param part - The message part to check
  * @returns True if the part is an image file
  */
-export function isImagePart(part: { type: string; mediaType?: string }): boolean {
-  return part.type === 'file' && !!part.mediaType?.startsWith('image/');
+export function isImagePart(part: {
+  type: string;
+  mediaType?: string;
+}): boolean {
+  return part.type === "file" && !!part.mediaType?.startsWith("image/");
 }

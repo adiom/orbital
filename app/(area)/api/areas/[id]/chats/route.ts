@@ -1,8 +1,8 @@
+import { and, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
 import { auth } from "@/app/(auth)/auth";
 import { db } from "@/lib/db";
-import { chat, chatMember, areaMember } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { areaMember, chat, chatMember } from "@/lib/db/schema";
 
 /**
  * GET /api/areas/[id]/chats
@@ -101,10 +101,7 @@ export async function POST(
     const { title, chatType = "group", memberUserIds = [] } = body;
 
     if (!title) {
-      return NextResponse.json(
-        { error: "Title is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Title is required" }, { status: 400 });
     }
 
     if (chatType !== "personal" && chatType !== "group") {

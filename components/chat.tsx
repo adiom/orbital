@@ -171,11 +171,11 @@ export function Chat({
     <>
       <div className="overscroll-behavior-contain flex h-dvh min-w-0 touch-pan-y flex-col bg-background">
         <ChatHeader
+          areaId={areaId}
           chatId={id}
+          chatType={chatType}
           isReadonly={isReadonly}
           selectedVisibilityType={initialVisibilityType}
-          areaId={areaId}
-          chatType={chatType}
         />
 
         <Messages

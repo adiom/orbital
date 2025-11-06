@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { auth } from "@/app/(auth)/auth";
 import {
   addAreaMember,
@@ -5,11 +6,10 @@ import {
   removeAreaMember,
   updateAreaMemberRole,
 } from "@/lib/db/queries";
-import { NextResponse } from "next/server";
 
 // GET /api/areas/[id]/members - Get area members
 export async function GET(
-  request: Request,
+  _request: Request,
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;

@@ -1,6 +1,6 @@
+import { redirect } from "next/navigation";
 import { auth } from "@/app/(auth)/auth";
 import { getAreasByUserId } from "@/lib/db/queries";
-import { redirect } from "next/navigation";
 import { AreasList } from "./areas-list";
 
 export default async function AreasPage() {
@@ -13,10 +13,10 @@ export default async function AreasPage() {
   const areas = await getAreasByUserId({ userId: session.user.id });
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex h-screen flex-col">
       <header className="border-b p-4">
-        <h1 className="text-2xl font-bold">Areas</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h1 className="font-bold text-2xl">Areas</h1>
+        <p className="mt-1 text-muted-foreground text-sm">
           Your collaborative workspaces
         </p>
       </header>

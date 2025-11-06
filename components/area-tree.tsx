@@ -4,7 +4,7 @@ import { ChevronRight, FolderTree, GitBranch } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-interface AreaTreeNode {
+type AreaTreeNode = {
   id: string;
   title: string;
   description: string | null;
@@ -12,18 +12,18 @@ interface AreaTreeNode {
   forkedAt: Date | null;
   children: AreaTreeNode[];
   hasAccess: boolean;
-}
+};
 
-interface AreaTreeResponse {
+type AreaTreeResponse = {
   tree: AreaTreeNode;
   currentAreaId: string;
   path: string[];
-}
+};
 
-interface AreaTreeProps {
+type AreaTreeProps = {
   areaId: string;
   className?: string;
-}
+};
 
 function TreeNode({
   node,
@@ -43,31 +43,37 @@ function TreeNode({
 
   return (
     <div className="select-none">
-      <div
-        className={`
-          flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer
-          hover:bg-accent transition-colors
-          ${isCurrent ? "bg-accent font-medium" : ""}
-          ${!node.hasAccess ? "opacity-50" : ""}
+      <button
+        className={`flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left transition-colors hover:bg-accent ${isCurrent ? "bg-accent font-medium" : ""}
+          ${node.hasAccess ? "" : "opacity-50"}
         `}
-        style={{ paddingLeft: `${level * 16 + 12}px` }}
         onClick={() => {
           if (node.hasAccess) {
             router.push(`/area/${node.id}`);
           }
         }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            if (node.hasAccess) {
+              router.push(`/area/${node.id}`);
+            }
+          }
+        }}
+        style={{ paddingLeft: `${level * 16 + 12}px` }}
+        type="button"
       >
         {hasChildren && (
           <button
-            type="button"
+            className="rounded p-0.5 hover:bg-muted"
             onClick={(e) => {
               e.stopPropagation();
               setIsExpanded(!isExpanded);
             }}
-            className="p-0.5 hover:bg-muted rounded"
+            type="button"
           >
             <ChevronRight
-              className={`w-4 h-4 transition-transform ${
+              className={`h-4 w-4 transition-transform ${
                 isExpanded ? "rotate-90" : ""
               }`}
             />
@@ -77,23 +83,23 @@ function TreeNode({
         {!hasChildren && <div className="w-5" />}
 
         {node.forkedAt ? (
-          <GitBranch className="w-4 h-4 text-muted-foreground" />
+          <GitBranch className="h-4 w-4 text-muted-foreground" />
         ) : (
-          <FolderTree className="w-4 h-4 text-muted-foreground" />
+          <FolderTree className="h-4 w-4 text-muted-foreground" />
         )}
 
         <span className="flex-1 truncate text-sm">{node.title}</span>
-      </div>
+      </button>
 
       {isExpanded && hasChildren && (
         <div className="mt-1">
           {node.children.map((child) => (
             <TreeNode
-              key={child.id}
-              node={child}
               currentAreaId={currentAreaId}
-              path={path}
+              key={child.id}
               level={level + 1}
+              node={child}
+              path={path}
             />
           ))}
         </div>
@@ -136,9 +142,9 @@ export function AreaTree({ areaId, className }: AreaTreeProps) {
     return (
       <div className={`p-4 ${className}`}>
         <div className="animate-pulse space-y-2">
-          <div className="h-8 bg-muted rounded" />
-          <div className="h-8 bg-muted rounded ml-4" />
-          <div className="h-8 bg-muted rounded ml-8" />
+          <div className="h-8 rounded bg-muted" />
+          <div className="ml-4 h-8 rounded bg-muted" />
+          <div className="ml-8 h-8 rounded bg-muted" />
         </div>
       </div>
     );
@@ -146,7 +152,7 @@ export function AreaTree({ areaId, className }: AreaTreeProps) {
 
   if (error || !treeData) {
     return (
-      <div className={`p-4 text-sm text-muted-foreground ${className}`}>
+      <div className={`p-4 text-muted-foreground text-sm ${className}`}>
         {error || "No tree data available"}
       </div>
     );
@@ -154,13 +160,13 @@ export function AreaTree({ areaId, className }: AreaTreeProps) {
 
   return (
     <div className={`p-2 ${className}`}>
-      <div className="mb-2 px-3 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+      <div className="mb-2 px-3 py-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">
         Area Navigation
       </div>
 
       <TreeNode
-        node={treeData.tree}
         currentAreaId={treeData.currentAreaId}
+        node={treeData.tree}
         path={treeData.path}
       />
     </div>

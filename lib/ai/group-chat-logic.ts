@@ -5,11 +5,11 @@
 
 import type { ChatMessage } from "@/lib/types";
 
-interface ResponseDecision {
+type ResponseDecision = {
   shouldRespond: boolean;
   reason?: string;
   responseType?: "direct" | "summary" | "action" | "mediation";
-}
+};
 
 // Patterns that indicate a question
 const QUESTION_PATTERNS = [
@@ -44,13 +44,13 @@ const CONFLICT_PATTERNS = [
 
 export function analyzeGroupChatContext(
   messages: ChatMessage[],
-  currentUserId?: string
+  _currentUserId?: string
 ): ResponseDecision {
   if (messages.length === 0) {
     return { shouldRespond: false };
   }
 
-  const lastMessage = messages[messages.length - 1];
+  const lastMessage = messages.at(-1);
 
   // Don't respond to AI's own messages
   if (lastMessage.role === "assistant") {
@@ -63,7 +63,7 @@ export function analyzeGroupChatContext(
   }
 
   // Check for direct mentions
-  if (MENTION_PATTERNS.some(pattern => pattern.test(messageText))) {
+  if (MENTION_PATTERNS.some((pattern) => pattern.test(messageText))) {
     return {
       shouldRespond: true,
       reason: "Direct mention detected",
@@ -72,7 +72,7 @@ export function analyzeGroupChatContext(
   }
 
   // Check for action requests
-  if (ACTION_PATTERNS.some(pattern => pattern.test(messageText))) {
+  if (ACTION_PATTERNS.some((pattern) => pattern.test(messageText))) {
     return {
       shouldRespond: true,
       reason: "Action request detected",
@@ -81,11 +81,15 @@ export function analyzeGroupChatContext(
   }
 
   // Check for questions (but not every question needs an answer)
-  const isQuestion = QUESTION_PATTERNS.some(pattern => pattern.test(messageText));
+  const isQuestion = QUESTION_PATTERNS.some((pattern) =>
+    pattern.test(messageText)
+  );
   if (isQuestion) {
     // Check if it's directed at AI or general enough
     const recentMessages = messages.slice(-5);
-    const hasRecentAIResponse = recentMessages.some(m => m.role === "assistant");
+    const hasRecentAIResponse = recentMessages.some(
+      (m) => m.role === "assistant"
+    );
 
     // Don't respond to every question if AI just responded
     if (hasRecentAIResponse) {
@@ -93,7 +97,10 @@ export function analyzeGroupChatContext(
     }
 
     // Check if question seems directed or technical
-    if (messageText.length > 30 && !messageText.toLowerCase().includes("кто-нибудь")) {
+    if (
+      messageText.length > 30 &&
+      !messageText.toLowerCase().includes("кто-нибудь")
+    ) {
       return {
         shouldRespond: true,
         reason: "Technical question detected",
@@ -104,9 +111,9 @@ export function analyzeGroupChatContext(
 
   // Check for conflict situations
   const recentMessages = messages.slice(-10);
-  const conflictCount = recentMessages.filter(m => {
+  const conflictCount = recentMessages.filter((m) => {
     const text = getMessageText(m);
-    return text && CONFLICT_PATTERNS.some(pattern => pattern.test(text));
+    return text && CONFLICT_PATTERNS.some((pattern) => pattern.test(text));
   }).length;
 
   if (conflictCount >= 3) {
@@ -148,7 +155,7 @@ function getMessageText(message: ChatMessage): string | null {
     return null;
   }
 
-  return textParts.map(part => part.text).join(" ");
+  return textParts.map((part) => part.text).join(" ");
 }
 
 function getMessagesSinceLastAI(messages: ChatMessage[]): number {
@@ -166,7 +173,7 @@ function getMessagesSinceLastAI(messages: ChatMessage[]): number {
 
 export function generateContextualPrompt(
   decision: ResponseDecision,
-  context: string
+  _context: string
 ): string {
   const basePrompt = `You are Avrora, an AI assistant in a group chat.
 Be helpful but not intrusive. Keep responses concise unless detailed explanation is needed.`;
@@ -180,12 +187,15 @@ Be helpful but not intrusive. Keep responses concise unless detailed explanation
 
     case "mediation":
       return `${basePrompt}\nA heated discussion is detected. Suggest a constructive way forward or propose creating a separate space for detailed discussion.`;
-
-    case "direct":
     default:
       return `${basePrompt}\nAnswer the question or respond to the request directly and concisely.`;
   }
 }
 
 // Export additional utilities for testing
-export { QUESTION_PATTERNS, MENTION_PATTERNS, ACTION_PATTERNS, CONFLICT_PATTERNS };
+export {
+  QUESTION_PATTERNS,
+  MENTION_PATTERNS,
+  ACTION_PATTERNS,
+  CONFLICT_PATTERNS,
+};

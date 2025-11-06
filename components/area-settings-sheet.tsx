@@ -1,9 +1,18 @@
 "use client";
 
+import { Settings, Trash2, UserPlus, Users } from "lucide-react";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -12,29 +21,20 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { Settings, UserPlus, Users, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
-interface Member {
+type Member = {
   userId: string;
   email: string | null;
   role: string;
   joinedAt: Date;
-}
+};
 
-interface AreaSettingsSheetProps {
+type AreaSettingsSheetProps = {
   areaId: string;
   members: Member[];
   currentUserRole: string;
   trigger?: React.ReactNode;
-}
+};
 
 export function AreaSettingsSheet({
   areaId,
@@ -122,22 +122,20 @@ export function AreaSettingsSheet({
       // Update local state
       setMembers(members.filter((m) => m.userId !== userId));
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to remove member"
-      );
+      setError(err instanceof Error ? err.message : "Failed to remove member");
     }
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet onOpenChange={setOpen} open={open}>
       <SheetTrigger asChild>
         {trigger || (
-          <Button variant="outline" size="icon">
-            <Settings className="w-4 h-4" />
+          <Button size="icon" variant="outline">
+            <Settings className="h-4 w-4" />
           </Button>
         )}
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+      <SheetContent className="w-full overflow-y-auto sm:max-w-md">
         <SheetHeader>
           <SheetTitle>Area Settings</SheetTitle>
           <SheetDescription>
@@ -148,32 +146,32 @@ export function AreaSettingsSheet({
         <div className="space-y-6 py-6">
           {/* Members Section */}
           <div>
-            <div className="flex items-center gap-2 mb-4">
-              <Users className="w-5 h-5" />
+            <div className="mb-4 flex items-center gap-2">
+              <Users className="h-5 w-5" />
               <h3 className="font-semibold">Members ({members.length})</h3>
             </div>
 
-            <div className="space-y-2 mb-4">
+            <div className="mb-4 space-y-2">
               {members.map((member) => (
                 <div
+                  className="flex items-center justify-between rounded-md border p-2"
                   key={member.userId}
-                  className="flex items-center justify-between p-2 border rounded-md"
                 >
                   <div>
-                    <div className="text-sm font-medium">
+                    <div className="font-medium text-sm">
                       {member.email || "Unknown"}
                     </div>
-                    <Badge variant="outline" className="text-xs capitalize">
+                    <Badge className="text-xs capitalize" variant="outline">
                       {member.role}
                     </Badge>
                   </div>
                   {canManageMembers && member.role !== "owner" && (
                     <Button
-                      variant="ghost"
-                      size="icon"
                       onClick={() => handleRemoveMember(member.userId)}
+                      size="icon"
+                      variant="ghost"
                     >
-                      <Trash2 className="w-4 h-4 text-destructive" />
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   )}
                 </div>
@@ -182,36 +180,36 @@ export function AreaSettingsSheet({
 
             {/* Add Member Form */}
             {canManageMembers && (
-              <div className="space-y-3 p-3 border rounded-md bg-muted/50">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <UserPlus className="w-4 h-4" />
+              <div className="space-y-3 rounded-md border bg-muted/50 p-3">
+                <div className="flex items-center gap-2 font-medium text-sm">
+                  <UserPlus className="h-4 w-4" />
                   Add Member
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-xs">
+                  <Label className="text-xs" htmlFor="email">
                     Email
                   </Label>
                   <Input
-                    id="email"
-                    type="email"
-                    placeholder="user@example.com"
-                    value={newMemberEmail}
-                    onChange={(e) => setNewMemberEmail(e.target.value)}
                     disabled={loading}
+                    id="email"
+                    onChange={(e) => setNewMemberEmail(e.target.value)}
+                    placeholder="user@example.com"
+                    type="email"
+                    value={newMemberEmail}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="role" className="text-xs">
+                  <Label className="text-xs" htmlFor="role">
                     Role
                   </Label>
                   <Select
-                    value={newMemberRole}
+                    disabled={loading}
                     onValueChange={(value: "admin" | "member" | "viewer") =>
                       setNewMemberRole(value)
                     }
-                    disabled={loading}
+                    value={newMemberRole}
                   >
                     <SelectTrigger id="role">
                       <SelectValue />
@@ -225,15 +223,15 @@ export function AreaSettingsSheet({
                 </div>
 
                 {error && (
-                  <div className="text-xs text-red-500 bg-red-50 dark:bg-red-950 p-2 rounded">
+                  <div className="rounded bg-red-50 p-2 text-red-500 text-xs dark:bg-red-950">
                     {error}
                   </div>
                 )}
 
                 <Button
-                  onClick={handleAddMember}
-                  disabled={loading}
                   className="w-full"
+                  disabled={loading}
+                  onClick={handleAddMember}
                   size="sm"
                 >
                   {loading ? "Adding..." : "Add Member"}

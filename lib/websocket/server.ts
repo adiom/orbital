@@ -1,21 +1,25 @@
+import { createServer } from "node:http";
+import { parse } from "node:url";
+import { eq } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { WebSocketServer } from "ws";
 import { db } from "@/lib/db";
 import { chat } from "@/lib/db/schema";
 import {
-  type WebSocketClient,
   extractTokenFromRequest,
+  type WebSocketClient,
   wsManager,
 } from "@/lib/websocket/manager";
-import { eq } from "drizzle-orm";
-import { nanoid } from "nanoid";
-import { createServer } from "node:http";
-import { parse } from "node:url";
-import { WebSocketServer } from "ws";
 
-const WS_PORT = process.env.WS_PORT ? Number.parseInt(process.env.WS_PORT) : 3001;
+const WS_PORT = process.env.WS_PORT
+  ? Number.parseInt(process.env.WS_PORT, 10)
+  : 3001;
 
 // Простая проверка токена (в продакшене использовать NextAuth JWT verification)
-async function verifyToken(token: string | null): Promise<string | null> {
-  if (!token) return null;
+function verifyToken(token: string | null): string | null {
+  if (!token) {
+    return null;
+  }
 
   // TODO: Implement proper JWT verification using NextAuth
   // For now, just return a mock userId for development

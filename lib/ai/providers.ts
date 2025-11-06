@@ -1,16 +1,14 @@
-import { gateway } from "@ai-sdk/gateway";
+import { createAnthropic } from "@ai-sdk/anthropic";
 import {
   customProvider,
   extractReasoningMiddleware,
   wrapLanguageModel,
 } from "ai";
 import { isTestEnvironment } from "../constants";
-import { createOpenAI } from '@ai-sdk/openai';
-import { createAnthropic } from   "@ai-sdk/anthropic";
 
 const openai = createAnthropic({
   apiKey: process.env.MEGALLM_API_KEY,
-  baseURL: 'https://ai.megallm.io/v1',
+  baseURL: "https://ai.megallm.io/v1",
 });
 
 export const myProvider = isTestEnvironment

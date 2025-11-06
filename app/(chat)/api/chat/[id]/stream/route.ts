@@ -1,18 +1,18 @@
 import { createUIMessageStream, JsonToSseTransformStream } from "ai";
 import { differenceInSeconds } from "date-fns";
+import { and, eq } from "drizzle-orm";
 import { auth } from "@/app/(auth)/auth";
+import { db } from "@/lib/db";
 import {
   getChatById,
   getMessagesByChatId,
   getStreamIdsByChatId,
 } from "@/lib/db/queries";
 import type { Chat } from "@/lib/db/schema";
+import { chatMember } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
 import type { ChatMessage } from "@/lib/types";
 import { getStreamContext } from "../../route";
-import { db } from "@/lib/db";
-import { chatMember } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
 
 export async function GET(
   _: Request,

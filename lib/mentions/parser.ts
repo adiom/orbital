@@ -1,11 +1,15 @@
-export interface Mention {
+export type Mention = {
   type: "user" | "avrora";
   userId?: string;
   username?: string;
   start: number;
   end: number;
   text: string;
-}
+};
+
+// Regex constants for performance
+const MENTION_REGEX = /@([\w-]+)/g;
+const AVRORA_MENTION_REGEX = /@avrora\b/i;
 
 /**
  * Parse mentions from message text
@@ -17,10 +21,10 @@ export function parseMentions(text: string): Mention[] {
   const mentions: Mention[] = [];
 
   // Regex for @mentions (alphanumeric, underscore, hyphen)
-  const mentionRegex = /@([\w-]+)/g;
-  let match: RegExpExecArray | null;
+  const mentionRegex = new RegExp(MENTION_REGEX.source, MENTION_REGEX.flags);
+  let match: RegExpExecArray | null = mentionRegex.exec(text);
 
-  while ((match = mentionRegex.exec(text)) !== null) {
+  while (match !== null) {
     const username = match[1];
     const start = match.index;
     const end = start + match[0].length;
@@ -44,6 +48,8 @@ export function parseMentions(text: string): Mention[] {
         text: match[0],
       });
     }
+
+    match = mentionRegex.exec(text);
   }
 
   return mentions;
@@ -53,7 +59,7 @@ export function parseMentions(text: string): Mention[] {
  * Check if message contains Avrora mention
  */
 export function hasAvroraMention(text: string): boolean {
-  return /@avrora\b/i.test(text);
+  return AVRORA_MENTION_REGEX.test(text);
 }
 
 /**
@@ -82,7 +88,8 @@ export function formatMentions(
   let result = text;
   for (const mention of sortedMentions) {
     const formatted = formatter(mention);
-    result = result.slice(0, mention.start) + formatted + result.slice(mention.end);
+    result =
+      result.slice(0, mention.start) + formatted + result.slice(mention.end);
   }
 
   return result;
@@ -99,11 +106,11 @@ export function removeMentions(text: string): string {
  * Highlight mentions in text for UI
  * Returns array of text segments with mention markers
  */
-export interface TextSegment {
+export type TextSegment = {
   text: string;
   isMention: boolean;
   mention?: Mention;
-}
+};
 
 export function segmentTextWithMentions(text: string): TextSegment[] {
   const mentions = parseMentions(text);

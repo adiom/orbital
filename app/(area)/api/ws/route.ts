@@ -1,13 +1,12 @@
-import { auth } from "@/app/(auth)/auth";
-import { getChatById } from "@/lib/db/queries";
-import { nanoid } from "nanoid";
 import type { NextRequest } from "next/server";
 import { WebSocketServer } from "ws";
+import { auth } from "@/app/(auth)/auth";
+import { getChatById } from "@/lib/db/queries";
 
 // WebSocket server instance (singleton)
 let wss: WebSocketServer | null = null;
 
-function getWebSocketServer() {
+function _getWebSocketServer() {
   if (!wss) {
     wss = new WebSocketServer({ noServer: true });
     console.log("✅ WebSocket server created");

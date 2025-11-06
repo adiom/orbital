@@ -23,37 +23,41 @@ export type User = InferSelectModel<typeof user>;
 
 // ============ AVRORA: Area Support (declared before Chat) ============
 
-export const area = pgTable("Area", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  createdAt: timestamp("createdAt").notNull(),
-  title: text("title").notNull(),
-  description: text("description"),
-  ownerId: uuid("ownerId")
-    .notNull()
-    .references(() => user.id),
-  visibility: varchar("visibility", {
-    enum: ["public", "private", "dao"],
+export const area = pgTable(
+  "Area",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    createdAt: timestamp("createdAt").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    ownerId: uuid("ownerId")
+      .notNull()
+      .references(() => user.id),
+    visibility: varchar("visibility", {
+      enum: ["public", "private", "dao"],
+    })
+      .notNull()
+      .default("private"),
+
+    // DAO governance
+    daoTokenAddress: text("daoTokenAddress"),
+
+    // Fork/Merge support - self-reference
+    parentAreaId: uuid("parentAreaId"),
+    inheritedSummary: text("inheritedSummary"),
+    forkedAt: timestamp("forkedAt"),
+    mergeStatus: varchar("mergeStatus", {
+      enum: ["independent", "synced", "diverged", "merge_proposed"],
+    }).default("independent"),
+  },
+  (table) => ({
+    // Self-referencing foreign key
+    parentRef: foreignKey({
+      columns: [table.parentAreaId],
+      foreignColumns: [table.id],
+    }),
   })
-    .notNull()
-    .default("private"),
-
-  // DAO governance
-  daoTokenAddress: text("daoTokenAddress"),
-
-  // Fork/Merge support - self-reference
-  parentAreaId: uuid("parentAreaId"),
-  inheritedSummary: text("inheritedSummary"),
-  forkedAt: timestamp("forkedAt"),
-  mergeStatus: varchar("mergeStatus", {
-    enum: ["independent", "synced", "diverged", "merge_proposed"],
-  }).default("independent"),
-}, (table) => ({
-  // Self-referencing foreign key
-  parentRef: foreignKey({
-    columns: [table.parentAreaId],
-    foreignColumns: [table.id],
-  }),
-}));
+);
 
 export type Area = InferSelectModel<typeof area>;
 

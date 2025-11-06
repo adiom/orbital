@@ -1,6 +1,6 @@
+import { NextResponse } from "next/server";
 import { auth } from "@/app/(auth)/auth";
 import { getUser } from "@/lib/db/queries";
-import { NextResponse } from "next/server";
 
 /**
  * GET /api/users/by-email?email=xxx
@@ -41,9 +41,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Error finding user:", error);
-    return NextResponse.json(
-      { error: "Failed to find user" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to find user" }, { status: 500 });
   }
 }

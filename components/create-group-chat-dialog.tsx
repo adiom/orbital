@@ -1,5 +1,7 @@
 "use client";
 
+import { MessageSquarePlus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,12 +15,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { MessageSquarePlus } from "lucide-react";
-import { useRouter } from "next/navigation";
 
-interface CreateGroupChatDialogProps {
+type CreateGroupChatDialogProps = {
   areaId: string;
-}
+};
 
 export function CreateGroupChatDialog({ areaId }: CreateGroupChatDialogProps) {
   const [open, setOpen] = useState(false);
@@ -69,10 +69,10 @@ export function CreateGroupChatDialog({ areaId }: CreateGroupChatDialogProps) {
   }
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
+    <Sheet onOpenChange={setOpen} open={open}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm">
-          <MessageSquarePlus className="w-4 h-4 mr-2" />
+        <Button size="sm" variant="outline">
+          <MessageSquarePlus className="mr-2 h-4 w-4" />
           New Group Chat
         </Button>
       </SheetTrigger>
@@ -88,45 +88,48 @@ export function CreateGroupChatDialog({ areaId }: CreateGroupChatDialogProps) {
             <div className="space-y-2">
               <Label htmlFor="title">Chat Title</Label>
               <Input
-                id="title"
-                placeholder="e.g. Project Discussion"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
                 disabled={loading}
+                id="title"
+                onChange={(e) => setTitle(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     handleCreate();
                   }
                 }}
+                placeholder="e.g. Project Discussion"
+                value={title}
               />
             </div>
             {error && (
-              <div className="text-sm text-red-500 bg-red-50 dark:bg-red-950 p-2 rounded">
+              <div className="rounded bg-red-50 p-2 text-red-500 text-sm dark:bg-red-950">
                 {error}
               </div>
             )}
-            <div className="text-sm text-muted-foreground">
+            <div className="text-muted-foreground text-sm">
               <p>
                 After creating the chat, you can add members from the chat
                 settings.
               </p>
               <p className="mt-2">
-                Use <code className="text-xs bg-muted px-1 py-0.5 rounded">@avrora</code> to
-                mention the AI assistant in group conversations.
+                Use{" "}
+                <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                  @avrora
+                </code>{" "}
+                to mention the AI assistant in group conversations.
               </p>
             </div>
           </div>
         </div>
         <SheetFooter>
           <Button
-            variant="outline"
-            onClick={() => setOpen(false)}
             disabled={loading}
+            onClick={() => setOpen(false)}
+            variant="outline"
           >
             Cancel
           </Button>
-          <Button onClick={handleCreate} disabled={loading}>
+          <Button disabled={loading} onClick={handleCreate}>
             {loading ? "Creating..." : "Create Chat"}
           </Button>
         </SheetFooter>

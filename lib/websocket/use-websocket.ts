@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-export interface WebSocketMessage {
+export type WebSocketMessage = {
   type:
     | "connected"
     | "chat_message"
@@ -11,9 +11,9 @@ export interface WebSocketMessage {
     | "error"
     | "pong";
   [key: string]: unknown;
-}
+};
 
-export interface UseWebSocketOptions {
+export type UseWebSocketOptions = {
   chatId: string;
   areaId?: string;
   token?: string;
@@ -23,7 +23,7 @@ export interface UseWebSocketOptions {
   onError?: (error: Event) => void;
   autoReconnect?: boolean;
   reconnectInterval?: number;
-}
+};
 
 export function useWebSocket({
   chatId,
@@ -44,15 +44,21 @@ export function useWebSocket({
 
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
 
-  const connect = () => {
-    if (!chatId || !shouldConnectRef.current) return;
+  const connect = useCallback(() => {
+    if (!chatId || !shouldConnectRef.current) {
+      return;
+    }
 
     try {
       // Build WebSocket URL with query params
       const url = new URL(wsUrl);
       url.searchParams.set("chatId", chatId);
-      if (areaId) url.searchParams.set("areaId", areaId);
-      if (token) url.searchParams.set("token", token);
+      if (areaId) {
+        url.searchParams.set("areaId", areaId);
+      }
+      if (token) {
+        url.searchParams.set("token", token);
+      }
 
       const ws = new WebSocket(url.toString());
 
@@ -102,9 +108,20 @@ export function useWebSocket({
     } catch (error) {
       console.error("Error creating WebSocket connection:", error);
     }
-  };
+  }, [
+    chatId,
+    areaId,
+    token,
+    wsUrl,
+    onConnect,
+    onMessage,
+    onDisconnect,
+    onError,
+    autoReconnect,
+    reconnectInterval,
+  ]);
 
-  const disconnect = () => {
+  const disconnect = useCallback(() => {
     shouldConnectRef.current = false;
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
@@ -116,15 +133,15 @@ export function useWebSocket({
     }
     setIsConnected(false);
     setClientId(null);
-  };
+  }, []);
 
-  const sendMessage = (message: Record<string, unknown>) => {
+  const sendMessage = useCallback((message: Record<string, unknown>) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
     } else {
       console.warn("WebSocket is not connected. Message not sent:", message);
     }
-  };
+  }, []);
 
   const sendChatMessage = (messageId: string, content: string) => {
     sendMessage({
@@ -158,18 +175,20 @@ export function useWebSocket({
       disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatId, areaId, token]);
+  }, [connect, disconnect]);
 
   // Ping/pong heartbeat
   useEffect(() => {
-    if (!isConnected) return;
+    if (!isConnected) {
+      return;
+    }
 
     const interval = setInterval(() => {
       sendMessage({ type: "ping" });
-    }, 30000); // Ping every 30 seconds
+    }, 30_000); // Ping every 30 seconds
 
     return () => clearInterval(interval);
-  }, [isConnected]);
+  }, [isConnected, sendMessage]);
 
   return {
     isConnected,

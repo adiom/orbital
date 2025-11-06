@@ -1,22 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Users } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-interface GroupChat {
+type GroupChat = {
   id: string;
   title: string;
   chatType: string;
   createdAt: Date;
   userRole: string;
-}
+};
 
-interface GroupChatsListProps {
+type GroupChatsListProps = {
   areaId: string;
-}
+};
 
 export function GroupChatsList({ areaId }: GroupChatsListProps) {
   const [chats, setChats] = useState<GroupChat[]>([]);
@@ -42,14 +42,14 @@ export function GroupChatsList({ areaId }: GroupChatsListProps) {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="animate-pulse">
+          <Card className="animate-pulse" key={i}>
             <CardHeader>
-              <div className="h-6 bg-muted rounded" />
+              <div className="h-6 rounded bg-muted" />
             </CardHeader>
             <CardContent>
-              <div className="h-4 bg-muted rounded" />
+              <div className="h-4 rounded bg-muted" />
             </CardContent>
           </Card>
         ))}
@@ -59,8 +59,8 @@ export function GroupChatsList({ areaId }: GroupChatsListProps) {
 
   if (chats.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        <MessageSquare className="w-12 h-12 mx-auto mb-4 opacity-50" />
+      <div className="py-12 text-center text-muted-foreground">
+        <MessageSquare className="mx-auto mb-4 h-12 w-12 opacity-50" />
         <p className="text-sm">
           No group chats yet. Create one to start collaborating with your team
           and @avrora!
@@ -70,31 +70,31 @@ export function GroupChatsList({ areaId }: GroupChatsListProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       {chats.map((chat) => (
-        <Link key={chat.id} href={`/area/${areaId}/chat/${chat.id}`}>
-          <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
+        <Link href={`/area/${areaId}/chat/${chat.id}`} key={chat.id}>
+          <Card className="h-full cursor-pointer transition-colors hover:bg-accent">
             <CardHeader>
               <div className="flex items-start justify-between">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-muted-foreground" />
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MessageSquare className="h-5 w-5 text-muted-foreground" />
                   {chat.title}
                 </CardTitle>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Badge variant="outline" className="capitalize">
+              <div className="flex items-center gap-2 text-muted-foreground text-sm">
+                <Badge className="capitalize" variant="outline">
                   {chat.userRole}
                 </Badge>
                 {chat.chatType === "group" && (
                   <span className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
+                    <Users className="h-4 w-4" />
                     Group
                   </span>
                 )}
               </div>
-              <div className="text-xs text-muted-foreground mt-2">
+              <div className="mt-2 text-muted-foreground text-xs">
                 Created {new Date(chat.createdAt).toLocaleDateString()}
               </div>
             </CardContent>

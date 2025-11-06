@@ -127,7 +127,9 @@ export function SidebarHistory({
   );
 
   const chatsFromHistory = useMemo(() => {
-    if (!paginatedChatHistories) return [];
+    if (!paginatedChatHistories) {
+      return [];
+    }
     return paginatedChatHistories.flatMap(
       (paginatedChatHistory) => paginatedChatHistory.chats
     );
@@ -136,7 +138,7 @@ export function SidebarHistory({
   const groupedChats = useMemo(() => {
     return groupChatsByDate(chatsFromHistory);
   }, [chatsFromHistory]);
-  
+
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -230,8 +232,6 @@ export function SidebarHistory({
       </SidebarGroup>
     );
   }
-
-  
 
   return (
     <>

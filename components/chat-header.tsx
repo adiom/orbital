@@ -60,9 +60,7 @@ function PureChatHeader({
           className="order-3 ml-auto flex h-fit px-2"
           variant="outline"
         >
-          <Link href={`/area/${areaId}`}>
-            View Area           {areaId}
-          </Link>
+          <Link href={`/area/${areaId}`}>View Area {areaId}</Link>
         </Button>
       ) : (
         <Button

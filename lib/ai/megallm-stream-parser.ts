@@ -2,12 +2,19 @@
  * Parser for MegaLLM streaming responses (Anthropic-compatible format)
  */
 
-export interface MegaLLMStreamEvent {
-  type: 'message_start' | 'content_block_start' | 'content_block_delta' | 'content_block_stop' | 'message_delta' | 'message_stop' | 'error';
+export type MegaLLMStreamEvent = {
+  type:
+    | "message_start"
+    | "content_block_start"
+    | "content_block_delta"
+    | "content_block_stop"
+    | "message_delta"
+    | "message_stop"
+    | "error";
   message?: {
     id: string;
-    type: 'message';
-    role: 'assistant';
+    type: "message";
+    role: "assistant";
     content: any[];
     model: string;
     usage?: {
@@ -16,11 +23,11 @@ export interface MegaLLMStreamEvent {
     };
   };
   content_block?: {
-    type: 'text';
+    type: "text";
     text: string;
   };
   delta?: {
-    type: 'text_delta';
+    type: "text_delta";
     text: string;
   };
   index?: number;
@@ -31,7 +38,7 @@ export interface MegaLLMStreamEvent {
     type: string;
     message: string;
   };
-}
+};
 
 /**
  * Parses MegaLLM streaming response and yields text chunks
@@ -40,40 +47,42 @@ export async function* parseMegaLLMStream(
   response: Response
 ): AsyncGenerator<string, void, unknown> {
   if (!response.body) {
-    throw new Error('Response body is null');
+    throw new Error("Response body is null");
   }
 
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
-  let buffer = '';
+  let buffer = "";
 
   try {
     while (true) {
       const { done, value } = await reader.read();
 
-      if (done) break;
+      if (done) {
+        break;
+      }
 
       // Decode chunk and add to buffer
       buffer += decoder.decode(value, { stream: true });
 
       // Process complete events in buffer
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || ''; // Keep incomplete line in buffer
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || ""; // Keep incomplete line in buffer
 
       for (const line of lines) {
         const trimmedLine = line.trim();
 
         // Skip empty lines and comments
-        if (!trimmedLine || trimmedLine.startsWith(':')) {
+        if (!trimmedLine || trimmedLine.startsWith(":")) {
           continue;
         }
 
         // Parse SSE format: "data: {json}"
-        if (trimmedLine.startsWith('data: ')) {
+        if (trimmedLine.startsWith("data: ")) {
           const jsonStr = trimmedLine.slice(6);
 
           // Skip "[DONE]" marker
-          if (jsonStr === '[DONE]') {
+          if (jsonStr === "[DONE]") {
             continue;
           }
 
@@ -81,16 +90,20 @@ export async function* parseMegaLLMStream(
             const event: MegaLLMStreamEvent = JSON.parse(jsonStr);
 
             // Extract text from content_block_delta events
-            if (event.type === 'content_block_delta' && event.delta?.text) {
+            if (event.type === "content_block_delta" && event.delta?.text) {
               yield event.delta.text;
             }
 
             // Handle errors
-            if (event.type === 'error') {
-              throw new Error(event.error?.message || 'Unknown MegaLLM error');
+            if (event.type === "error") {
+              throw new Error(event.error?.message || "Unknown MegaLLM error");
             }
           } catch (parseError) {
-            console.error('Failed to parse MegaLLM event:', parseError, jsonStr);
+            console.error(
+              "Failed to parse MegaLLM event:",
+              parseError,
+              jsonStr
+            );
             // Continue processing other events
           }
         }
@@ -104,10 +117,10 @@ export async function* parseMegaLLMStream(
 /**
  * Converts MegaLLM stream to UI message stream format
  */
-export async function convertMegaLLMStreamToUIStream(
+export function convertMegaLLMStreamToUIStream(
   response: Response,
   messageId: string
-): Promise<ReadableStream> {
+): ReadableStream {
   return new ReadableStream({
     async start(controller) {
       try {
@@ -115,7 +128,7 @@ export async function convertMegaLLMStreamToUIStream(
         controller.enqueue(
           new TextEncoder().encode(
             `data: ${JSON.stringify({
-              type: 'text-start',
+              type: "text-start",
               id: messageId,
             })}\n\n`
           )
@@ -126,7 +139,7 @@ export async function convertMegaLLMStreamToUIStream(
           controller.enqueue(
             new TextEncoder().encode(
               `data: ${JSON.stringify({
-                type: 'text-delta',
+                type: "text-delta",
                 id: messageId,
                 delta: textChunk,
               })}\n\n`
@@ -138,7 +151,7 @@ export async function convertMegaLLMStreamToUIStream(
         controller.enqueue(
           new TextEncoder().encode(
             `data: ${JSON.stringify({
-              type: 'text-end',
+              type: "text-end",
               id: messageId,
             })}\n\n`
           )
@@ -146,14 +159,14 @@ export async function convertMegaLLMStreamToUIStream(
 
         controller.close();
       } catch (error) {
-        console.error('Error in MegaLLM stream conversion:', error);
+        console.error("Error in MegaLLM stream conversion:", error);
 
         // Send error event
         controller.enqueue(
           new TextEncoder().encode(
             `data: ${JSON.stringify({
-              type: 'error',
-              error: error instanceof Error ? error.message : 'Unknown error',
+              type: "error",
+              error: error instanceof Error ? error.message : "Unknown error",
             })}\n\n`
           )
         );

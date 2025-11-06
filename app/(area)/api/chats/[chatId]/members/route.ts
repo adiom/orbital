@@ -1,15 +1,15 @@
+import { and, eq } from "drizzle-orm";
+import { NextResponse } from "next/server";
 import { auth } from "@/app/(auth)/auth";
 import { db } from "@/lib/db";
 import { chat, chatMember } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
-import { NextResponse } from "next/server";
 
 /**
  * GET /api/chats/[chatId]/members
  * Get all members of a chat
  */
 export async function GET(
-  request: Request,
+  _request: Request,
   props: { params: Promise<{ chatId: string }> }
 ) {
   const params = await props.params;
@@ -157,7 +157,7 @@ export async function POST(
  * Remove a member from a group chat
  */
 export async function DELETE(
-  request: Request,
+  _request: Request,
   props: { params: Promise<{ chatId: string; userId: string }> }
 ) {
   const params = await props.params;
