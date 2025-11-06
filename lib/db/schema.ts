@@ -2,6 +2,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
+  integer,
   json,
   jsonb,
   pgTable,
@@ -315,15 +316,108 @@ export const areaMergeProposal = pgTable("AreaMergeProposal", {
 
 export type AreaMergeProposal = InferSelectModel<typeof areaMergeProposal>;
 
-export const messageMention = pgTable("MessageMention", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  messageId: uuid("messageId")
-    .notNull()
-    .references(() => message.id),
-  mentionedUserId: uuid("mentionedUserId").references(() => user.id),
-  mentionType: varchar("mentionType", { enum: ["user", "avrora"] }).notNull(),
-  mentionText: text("mentionText").notNull(),
-  createdAt: timestamp("createdAt").notNull(),
-});
+export const messageMention = pgTable(
+  "MessageMention",
+  {
+    messageId: uuid("messageId")
+      .notNull()
+      .references(() => message.id),
+    mentionedUserId: uuid("mentionedUserId").references(() => user.id),
+    isAiMention: boolean("isAiMention").notNull().default(false),
+    createdAt: timestamp("createdAt").notNull(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.messageId, table.mentionedUserId] }),
+  })
+);
 
 export type MessageMention = InferSelectModel<typeof messageMention>;
+
+// ============ AVRORA: Sfera (Collaborative Discussion Spaces) ============
+
+export const sfera = pgTable("Sfera", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  title: text("title").notNull(),
+  description: text("description"),
+  ownerId: uuid("ownerId")
+    .notNull()
+    .references(() => user.id),
+  visibility: varchar("visibility", {
+    enum: ["public", "private", "dao"],
+  })
+    .notNull()
+    .default("private"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type Sfera = InferSelectModel<typeof sfera>;
+
+export const sferaMember = pgTable(
+  "SferaMember",
+  {
+    sferaId: uuid("sferaId")
+      .notNull()
+      .references(() => sfera.id, { onDelete: "cascade" }),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    role: varchar("role", { enum: ["owner", "admin", "member", "viewer"] })
+      .notNull()
+      .default("member"),
+    joinedAt: timestamp("joinedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.sferaId, table.userId] }),
+  })
+);
+
+export type SferaMember = InferSelectModel<typeof sferaMember>;
+
+export const sferaMessage = pgTable("SferaMessage", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  sferaId: uuid("sferaId")
+    .notNull()
+    .references(() => sfera.id, { onDelete: "cascade" }),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id),
+  content: text("content").notNull(),
+
+  // TODO: Determine if nested threads are needed (replies to messages within Sfera)
+  // If yes, this field allows threading like Reddit/Slack
+  // If no, all messages are root-level only
+  parentMessageId: uuid("parentMessageId"),
+
+  // Fork tracking
+  isForked: boolean("isForked").notNull().default(false),
+  forkCount: integer("forkCount").notNull().default(0),
+
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type SferaMessage = InferSelectModel<typeof sferaMessage>;
+
+export const sferaForkedSfera = pgTable("SferaForkedSfera", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  parentSferaId: uuid("parentSferaId")
+    .notNull()
+    .references(() => sfera.id, { onDelete: "cascade" }),
+  parentMessageId: uuid("parentMessageId")
+    .notNull()
+    .references(() => sferaMessage.id, { onDelete: "cascade" }),
+
+  // Reference to the forked Sfera (new Sfera created from message)
+  forkedSferaId: uuid("forkedSferaId")
+    .notNull()
+    .unique()
+    .references(() => sfera.id, { onDelete: "cascade" }),
+
+  createdById: uuid("createdById")
+    .notNull()
+    .references(() => user.id),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
+export type SferaForkedSfera = InferSelectModel<typeof sferaForkedSfera>;

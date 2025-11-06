@@ -10,7 +10,12 @@ export async function middleware(request: NextRequest) {
    * begin the tests, so this ensures that the tests can start
    */
   if (pathname.startsWith("/ping")) {
-    return new Response("pong", { status: 200 });
+    return NextResponse.next();
+  }
+
+  // Разрешить доступ к документации API без авторизации
+  if (pathname.startsWith("/docs") || pathname.startsWith("/api/docs")) {
+    return NextResponse.next();
   }
 
   if (pathname.startsWith("/api/auth")) {
@@ -44,6 +49,8 @@ export const config = {
   matcher: [
     "/",
     "/chat/:id",
+    "/docs",           // Добавлено
+    "/api/docs",       // Добавлено  
     "/api/:path*",
     "/login",
     "/register",

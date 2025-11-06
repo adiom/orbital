@@ -1,151 +1,209 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Руководство для Claude Code при работе с этим проектом.
 
-## Project Overview
+## Обзор проекта
 
-Avrora is a Next.js 15+ AI-powered chat application with collaborative features. It extends the base Chat SDK template with advanced group chat functionality, area-based collaboration spaces, and a custom AI integration using MegaLLM API.
+**Avrora** — AI-чат приложение на Next.js 15+ с коллаборативными возможностями. Расширяет базовый Chat SDK шаблон функциями групповых чатов, area-пространств для совместной работы и кастомной интеграцией с MegaLLM API.
 
-## Key Technologies
+## Ключевые технологии
 
-- **Framework**: Next.js 15.3.0-canary with App Router and React 19 RC
-- **Database**: PostgreSQL with Drizzle ORM
-- **AI Provider**: Custom MegaLLM API (gpt-5 models) via modified OpenAI SDK
-- **Authentication**: Auth.js (NextAuth 5.0 beta)
-- **UI Components**: shadcn/ui with Radix UI primitives
-- **Styling**: Tailwind CSS v4
-- **Real-time**: WebSocket server support (lib/websocket/)
-- **File Storage**: Vercel Blob
-- **Testing**: Playwright
+- **Фреймворк**: Next.js 15.3.0-canary + App Router, React 19 RC
+- **БД**: PostgreSQL + Drizzle ORM
+- **AI**: Кастомный MegaLLM API (модели gpt-5/gpt-5-mini) через модифицированный Anthropic SDK
+- **Аутентификация**: Auth.js (NextAuth 5.0 beta)
+- **UI**: shadcn/ui + Radix UI
+- **Стили**: Tailwind CSS v4
+- **Реал-тайм**: WebSocket сервер (lib/websocket/)
+- **Хранилище**: Vercel Blob
+- **Тестирование**: Playwright
 
-## Development Commands
+## Команды разработки
 
 ```bash
-# Install dependencies
+# Установка зависимостей
 pnpm install
 
-# Run development server
-pnpm dev                # Next.js dev server with Turbo
-pnpm dev:ws            # WebSocket server (separate process)
+# Разработка
+pnpm dev                # Next.js dev сервер с Turbo
+pnpm dev:ws            # WebSocket сервер (отдельный процесс)
 
-# Database operations
-pnpm db:migrate        # Apply database migrations
-pnpm db:generate       # Generate migration files from schema changes
-pnpm db:studio         # Open Drizzle Studio for database inspection
-pnpm db:push          # Push schema changes directly (dev only)
+# Операции с БД
+pnpm db:migrate        # Применить миграции
+pnpm db:generate       # Создать файлы миграций из изменений схемы
+pnpm db:studio         # Открыть Drizzle Studio
+pnpm db:push          # Прямой push схемы (только для dev)
 
-# Build and production
-pnpm build            # Runs migration then builds Next.js
-pnpm start            # Start production server
+# Продакшн
+pnpm build            # Миграция + сборка Next.js
+pnpm start            # Запуск продакшн сервера
 
-# Code quality
-pnpm lint             # Run ultracite linter
-pnpm format           # Auto-fix formatting issues
+# Качество кода
+pnpm lint             # Проверка ultracite линтером
+pnpm format           # Авто-исправление форматирования
 
-# Testing
-pnpm test             # Run Playwright tests
+# Тестирование
+pnpm test             # Запуск Playwright тестов
 ```
 
-## Architecture Overview
+## Архитектура
 
-### AI Integration
-The application uses a custom MegaLLM API integration instead of standard providers:
-- **Provider Configuration**: `lib/ai/providers.ts` - Configured to use MegaLLM endpoint (https://ai.megallm.io/v1)
-- **Models**: "gpt-5" for chat, "gpt-5-mini" for reasoning/titles
-- **Image Support**: Custom implementation in `lib/ai/megallm-direct.ts` for handling multimodal inputs
-- **Streaming**: Custom parser in `lib/ai/megallm-stream-parser.ts`
+### AI интеграция
 
-### Database Schema (Drizzle ORM)
-Located in `lib/db/schema.ts`:
+Используется кастомный MegaLLM API вместо стандартных провайдеров:
 
-**Core Tables**:
-- `User`: Authentication and user profiles
-- `Chat`: Individual and group chat sessions (with `chatType` field)
-- `Message_v2`: Chat messages with author tracking for groups
-- `Area`: Collaborative spaces with fork/merge support
-- `Document`: Shared documents within areas
+- **Конфигурация**: [lib/ai/providers.ts](lib/ai/providers.ts) — настроен на MegaLLM endpoint (https://ai.megallm.io/v1)
+- **Модели**:
+  - `gpt-5` — основной чат
+  - `gpt-5-mini` — рассуждения, генерация заголовков, артефакты
+- **Изображения**: [lib/ai/megallm-direct.ts](lib/ai/megallm-direct.ts) — кастомная обработка multimodal входов
+- **Стриминг**: [lib/ai/megallm-stream-parser.ts](lib/ai/megallm-stream-parser.ts) — парсер потоков
 
-**Collaboration Tables**:
-- `AreaMember`: Membership and roles in areas
-- `ChatMember`: Participants in group chats
-- `AreaDocument`: Documents associated with areas
-- `AreaMergeProposal`: Fork/merge workflow support
-- `MessageMention`: @mentions tracking (including @avrora)
+### Схема БД (Drizzle ORM)
 
-### Routing Structure
+Расположена в [lib/db/schema.ts](lib/db/schema.ts):
 
-**Area Routes** (`app/(area)/`):
-- `/areas` - List all areas
-- `/area/[id]` - Individual area view
-- `/area/[id]/chat/[chatId]` - Chat within an area
+**Основные таблицы**:
+- `User` — аутентификация и профили
+- `Chat` — личные и групповые чаты (поле `chatType`)
+- `Message_v2` — сообщения с отслеживанием автора для групп
+- `Area` — пространства для коллаборации с поддержкой форков
+- `Document` — общие документы внутри area
 
-**Chat Routes** (`app/(chat)/`):
-- `/chat/[id]` - Individual chat view
-- API: `/api/chat` - Main chat endpoint with group chat logic
+**Таблицы коллаборации**:
+- `AreaMember` — участники area и их роли
+- `ChatMember` — участники групповых чатов
+- `AreaDocument` — документы привязанные к area
+- `AreaMergeProposal` — предложения слияния форков
+- `MessageMention` — отслеживание @упоминаний (включая @avrora)
 
-**API Routes**:
-- `/api/areas/*` - Area management APIs
-- `/api/ws` - WebSocket connection endpoint
-- `/api/auth/*` - Authentication endpoints
+### Структура роутов
 
-### Group Chat Features
+**Area роуты** ([app/(area)/](app/(area)/)):
+- `/areas` — список всех areas
+- `/area/[id]` — страница конкретного area
+- `/area/[id]/chat/[chatId]` — чат внутри area
 
-The application implements sophisticated group chat logic:
-1. **@Avrora Mentions**: AI only responds when mentioned in group chats
-2. **Context Limiting**: Uses last 20 messages as context for group conversations
-3. **Message Attribution**: Tracks `userId` for each message in groups
-4. **Access Control**: Group chats are open to all members, personal chats are private
+**Chat роуты** ([app/(chat)/](app/(chat)/)):
+- `/chat/[id]` — страница личного чата
+- `/` — главная страница чатов
 
-### Environment Configuration
+**API роуты**:
 
-Required environment variables (see `.env.example`):
+*Area API*:
+- `/api/areas` — управление areas (CRUD)
+- `/api/areas/[id]/fork` — форк area
+- `/api/areas/[id]/tree` — дерево форков
+- `/api/areas/[id]/members` — управление участниками
+- `/api/areas/[id]/chats` — чаты внутри area
+
+*Chat API*:
+- `/api/chat` — главный endpoint чата с логикой групповых чатов
+- `/api/chat/[id]/stream` — стриминг сообщений
+- `/api/area-chats` — список чатов area
+- `/api/chats/[chatId]/members` — участники чата
+
+*Другие API*:
+- `/api/ws` — WebSocket подключение
+- `/api/auth/*` — аутентификация
+- `/api/document` — работа с документами
+- `/api/files/upload` — загрузка файлов
+- `/api/docs` — документация API (OpenAPI)
+
+### Особенности групповых чатов
+
+Реализована сложная логика групповых чатов:
+
+1. **@Avrora упоминания**: AI отвечает только при упоминании в групповых чатах
+2. **Ограничение контекста**: Используются последние 20 сообщений для групповых бесед
+3. **Атрибуция сообщений**: Отслеживание `userId` для каждого сообщения в группах
+4. **Контроль доступа**: Групповые чаты открыты для всех участников, личные — приватные
+5. **Парсинг упоминаний**: [lib/mentions/parser.ts](lib/mentions/parser.ts) — извлечение @упоминаний
+6. **Определение интента**: [lib/mentions/intent-detection.ts](lib/mentions/intent-detection.ts) — анализ намерений
+7. **Обработка упоминаний**: [lib/mentions/process.ts](lib/mentions/process.ts) — логика обработки
+
+### Переменные окружения
+
+Обязательные переменные (см. [.env.example](.env.example)):
+
 ```bash
-AUTH_SECRET           # Auth.js secret
-POSTGRES_URL         # PostgreSQL connection string
-BLOB_READ_WRITE_TOKEN # Vercel Blob storage
-REDIS_URL           # Redis for resumable streams (optional)
-MEGALLM_API_KEY     # MegaLLM API key for AI models
+AUTH_SECRET           # Секрет Auth.js
+POSTGRES_URL         # PostgreSQL строка подключения
+BLOB_READ_WRITE_TOKEN # Vercel Blob хранилище
+REDIS_URL           # Redis для resumable streams (опционально)
+MEGALLM_API_KEY     # API ключ MegaLLM
 ```
 
-## Important Implementation Details
+## Детали реализации
 
-### AI Response Flow
-1. Messages are processed in `/app/(chat)/api/chat/route.ts`
-2. For group chats, checks for @avrora mention before AI response
-3. Images trigger custom MegaLLM handler (`callMegaLLMWithImages`)
-4. Text-only uses standard AI SDK streaming
+### Поток AI ответов
 
-### WebSocket Support
-- Server implementation in `lib/websocket/server.ts`
-- Run separately with `pnpm dev:ws`
-- API route at `/api/ws`
+1. Обработка в [app/(chat)/api/chat/route.ts](app/(chat)/api/chat/route.ts:1)
+2. Для групповых чатов проверка @avrora упоминания перед ответом
+3. Изображения → кастомный MegaLLM обработчик (`callMegaLLMWithImages`)
+4. Только текст → стандартный AI SDK стриминг
+5. Логика групповых чатов в [lib/ai/group-chat-logic.ts](lib/ai/group-chat-logic.ts)
 
-### Database Migrations
-- Schema changes go in `lib/db/schema.ts`
-- Generate migrations: `pnpm db:generate`
-- Apply migrations: `pnpm db:migrate`
-- Migrations auto-run on build
+### WebSocket поддержка
 
-### Authentication
-- Guest access supported via `/api/auth/guest`
-- User types: guest, regular, pro
-- Entitlements defined in `lib/ai/entitlements.ts`
+- Реализация: [lib/websocket/server.ts](lib/websocket/server.ts)
+- Запуск: `pnpm dev:ws`
+- API endpoint: [app/(area)/api/ws/route.ts](app/(area)/api/ws/route.ts)
+- Клиентский хук: [lib/websocket/use-websocket.ts](lib/websocket/use-websocket.ts)
 
-### Error Handling
-- Custom error class: `ChatSDKError` in `lib/errors.ts`
-- Consistent error responses across API routes
-- Rate limiting based on user type
+### Миграции БД
 
-## Testing Approach
+- Изменения схемы в [lib/db/schema.ts](lib/db/schema.ts)
+- Генерация: `pnpm db:generate`
+- Применение: `pnpm db:migrate`
+- Миграции автоматически запускаются при сборке
 
-- Playwright tests in repository
-- Set `PLAYWRIGHT=True` environment variable when testing
-- Tests can be run with `pnpm test`
+### Аутентификация
 
-## Areas of Caution
+- Гостевой доступ: [app/(auth)/api/auth/guest/route.ts](app/(auth)/api/auth/guest/route.ts)
+- Типы пользователей: guest, regular, pro
+- Ограничения: [lib/ai/entitlements.ts](lib/ai/entitlements.ts)
 
-1. **React 19 RC**: Using release candidate - may have breaking changes
-2. **Database Migrations**: Always backup before running migrations in production
-3. **AI Gateway**: Different configuration for Vercel vs non-Vercel deployments
-4. **Group Chat Context**: Limited to 20 messages to prevent token overflow
-5. **Image Processing**: Custom MegaLLM implementation bypasses standard AI SDK
+### Обработка ошибок
+
+- Кастомный класс: `ChatSDKError` в [lib/errors.ts](lib/errors.ts)
+- Единообразные ответы об ошибках во всех API
+- Rate limiting по типу пользователя
+
+### AI Tools
+
+Доступные инструменты в [lib/ai/tools/](lib/ai/tools/):
+- `create-document.ts` — создание документов
+- `update-document.ts` — обновление документов
+- `request-suggestions.ts` — запрос предложений
+- `get-weather.ts` — получение погоды
+
+### Area (Пространства)
+
+- **Резюме area**: [lib/ai/area-summary.ts](lib/ai/area-summary.ts) — генерация саммари
+- **Форки**: Поддержка fork/merge workflow
+- **Члены**: Роли owner/admin/member/viewer
+- **Видимость**: public/private/dao
+
+## Тестирование
+
+- Playwright тесты в [tests/](tests/)
+- Установить `PLAYWRIGHT=True` для тестирования
+- Запуск: `pnpm test`
+- Mock модели: [lib/ai/models.mock.ts](lib/ai/models.mock.ts)
+
+## Важные моменты
+
+1. **React 19 RC**: Используется релиз-кандидат — возможны breaking changes
+2. **Миграции БД**: Всегда делать бэкап перед миграциями в продакшне
+3. **AI Gateway**: Разные настройки для Vercel и не-Vercel деплоев
+4. **Контекст групповых чатов**: Ограничен 20 сообщениями для предотвращения переполнения токенов
+5. **Обработка изображений**: Кастомная MegaLLM реализация обходит стандартный AI SDK
+6. **Middleware**: [middleware.ts](middleware.ts:1) — гостевая аутентификация, защита роутов, доступ к /docs
+7. **Документация API**: Доступна на `/docs` через Scalar UI ([app/docs/page.tsx](app/docs/page.tsx))
+
+## Дополнительная документация
+
+- [AREA_IMPLEMENTATION_GUIDE_RU.md](AREA_IMPLEMENTATION_GUIDE_RU.md) — детальное руководство по реализации Area
+- [README.md](README.md) — общая информация о проекте
+- [test-avrora.md](test-avrora.md) — тестовые сценарии

@@ -4,7 +4,6 @@ import equal from "fast-deep-equal";
 import { motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { memo, useState } from "react";
-import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { cn, sanitizeText } from "@/lib/utils";
 import { useDataStream } from "./data-stream-provider";
@@ -158,6 +157,7 @@ const PurePreviewMessage = ({
                       }
                     >
                       <Response>{sanitizeText(part.text)}</Response>
+                    
                     </MessageContent>
                   </div>
                 );
