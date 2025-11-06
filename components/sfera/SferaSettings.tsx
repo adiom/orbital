@@ -1,17 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Loader2, Plus, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { X, Plus, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Member {
   userId: string;
@@ -148,8 +148,8 @@ export function SferaSettings({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <Dialog onOpenChange={onClose} open={isOpen}>
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Sfera Settings</DialogTitle>
         </DialogHeader>
@@ -158,57 +158,57 @@ export function SferaSettings({
           {/* Title and Description */}
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+              <label className="mb-1.5 block font-medium text-gray-700 text-sm">
                 Title
               </label>
               <Input
-                value={title}
+                className="border-gray-200"
+                disabled={!isOwner}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Sfera title"
-                disabled={!isOwner}
-                className="border-gray-200"
+                value={title}
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-1.5 block">
+              <label className="mb-1.5 block font-medium text-gray-700 text-sm">
                 Description
               </label>
               <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe what this Sfera is about..."
                 className="min-h-[80px] border-gray-200"
                 disabled={!isOwner}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe what this Sfera is about..."
+                value={description}
               />
             </div>
           </div>
 
           {/* Members */}
           <div>
-            <label className="text-sm font-medium text-gray-700 mb-2 block">
+            <label className="mb-2 block font-medium text-gray-700 text-sm">
               Members ({members.length})
             </label>
 
             {/* Add Member */}
             {isOwner && (
-              <div className="flex gap-2 mb-3">
+              <div className="mb-3 flex gap-2">
                 <Input
-                  value={newMemberEmail}
-                  onChange={(e) => setNewMemberEmail(e.target.value)}
-                  placeholder="Email address"
                   className="border-gray-200"
+                  onChange={(e) => setNewMemberEmail(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !isAddingMember) {
                       e.preventDefault();
                       handleAddMember();
                     }
                   }}
+                  placeholder="Email address"
+                  value={newMemberEmail}
                 />
                 <Button
-                  onClick={handleAddMember}
-                  disabled={!newMemberEmail.trim() || isAddingMember}
                   className="gap-2"
+                  disabled={!newMemberEmail.trim() || isAddingMember}
+                  onClick={handleAddMember}
                 >
                   {isAddingMember ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -221,25 +221,25 @@ export function SferaSettings({
             )}
 
             {/* Members List */}
-            <div className="space-y-2 max-h-[200px] overflow-y-auto border border-gray-200 rounded-lg p-2">
+            <div className="max-h-[200px] space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-2">
               {members.map((member) => (
                 <div
+                  className="flex items-center justify-between rounded-md bg-gray-50 p-2"
                   key={member.userId}
-                  className="flex items-center justify-between bg-gray-50 rounded-md p-2"
                 >
                   <div className="flex items-center gap-3">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="font-medium text-gray-900 text-sm">
                         {member.email}
                       </p>
-                      <p className="text-xs text-gray-500">{member.role}</p>
+                      <p className="text-gray-500 text-xs">{member.role}</p>
                     </div>
                   </div>
 
                   {isOwner && member.role !== "owner" && (
                     <button
+                      className="text-gray-400 transition-colors hover:text-red-600"
                       onClick={() => handleRemoveMember(member.userId)}
-                      className="text-gray-400 hover:text-red-600 transition-colors"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -251,11 +251,11 @@ export function SferaSettings({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isSaving}>
+          <Button disabled={isSaving} onClick={onClose} variant="outline">
             Cancel
           </Button>
           {isOwner && (
-            <Button onClick={handleSave} disabled={isSaving || !title.trim()}>
+            <Button disabled={isSaving || !title.trim()} onClick={handleSave}>
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

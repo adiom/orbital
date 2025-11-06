@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { ArrowUp, GitBranch, ImageIcon, Plus, X } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowUp, Plus, GitBranch, X, ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import Image from "next/image";
 
 interface ReplyingToMessage {
   id: string;
@@ -187,32 +187,32 @@ export function SferaMessageInput({
 
   const handleInputContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (
-      e.target === e.currentTarget ||
-      (e.currentTarget === inputContainerRef.current && !(e.target as HTMLElement).closest("button"))
+      (e.target === e.currentTarget ||
+        (e.currentTarget === inputContainerRef.current &&
+          !(e.target as HTMLElement).closest("button"))) &&
+      textareaRef.current
     ) {
-      if (textareaRef.current) {
-        textareaRef.current.focus();
-      }
+      textareaRef.current.focus();
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full">
+    <form className="w-full" onSubmit={handleSubmit}>
       {/* Reply preview */}
       {replyingTo && (
-        <div className="mb-2 bg-white border border-gray-200 rounded-2xl p-3 flex items-start justify-between">
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-medium text-gray-700 mb-1">
+        <div className="mb-2 flex items-start justify-between rounded-2xl border border-gray-200 bg-white p-3">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 font-medium text-gray-700 text-xs">
               Replying to {replyingTo.userEmail}
             </div>
-            <div className="text-xs text-gray-500 line-clamp-1">
+            <div className="line-clamp-1 text-gray-500 text-xs">
               {replyingTo.content}
             </div>
           </div>
           <button
-            type="button"
+            className="ml-2 flex-shrink-0 text-gray-400 hover:text-gray-600"
             onClick={onCancelReply}
-            className="ml-2 text-gray-400 hover:text-gray-600 flex-shrink-0"
+            type="button"
           >
             <X className="h-4 w-4" />
           </button>
@@ -224,8 +224,8 @@ export function SferaMessageInput({
         <div className="mb-2 flex flex-wrap gap-2">
           {attachments.map((attachment, index) => (
             <div
+              className="group relative size-20 overflow-hidden rounded-lg border bg-muted"
               key={index}
-              className="relative size-20 overflow-hidden rounded-lg border bg-muted group"
             >
               <Image
                 alt={attachment.name}
@@ -236,9 +236,9 @@ export function SferaMessageInput({
               />
               {!isSending && (
                 <button
-                  type="button"
+                  className="absolute top-1 right-1 flex size-5 items-center justify-center rounded-full bg-black/60 opacity-0 transition-opacity hover:bg-black/80 group-hover:opacity-100"
                   onClick={() => removeAttachment(index)}
-                  className="absolute top-1 right-1 size-5 rounded-full bg-black/60 hover:bg-black/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  type="button"
                 >
                   <X className="h-3 w-3 text-white" />
                 </button>
@@ -249,8 +249,8 @@ export function SferaMessageInput({
             </div>
           ))}
           {isUploading && (
-            <div className="size-20 rounded-lg border bg-muted flex items-center justify-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-900"></div>
+            <div className="flex size-20 items-center justify-center rounded-lg border bg-muted">
+              <div className="h-6 w-6 animate-spin rounded-full border-gray-900 border-b-2" />
             </div>
           )}
         </div>
@@ -258,73 +258,82 @@ export function SferaMessageInput({
 
       {/* Hidden file input */}
       <input
-        ref={fileInputRef}
-        type="file"
         accept="image/*"
         className="hidden"
-        onChange={handleFileSelect}
         disabled={isSending || isUploading}
+        onChange={handleFileSelect}
+        ref={fileInputRef}
+        type="file"
       />
 
       <div
-        ref={inputContainerRef}
         className={cn(
-          "relative w-full rounded-3xl border border-gray-200 bg-white p-3 cursor-text",
+          "relative w-full cursor-text rounded-3xl border border-gray-200 bg-white p-3",
           isSending && "opacity-80"
         )}
         onClick={handleInputContainerClick}
+        ref={inputContainerRef}
       >
         <div className="pb-9">
           <Textarea
-            ref={textareaRef}
-            placeholder={isSending ? "Sending..." : "Write your message..."}
-            className="min-h-[24px] max-h-[160px] w-full rounded-3xl border-0 bg-transparent text-gray-900 placeholder:text-gray-400 placeholder:text-base focus-visible:ring-0 focus-visible:ring-offset-0 text-base pl-2 pr-4 pt-0 pb-0 resize-none overflow-y-auto leading-tight"
-            value={content}
+            className="max-h-[160px] min-h-[24px] w-full resize-none overflow-y-auto rounded-3xl border-0 bg-transparent pt-0 pr-4 pb-0 pl-2 text-base text-gray-900 leading-tight placeholder:text-base placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+            disabled={isSending}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            disabled={isSending}
+            placeholder={isSending ? "Sending..." : "Write your message..."}
+            ref={textareaRef}
+            value={content}
           />
         </div>
 
-        <div className="absolute bottom-3 left-3 right-3">
+        <div className="absolute right-3 bottom-3 left-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="rounded-full h-8 w-8 flex-shrink-0 border-gray-200 p-0 transition-colors"
+                className="h-8 w-8 flex-shrink-0 rounded-full border-gray-200 p-0 transition-colors"
                 disabled={isSending || isUploading}
                 onClick={() => fileInputRef.current?.click()}
+                size="icon"
+                type="button"
+                variant="outline"
               >
                 <ImageIcon className="h-4 w-4 text-gray-500" />
                 <span className="sr-only">Add photo</span>
               </Button>
 
               <Button
+                className="flex h-8 items-center gap-1.5 rounded-full border-gray-200 px-3 transition-colors"
+                disabled={isSending}
                 type="button"
                 variant="outline"
-                className="rounded-full h-8 px-3 flex items-center border-gray-200 gap-1.5 transition-colors"
-                disabled={isSending}
               >
                 <GitBranch className="h-4 w-4 text-gray-500" />
-                <span className="text-gray-900 text-sm">
-                  Forkable
-                </span>
+                <span className="text-gray-900 text-sm">Forkable</span>
               </Button>
             </div>
 
             <Button
+              className={cn(
+                "h-8 w-8 flex-shrink-0 rounded-full border-0 transition-all duration-200",
+                hasTyped || attachments.length > 0
+                  ? "scale-110 bg-black"
+                  : "bg-gray-200"
+              )}
+              disabled={
+                (!content.trim() && attachments.length === 0) || isSending
+              }
+              size="icon"
               type="submit"
               variant="outline"
-              size="icon"
-              className={cn(
-                "rounded-full h-8 w-8 border-0 flex-shrink-0 transition-all duration-200",
-                (hasTyped || attachments.length > 0) ? "bg-black scale-110" : "bg-gray-200"
-              )}
-              disabled={(!content.trim() && attachments.length === 0) || isSending}
             >
-              <ArrowUp className={cn("h-4 w-4 transition-colors", (hasTyped || attachments.length > 0) ? "text-white" : "text-gray-500")} />
+              <ArrowUp
+                className={cn(
+                  "h-4 w-4 transition-colors",
+                  hasTyped || attachments.length > 0
+                    ? "text-white"
+                    : "text-gray-500"
+                )}
+              />
               <span className="sr-only">Submit</span>
             </Button>
           </div>

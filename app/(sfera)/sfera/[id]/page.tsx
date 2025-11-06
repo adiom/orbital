@@ -1,5 +1,5 @@
-import { SferaChat } from "@/components/sfera/SferaChat";
 import { auth } from "@/app/(auth)/auth";
+import { SferaChat } from "@/components/sfera/SferaChat";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -11,7 +11,7 @@ export default async function SferaPage({ params }: PageProps) {
 
   return (
     <div className="h-screen">
-      <SferaChat sferaId={id} currentUserId={session?.user?.id} />
+      <SferaChat currentUserId={session?.user?.id} sferaId={id} />
     </div>
   );
 }

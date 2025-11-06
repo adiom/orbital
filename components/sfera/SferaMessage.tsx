@@ -1,12 +1,21 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { GitBranch, LogIn, Copy, Share2, RefreshCcw, Sparkles, CornerDownRight, Reply } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
-import { segmentTextWithMentions } from "@/lib/mentions/parser";
+import {
+  Copy,
+  CornerDownRight,
+  GitBranch,
+  LogIn,
+  RefreshCcw,
+  Reply,
+  Share2,
+  Sparkles,
+} from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { segmentTextWithMentions } from "@/lib/mentions/parser";
+import { cn } from "@/lib/utils";
 
 interface SferaMessageProps {
   message: {
@@ -36,7 +45,13 @@ interface SferaMessageProps {
   onReply?: () => void;
 }
 
-export function SferaMessage({ message, parentMessage, sferaId, onFork, onReply }: SferaMessageProps) {
+export function SferaMessage({
+  message,
+  parentMessage,
+  sferaId,
+  onFork,
+  onReply,
+}: SferaMessageProps) {
   const router = useRouter();
   const [isForking, setIsForking] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -110,7 +125,9 @@ export function SferaMessage({ message, parentMessage, sferaId, onFork, onReply 
   };
 
   // Check if this is an Avrora message
-  const isAvroraMessage = message.userId === "00000000-0000-0000-0000-000000000001" || message.userEmail === "avrora@avrora.ai";
+  const isAvroraMessage =
+    message.userId === "00000000-0000-0000-0000-000000000001" ||
+    message.userEmail === "avrora@avrora.ai";
 
   // Segment text to highlight mentions
   const textSegments = segmentTextWithMentions(message.content);
@@ -119,19 +136,22 @@ export function SferaMessage({ message, parentMessage, sferaId, onFork, onReply 
     <div className="flex flex-col">
       <div
         className={cn(
-          "max-w-[85%] px-4 py-2.5 rounded-2xl",
+          "max-w-[85%] rounded-2xl px-4 py-2.5",
           isAvroraMessage
-            ? "bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-br-none"
-            : "bg-white border border-gray-200 rounded-br-none"
+            ? "rounded-br-none border border-blue-200 bg-gradient-to-br from-blue-50 to-purple-50"
+            : "rounded-br-none border border-gray-200 bg-white"
         )}
       >
         {/* Message Header */}
         <div className="mb-1.5 flex items-center justify-between gap-3">
-          <div className="text-xs text-gray-500 flex items-center gap-1.5">
-            {isAvroraMessage && (
-              <Sparkles className="h-3 w-3 text-blue-600" />
-            )}
-            <span className={cn("font-medium", isAvroraMessage ? "text-blue-700" : "text-gray-700")}>
+          <div className="flex items-center gap-1.5 text-gray-500 text-xs">
+            {isAvroraMessage && <Sparkles className="h-3 w-3 text-blue-600" />}
+            <span
+              className={cn(
+                "font-medium",
+                isAvroraMessage ? "text-blue-700" : "text-gray-700"
+              )}
+            >
               {message.userEmail}
             </span>
             <span className="mx-1.5">•</span>
@@ -139,7 +159,7 @@ export function SferaMessage({ message, parentMessage, sferaId, onFork, onReply 
           </div>
 
           {message.isForked && (
-            <div className="flex items-center gap-1 text-xs text-blue-600">
+            <div className="flex items-center gap-1 text-blue-600 text-xs">
               <GitBranch className="h-3 w-3" />
               <span>Forked</span>
             </div>
@@ -148,14 +168,14 @@ export function SferaMessage({ message, parentMessage, sferaId, onFork, onReply 
 
         {/* Reply to (Parent Message) */}
         {parentMessage && (
-          <div className="mb-2 pl-2 border-l-2 border-gray-300 bg-gray-50 rounded p-2">
-            <div className="flex items-center gap-1.5 mb-1">
+          <div className="mb-2 rounded border-gray-300 border-l-2 bg-gray-50 p-2 pl-2">
+            <div className="mb-1 flex items-center gap-1.5">
               <CornerDownRight className="h-3 w-3 text-gray-400" />
-              <span className="text-xs font-medium text-gray-600">
+              <span className="font-medium text-gray-600 text-xs">
                 {parentMessage.userEmail}
               </span>
             </div>
-            <div className="text-xs text-gray-600 line-clamp-2">
+            <div className="line-clamp-2 text-gray-600 text-xs">
               {parentMessage.content}
             </div>
           </div>
@@ -163,31 +183,35 @@ export function SferaMessage({ message, parentMessage, sferaId, onFork, onReply 
 
         {/* Message Content with highlighted mentions */}
         <div
-          ref={contentRef}
-          onClick={() => isOverflowing && setIsExpanded(!isExpanded)}
           className={cn(
-            "whitespace-pre-wrap text-gray-900 text-[15px] leading-relaxed transition-all duration-200",
-            isOverflowing && !isExpanded && "max-h-[75px] overflow-hidden cursor-pointer",
+            "whitespace-pre-wrap text-[15px] text-gray-900 leading-relaxed transition-all duration-200",
+            isOverflowing &&
+              !isExpanded &&
+              "max-h-[75px] cursor-pointer overflow-hidden",
             isOverflowing && "relative"
           )}
+          onClick={() => isOverflowing && setIsExpanded(!isExpanded)}
+          ref={contentRef}
         >
-          {textSegments.map((segment, index) => (
+          {textSegments.map((segment, index) =>
             segment.isMention && segment.mention?.type === "avrora" ? (
               <span
+                className="rounded bg-blue-100 px-1 font-medium text-blue-700"
                 key={index}
-                className="bg-blue-100 text-blue-700 font-medium px-1 rounded"
               >
                 {segment.text}
               </span>
             ) : (
               <span key={index}>{segment.text}</span>
             )
-          ))}
+          )}
 
           {/* Show more indicator */}
           {isOverflowing && !isExpanded && (
-            <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent flex items-end justify-center pb-1">
-              <span className="text-xs text-gray-500 font-medium">Click to expand...</span>
+            <div className="absolute right-0 bottom-0 left-0 flex h-8 items-end justify-center bg-gradient-to-t from-white to-transparent pb-1">
+              <span className="font-medium text-gray-500 text-xs">
+                Click to expand...
+              </span>
             </div>
           )}
         </div>
@@ -197,16 +221,16 @@ export function SferaMessage({ message, parentMessage, sferaId, onFork, onReply 
           <div className="mt-2 flex flex-wrap gap-2">
             {message.attachments.map((attachment, index) => (
               <div
+                className="relative h-48 w-64 cursor-pointer overflow-hidden rounded-lg border bg-muted transition-opacity hover:opacity-90"
                 key={index}
-                className="relative w-64 h-48 overflow-hidden rounded-lg border bg-muted cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => window.open(attachment.url, '_blank')}
+                onClick={() => window.open(attachment.url, "_blank")}
               >
                 <Image
                   alt={attachment.name}
                   className="object-cover"
                   fill
-                  src={attachment.url}
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  src={attachment.url}
                 />
               </div>
             ))}
@@ -215,46 +239,48 @@ export function SferaMessage({ message, parentMessage, sferaId, onFork, onReply 
       </div>
 
       {/* Message Actions */}
-      <div className="flex items-center gap-2 px-4 mt-1.5 mb-2">
+      <div className="mt-1.5 mb-2 flex items-center gap-2 px-4">
         <button
+          className="text-gray-400 transition-colors hover:text-gray-600"
           onClick={handleCopy}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
           title="Copy message"
         >
           <Copy className="h-4 w-4" />
         </button>
 
         <button
+          className="text-gray-400 transition-colors hover:text-gray-600"
           onClick={onReply}
-          className="text-gray-400 hover:text-gray-600 transition-colors"
           title="Reply to this message"
         >
           <Reply className="h-4 w-4" />
         </button>
 
         {/* Fork/Enter Fork Button */}
-        {!message.isForked ? (
+        {message.isForked ? (
+          message.forkedSferaId ? (
+            <button
+              className="flex items-center gap-1.5 text-blue-600 transition-colors hover:text-blue-700"
+              onClick={handleEnterFork}
+              title="Enter forked Sfera"
+            >
+              <LogIn className="h-4 w-4" />
+              <span className="font-medium text-xs">Enter Fork</span>
+            </button>
+          ) : null
+        ) : (
           <button
-            onClick={handleFork}
+            className="flex items-center gap-1.5 text-gray-400 transition-colors hover:text-blue-600 disabled:opacity-50"
             disabled={isForking}
-            className="flex items-center gap-1.5 text-gray-400 hover:text-blue-600 transition-colors disabled:opacity-50"
+            onClick={handleFork}
             title="Fork this message into a new Sfera"
           >
             <GitBranch className="h-4 w-4" />
-            <span className="text-xs font-medium">
+            <span className="font-medium text-xs">
               {isForking ? "Forking..." : "Fork"}
             </span>
           </button>
-        ) : message.forkedSferaId ? (
-          <button
-            onClick={handleEnterFork}
-            className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 transition-colors"
-            title="Enter forked Sfera"
-          >
-            <LogIn className="h-4 w-4" />
-            <span className="text-xs font-medium">Enter Fork</span>
-          </button>
-        ) : null}
+        )}
       </div>
     </div>
   );

@@ -3,10 +3,10 @@
  * Handles @avrora mentions and generates context-aware responses
  */
 
-import { db } from "@/lib/db";
-import { sfera, sferaMessage, sferaMember, user } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
 import { generateText } from "ai";
+import { and, desc, eq } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { myProvider } from "./providers";
 
 // Use a fixed UUID for Avrora AI user
@@ -20,7 +20,11 @@ export async function generateAvroraResponse(
   triggerMessageId: string,
   requestingUserId: string
 ): Promise<void> {
-  console.log("📝 generateAvroraResponse called:", { sferaId, triggerMessageId, requestingUserId });
+  console.log("📝 generateAvroraResponse called:", {
+    sferaId,
+    triggerMessageId,
+    requestingUserId,
+  });
 
   try {
     // Get Sfera details
@@ -36,7 +40,10 @@ export async function generateAvroraResponse(
       throw new Error("Sfera not found");
     }
 
-    console.log("✅ Sfera found:", { title: sferaData.title, id: sferaData.id });
+    console.log("✅ Sfera found:", {
+      title: sferaData.title,
+      id: sferaData.id,
+    });
 
     // Get recent messages for context (last 20)
     console.log("💬 Fetching recent messages for context...");
@@ -78,9 +85,11 @@ Sfera Context:
 - Предлагайте чтото свое только если вас попросят
 - В сообщении не больше 30 слов
 
-Помните: сообщения в Sfera можно разветвлять на новые ветки обсуждения. Если вы видите возможность для более глубокого изучения, сообщите об этом.`
+Помните: сообщения в Sfera можно разветвлять на новые ветки обсуждения. Если вы видите возможность для более глубокого изучения, сообщите об этом.`;
     // Get the trigger message
-    const triggerMessage = contextMessages.find((m) => m.id === triggerMessageId);
+    const triggerMessage = contextMessages.find(
+      (m) => m.id === triggerMessageId
+    );
     if (!triggerMessage) {
       console.error("❌ Trigger message not found:", triggerMessageId);
       throw new Error("Trigger message not found");
@@ -152,7 +161,9 @@ async function ensureAvroraMembership(sferaId: string): Promise<void> {
     .limit(1);
 
   // Create Avrora user if doesn't exist
-  if (!avroraUser) {
+  if (avroraUser) {
+    console.log("✅ Avrora user already exists");
+  } else {
     console.log("➕ Creating Avrora user...");
     await db.insert(user).values({
       id: AVRORA_USER_ID,
@@ -161,8 +172,6 @@ async function ensureAvroraMembership(sferaId: string): Promise<void> {
       // Add other required user fields based on your schema
     });
     console.log("✅ Avrora user created");
-  } else {
-    console.log("✅ Avrora user already exists");
   }
 
   // Check if Avrora is member of this Sfera
@@ -179,7 +188,9 @@ async function ensureAvroraMembership(sferaId: string): Promise<void> {
     .limit(1);
 
   // Add Avrora as member if not already
-  if (!membership) {
+  if (membership) {
+    console.log("✅ Avrora is already a member");
+  } else {
     console.log("➕ Adding Avrora as member to Sfera...");
     await db.insert(sferaMember).values({
       sferaId,
@@ -188,8 +199,6 @@ async function ensureAvroraMembership(sferaId: string): Promise<void> {
       joinedAt: new Date(),
     });
     console.log("✅ Avrora added as member");
-  } else {
-    console.log("✅ Avrora is already a member");
   }
 }
 
@@ -199,7 +208,6 @@ async function ensureAvroraMembership(sferaId: string): Promise<void> {
 export function shouldTriggerAvrora(content: string): boolean {
   const lowerContent = content.toLowerCase();
   return (
-    lowerContent.includes("@avrora") ||
-    lowerContent.includes("@аврора") // Russian version
+    lowerContent.includes("@avrora") || lowerContent.includes("@аврора") // Russian version
   );
 }

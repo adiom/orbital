@@ -3,9 +3,15 @@
  * Run with: npx tsx scripts/init-sfera-docs.ts
  */
 
-import { db } from "../lib/db";
-import { sfera, sferaMember, sferaMessage, sferaForkedSfera, user } from "../lib/db/schema";
 import { eq, inArray, or } from "drizzle-orm";
+import { db } from "../lib/db";
+import {
+  sfera,
+  sferaForkedSfera,
+  sferaMember,
+  sferaMessage,
+  user,
+} from "../lib/db/schema";
 
 // You'll need to replace this with actual user IDs from your database
 const OWNER_EMAIL = "your-email@example.com"; // Replace with your email
@@ -24,7 +30,8 @@ interface SferaNode {
 // Documentation structure
 const docsStructure: SferaNode = {
   title: "Sfera Project - Overview",
-  description: "Main documentation hub for the Sfera project - a fork-based collaborative discussion platform",
+  description:
+    "Main documentation hub for the Sfera project - a fork-based collaborative discussion platform",
   messages: [
     `# Welcome to Sfera Project Documentation
 
@@ -119,7 +126,8 @@ iOS-inspired interface:
             forkFromMessage: 2,
             node: {
               title: "Forking System - Technical Details",
-              description: "Technical implementation details of the forking system",
+              description:
+                "Technical implementation details of the forking system",
               messages: [
                 `# Forking System - Technical Implementation
 
@@ -292,7 +300,8 @@ What's coming next to Sfera.`,
             forkFromMessage: 1,
             node: {
               title: "Real-time Features - Technical Plan",
-              description: "Implementation plan for WebSocket and real-time features",
+              description:
+                "Implementation plan for WebSocket and real-time features",
               messages: [
                 `# Real-time Features - Implementation Plan
 
@@ -507,7 +516,12 @@ async function createSferaFromNode(
 
   // Add members
   const memberValues = [
-    { sferaId: newSfera.id, userId, role: "owner" as const, joinedAt: new Date() },
+    {
+      sferaId: newSfera.id,
+      userId,
+      role: "owner" as const,
+      joinedAt: new Date(),
+    },
     ...memberIds.map((id) => ({
       sferaId: newSfera.id,
       userId: id,
@@ -583,15 +597,12 @@ async function main() {
   const users = await db
     .select()
     .from(user)
-    .where(
-      or(
-        eq(user.email, OWNER_EMAIL),
-        inArray(user.email, TEAM_EMAILS)
-      )
-    );
+    .where(or(eq(user.email, OWNER_EMAIL), inArray(user.email, TEAM_EMAILS)));
 
   if (users.length === 0) {
-    console.error("❌ No users found. Please update OWNER_EMAIL and TEAM_EMAILS in the script.");
+    console.error(
+      "❌ No users found. Please update OWNER_EMAIL and TEAM_EMAILS in the script."
+    );
     process.exit(1);
   }
 
@@ -601,23 +612,21 @@ async function main() {
     process.exit(1);
   }
 
-  const memberIds = users.filter((u) => u.email !== OWNER_EMAIL).map((u) => u.id);
+  const memberIds = users
+    .filter((u) => u.email !== OWNER_EMAIL)
+    .map((u) => u.id);
 
   console.log(`Found owner: ${owner.email}`);
   console.log(`Found ${memberIds.length} team members\n`);
 
   // Create documentation structure
   console.log("Creating documentation Sferas...\n");
-  const rootId = await createSferaFromNode(
-    docsStructure,
-    owner.id,
-    memberIds
-  );
+  const rootId = await createSferaFromNode(docsStructure, owner.id, memberIds);
 
   console.log("\n✅ Documentation structure created!");
   console.log(`\nRoot Sfera ID: ${rootId}`);
   console.log(`Visit: /sfera/${rootId}`);
-  console.log(`View graph: /sferas\n`);
+  console.log("View graph: /sferas\n");
 }
 
 main()

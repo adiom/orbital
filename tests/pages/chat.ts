@@ -55,14 +55,6 @@ export class ChatPage {
     await response.finished();
   }
 
-  async isVoteComplete() {
-    const response = await this.page.waitForResponse((currentResponse) =>
-      currentResponse.url().includes("/api/vote")
-    );
-
-    await response.finished();
-  }
-
   async hasChatIdInUrl() {
     await expect(this.page).toHaveURL(CHAT_ID_REGEX);
   }
@@ -170,12 +162,6 @@ export class ChatPage {
         await lastMessageElement
           .getByTestId("message-reasoning-toggle")
           .click();
-      },
-      async upvote() {
-        await lastMessageElement.getByTestId("message-upvote").click();
-      },
-      async downvote() {
-        await lastMessageElement.getByTestId("message-downvote").click();
       },
     };
   }

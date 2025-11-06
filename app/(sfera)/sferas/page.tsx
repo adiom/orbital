@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { GitBranch, Loader2, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus, GitBranch } from "lucide-react";
 
 interface Sfera {
   id: string;
@@ -31,9 +31,13 @@ export default function SferasPage() {
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [sferas, setSferas] = useState<Sfera[]>([]);
-  const [forkRelationships, setForkRelationships] = useState<ForkRelationship[]>([]);
+  const [forkRelationships, setForkRelationships] = useState<
+    ForkRelationship[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [nodePositions, setNodePositions] = useState<Map<string, NodePosition>>(new Map());
+  const [nodePositions, setNodePositions] = useState<Map<string, NodePosition>>(
+    new Map()
+  );
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,7 +65,7 @@ export default function SferasPage() {
     const childrenMap = new Map<string, string[]>();
     const parentMap = new Map<string, string>();
 
-    forkRelationships.forEach(rel => {
+    forkRelationships.forEach((rel) => {
       if (!childrenMap.has(rel.parentSferaId)) {
         childrenMap.set(rel.parentSferaId, []);
       }
@@ -70,7 +74,7 @@ export default function SferasPage() {
     });
 
     // Find root nodes (nodes without parents)
-    const roots = sferas.filter(s => !parentMap.has(s.id));
+    const roots = sferas.filter((s) => !parentMap.has(s.id));
 
     return { childrenMap, parentMap, roots };
   };
@@ -107,12 +111,12 @@ export default function SferasPage() {
         return level;
       };
 
-      sferas.forEach(s => getLevel(s.id));
+      sferas.forEach((s) => getLevel(s.id));
       const maxLevel = Math.max(...Array.from(levels.values()));
 
       // Group by level
       const levelGroups = new Map<number, string[]>();
-      sferas.forEach(s => {
+      sferas.forEach((s) => {
         const level = levels.get(s.id) || 0;
         if (!levelGroups.has(level)) {
           levelGroups.set(level, []);
@@ -154,7 +158,7 @@ export default function SferasPage() {
     // Draw connections
     ctx.strokeStyle = "#e5e7eb";
     ctx.lineWidth = 2;
-    forkRelationships.forEach(rel => {
+    forkRelationships.forEach((rel) => {
       const parent = nodePositions.get(rel.parentSferaId);
       const child = nodePositions.get(rel.forkedSferaId);
       if (parent && child) {
@@ -240,19 +244,23 @@ export default function SferasPage() {
   }
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+    <div className="flex h-screen flex-col overflow-hidden bg-gray-50">
       {/* Header */}
-      <header className="border-b border-gray-200 bg-white px-6 py-4">
+      <header className="border-gray-200 border-b bg-white px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Sfera Network</h1>
-            <p className="mt-1 text-sm text-gray-500">
-              {sferas.length} {sferas.length === 1 ? "sfera" : "sferas"} • {forkRelationships.length} {forkRelationships.length === 1 ? "fork" : "forks"}
+            <h1 className="font-semibold text-2xl text-gray-900">
+              Sfera Network
+            </h1>
+            <p className="mt-1 text-gray-500 text-sm">
+              {sferas.length} {sferas.length === 1 ? "sfera" : "sferas"} •{" "}
+              {forkRelationships.length}{" "}
+              {forkRelationships.length === 1 ? "fork" : "forks"}
             </p>
           </div>
           <Button
+            className="gap-2 rounded-full bg-black text-white hover:bg-gray-800"
             onClick={() => router.push("/sferas/new")}
-            className="gap-2 bg-black hover:bg-gray-800 text-white rounded-full"
           >
             <Plus className="h-4 w-4" />
             New Sfera
@@ -262,18 +270,21 @@ export default function SferasPage() {
 
       {/* Graph View */}
       {sferas.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center">
+        <div className="flex flex-1 items-center justify-center">
           <div className="text-center">
-            <div className="mx-auto h-24 w-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+            <div className="mx-auto mb-4 flex h-24 w-24 items-center justify-center rounded-full bg-gray-100">
               <GitBranch className="h-12 w-12 text-gray-400" />
             </div>
-            <h2 className="text-xl font-medium text-gray-900 mb-2">No Sferas Yet</h2>
-            <p className="text-gray-500 mb-6 max-w-sm">
-              Create your first Sfera to start collaborative discussions with branching conversations
+            <h2 className="mb-2 font-medium text-gray-900 text-xl">
+              No Sferas Yet
+            </h2>
+            <p className="mb-6 max-w-sm text-gray-500">
+              Create your first Sfera to start collaborative discussions with
+              branching conversations
             </p>
             <Button
+              className="gap-2 rounded-full bg-black text-white hover:bg-gray-800"
               onClick={() => router.push("/sferas/new")}
-              className="gap-2 bg-black hover:bg-gray-800 text-white rounded-full"
             >
               <Plus className="h-4 w-4" />
               Create Your First Sfera
@@ -281,26 +292,28 @@ export default function SferasPage() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 relative">
+        <div className="relative flex-1">
           <canvas
-            ref={canvasRef}
-            className="absolute inset-0 w-full h-full"
+            className="absolute inset-0 h-full w-full"
             onClick={handleCanvasClick}
             onMouseMove={handleCanvasMove}
+            ref={canvasRef}
           />
 
           {/* Node overlays */}
           {Array.from(nodePositions.entries()).map(([id, pos]) => {
-            const sfera = sferas.find(s => s.id === id);
+            const sfera = sferas.find((s) => s.id === id);
             if (!sfera) return null;
 
             const isHovered = hoveredNode === id;
-            const childCount = forkRelationships.filter(r => r.parentSferaId === id).length;
+            const childCount = forkRelationships.filter(
+              (r) => r.parentSferaId === id
+            ).length;
 
             return (
               <div
+                className="pointer-events-none absolute"
                 key={id}
-                className="absolute pointer-events-none"
                 style={{
                   left: `${pos.x}px`,
                   top: `${pos.y}px`,
@@ -308,24 +321,21 @@ export default function SferasPage() {
                 }}
               >
                 <div
-                  className={`
-                    relative bg-white rounded-2xl border-2 shadow-lg
-                    transition-all duration-200 pointer-events-auto cursor-pointer
-                    ${isHovered ? "border-blue-500 scale-110 shadow-xl" : "border-gray-200"}
+                  className={`pointer-events-auto relative cursor-pointer rounded-2xl border-2 bg-white shadow-lg transition-all duration-200 ${isHovered ? "scale-110 border-blue-500 shadow-xl" : "border-gray-200"}
                   `}
+                  onClick={() => router.push(`/sfera/${id}`)}
                   style={{
                     width: "160px",
                     padding: "12px",
                   }}
-                  onClick={() => router.push(`/sfera/${id}`)}
                 >
                   {/* Role badge */}
-                  <div className="absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
+                  <div className="-top-2 -right-2 absolute rounded-full bg-blue-600 px-2 py-0.5 font-medium text-[10px] text-white">
                     {sfera.role}
                   </div>
 
                   {/* Title */}
-                  <h3 className="font-medium text-sm text-gray-900 mb-1 line-clamp-2">
+                  <h3 className="mb-1 line-clamp-2 font-medium text-gray-900 text-sm">
                     {sfera.title}
                   </h3>
 

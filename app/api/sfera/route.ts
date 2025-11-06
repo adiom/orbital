@@ -1,7 +1,7 @@
-import { db } from "@/lib/db";
-import { sfera, sferaMember, sferaForkedSfera, user } from "@/lib/db/schema";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { auth } from "@/app/(auth)/auth";
-import { eq, desc, and, inArray } from "drizzle-orm";
+import { db } from "@/lib/db";
+import { sfera, sferaForkedSfera, sferaMember, user } from "@/lib/db/schema";
 
 // GET /api/sfera - List all Sferas for current user with fork relationships
 export async function GET(request: Request) {
@@ -30,13 +30,13 @@ export async function GET(request: Request) {
       .orderBy(desc(sfera.updatedAt));
 
     // Get fork relationships for these Sferas
-    const sferaIds = userSferas.map(s => s.id);
+    const sferaIds = userSferas.map((s) => s.id);
 
     let forkRelationships: {
-  parentSferaId: string;
-  forkedSferaId: string;
-  createdAt: Date;
-}[] = [];
+      parentSferaId: string;
+      forkedSferaId: string;
+      createdAt: Date;
+    }[] = [];
     if (sferaIds.length > 0) {
       forkRelationships = await db
         .select({
@@ -55,14 +55,11 @@ export async function GET(request: Request) {
 
     return Response.json({
       sferas: userSferas,
-      forkRelationships
+      forkRelationships,
     });
   } catch (error) {
     console.error("Failed to fetch sferas:", error);
-    return Response.json(
-      { error: "Failed to fetch sferas" },
-      { status: 500 }
-    );
+    return Response.json({ error: "Failed to fetch sferas" }, { status: 500 });
   }
 }
 
@@ -76,17 +73,23 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { title, description, visibility = "private", memberIds = [], memberEmails = [] } = body;
+    const {
+      title,
+      description,
+      visibility = "private",
+      memberIds = [],
+      memberEmails = [],
+    } = body;
 
     if (!title) {
-      return Response.json(
-        { error: "Title is required" },
-        { status: 400 }
-      );
+      return Response.json({ error: "Title is required" }, { status: 400 });
     }
 
     // At least one member must be added (besides owner)
-    if ((!memberIds || memberIds.length === 0) && (!memberEmails || memberEmails.length === 0)) {
+    if (
+      (!memberIds || memberIds.length === 0) &&
+      (!memberEmails || memberEmails.length === 0)
+    ) {
       return Response.json(
         { error: "At least one member must be added to create a Sfera" },
         { status: 400 }
@@ -108,7 +111,7 @@ export async function POST(request: Request) {
         );
       }
 
-      resolvedMemberIds = [...resolvedMemberIds, ...users.map(u => u.id)];
+      resolvedMemberIds = [...resolvedMemberIds, ...users.map((u) => u.id)];
     }
 
     // Create Sfera
@@ -136,7 +139,7 @@ export async function POST(request: Request) {
     if (resolvedMemberIds.length > 0) {
       // Remove duplicates and owner
       const uniqueMemberIds = [...new Set(resolvedMemberIds)].filter(
-        id => id !== session.user.id
+        (id) => id !== session.user.id
       );
 
       if (uniqueMemberIds.length > 0) {
@@ -154,9 +157,6 @@ export async function POST(request: Request) {
     return Response.json({ sfera: newSfera }, { status: 201 });
   } catch (error) {
     console.error("Failed to create sfera:", error);
-    return Response.json(
-      { error: "Failed to create sfera" },
-      { status: 500 }
-    );
+    return Response.json({ error: "Failed to create sfera" }, { status: 500 });
   }
 }

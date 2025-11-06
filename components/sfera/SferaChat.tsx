@@ -1,12 +1,12 @@
 "use client";
 
+import { ChevronRight, Loader2, Menu, PenSquare, Settings } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { SferaMessage } from "./SferaMessage";
 import { SferaMessageInput } from "./SferaMessageInput";
 import { SferaSettings } from "./SferaSettings";
-import { Loader2, ChevronRight, Menu, PenSquare, Settings } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 
 interface Message {
   id: string;
@@ -98,9 +98,12 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
     fetchSfera();
   };
 
-  const isOwnerOrAdmin = sfera && currentUserId && members.some(
-    (m) => m.userId === currentUserId && ["owner", "admin"].includes(m.role)
-  );
+  const isOwnerOrAdmin =
+    sfera &&
+    currentUserId &&
+    members.some(
+      (m) => m.userId === currentUserId && ["owner", "admin"].includes(m.role)
+    );
 
   if (isLoading) {
     return (
@@ -119,15 +122,15 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
   }
 
   return (
-    <div className="bg-gray-50 flex flex-col h-screen overflow-hidden">
+    <div className="flex h-screen flex-col overflow-hidden bg-gray-50">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 h-12 flex items-center px-4 z-20 bg-gray-50 border-b border-gray-200">
-        <div className="w-full flex items-center justify-between px-2">
+      <header className="fixed top-0 right-0 left-0 z-20 flex h-12 items-center border-gray-200 border-b bg-gray-50 px-4">
+        <div className="flex w-full items-center justify-between px-2">
           <Button
-            variant="ghost"
-            size="icon"
-            className="rounded-full h-8 w-8"
+            className="h-8 w-8 rounded-full"
             onClick={() => router.push("/sferas")}
+            size="icon"
+            variant="ghost"
           >
             <Menu className="h-5 w-5 text-gray-700" />
             <span className="sr-only">Menu</span>
@@ -136,33 +139,35 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
           <div className="flex flex-col items-center">
             {parentSfera && (
               <button
+                className="flex items-center gap-1 text-gray-500 text-xs hover:text-gray-700 hover:underline"
                 onClick={() => router.push(`/sfera/${parentSfera.id}`)}
-                className="text-xs text-gray-500 hover:text-gray-700 hover:underline flex items-center gap-1"
               >
                 <span>{parentSfera.title}</span>
                 <ChevronRight className="h-3 w-3" />
               </button>
             )}
-            <h1 className="text-base font-medium text-gray-800">{sfera.title}</h1>
+            <h1 className="font-medium text-base text-gray-800">
+              {sfera.title}
+            </h1>
           </div>
 
           <div className="flex items-center gap-1">
             {isOwnerOrAdmin && (
               <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full h-8 w-8"
+                className="h-8 w-8 rounded-full"
                 onClick={() => setIsSettingsOpen(true)}
+                size="icon"
+                variant="ghost"
               >
                 <Settings className="h-5 w-5 text-gray-700" />
                 <span className="sr-only">Settings</span>
               </Button>
             )}
             <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full h-8 w-8"
+              className="h-8 w-8 rounded-full"
               onClick={() => router.push("/sferas/new")}
+              size="icon"
+              variant="ghost"
             >
               <PenSquare className="h-5 w-5 text-gray-700" />
               <span className="sr-only">New Sfera</span>
@@ -172,8 +177,8 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
       </header>
 
       {/* Messages */}
-      <div className="flex-grow pb-32 pt-14 px-4 overflow-y-auto">
-        <div className="max-w-3xl mx-auto space-y-4">
+      <div className="flex-grow overflow-y-auto px-4 pt-14 pb-32">
+        <div className="mx-auto max-w-3xl space-y-4">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center">
               <p className="text-gray-500">
@@ -184,17 +189,17 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
             messages.map((message) => {
               // Find parent message if exists
               const parentMessage = message.parentMessageId
-                ? messages.find(m => m.id === message.parentMessageId)
+                ? messages.find((m) => m.id === message.parentMessageId)
                 : null;
 
               return (
                 <SferaMessage
                   key={message.id}
                   message={message}
-                  parentMessage={parentMessage}
-                  sferaId={sferaId}
                   onFork={handleFork}
                   onReply={() => setReplyingTo(message)}
+                  parentMessage={parentMessage}
+                  sferaId={sferaId}
                 />
               );
             })
@@ -203,13 +208,13 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
       </div>
 
       {/* Input */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-50">
-        <div className="max-w-3xl mx-auto">
+      <div className="fixed right-0 bottom-0 left-0 bg-gray-50 p-4">
+        <div className="mx-auto max-w-3xl">
           <SferaMessageInput
-            sferaId={sferaId}
-            replyingTo={replyingTo}
             onCancelReply={() => setReplyingTo(null)}
             onMessageSent={handleMessageSent}
+            replyingTo={replyingTo}
+            sferaId={sferaId}
           />
         </div>
       </div>
@@ -217,14 +222,14 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
       {/* Settings Dialog */}
       {sfera && (
         <SferaSettings
-          sferaId={sferaId}
-          currentTitle={sfera.title}
           currentDescription={sfera.description}
           currentMembers={members}
-          isOwner={sfera.ownerId === currentUserId}
+          currentTitle={sfera.title}
           isOpen={isSettingsOpen}
+          isOwner={sfera.ownerId === currentUserId}
           onClose={() => setIsSettingsOpen(false)}
           onUpdate={handleSettingsUpdate}
+          sferaId={sferaId}
         />
       )}
     </div>

@@ -10,7 +10,6 @@ import { PreviewMessage, ThinkingMessage } from "./message";
 type ArtifactMessagesProps = {
   chatId: string;
   status: UseChatHelpers<ChatMessage>["status"];
-  votes: Vote[] | undefined;
   messages: ChatMessage[];
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
   regenerate: UseChatHelpers<ChatMessage>["regenerate"];
@@ -21,7 +20,7 @@ type ArtifactMessagesProps = {
 function PureArtifactMessages({
   chatId,
   status,
-  votes,
+
   messages,
   setMessages,
   regenerate,
@@ -54,11 +53,6 @@ function PureArtifactMessages({
             hasSentMessage && index === messages.length - 1
           }
           setMessages={setMessages}
-          vote={
-            votes
-              ? votes.find((vote) => vote.messageId === message.id)
-              : undefined
-          }
         />
       ))}
 
@@ -94,9 +88,6 @@ function areEqual(
     return false;
   }
   if (prevProps.messages.length !== nextProps.messages.length) {
-    return false;
-  }
-  if (!equal(prevProps.votes, nextProps.votes)) {
     return false;
   }
 

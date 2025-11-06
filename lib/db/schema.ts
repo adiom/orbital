@@ -112,48 +112,6 @@ export const message = pgTable("Message_v2", {
 
 export type DBMessage = InferSelectModel<typeof message>;
 
-// DEPRECATED: The following schema is deprecated and will be removed in the future.
-// Read the migration guide at https://chat-sdk.dev/docs/migration-guides/message-parts
-export const voteDeprecated = pgTable(
-  "Vote",
-  {
-    chatId: uuid("chatId")
-      .notNull()
-      .references(() => chat.id),
-    messageId: uuid("messageId")
-      .notNull()
-      .references(() => messageDeprecated.id),
-    isUpvoted: boolean("isUpvoted").notNull(),
-  },
-  (table) => {
-    return {
-      pk: primaryKey({ columns: [table.chatId, table.messageId] }),
-    };
-  }
-);
-
-export type VoteDeprecated = InferSelectModel<typeof voteDeprecated>;
-
-export const vote = pgTable(
-  "Vote_v2",
-  {
-    chatId: uuid("chatId")
-      .notNull()
-      .references(() => chat.id),
-    messageId: uuid("messageId")
-      .notNull()
-      .references(() => message.id),
-    isUpvoted: boolean("isUpvoted").notNull(),
-  },
-  (table) => {
-    return {
-      pk: primaryKey({ columns: [table.chatId, table.messageId] }),
-    };
-  }
-);
-
-export type Vote = InferSelectModel<typeof vote>;
-
 export const document = pgTable(
   "Document",
   {
@@ -385,11 +343,16 @@ export const sferaMessage = pgTable("SferaMessage", {
   content: text("content").notNull(),
 
   // Attachments (photos, files, etc.)
-  attachments: json("attachments").$type<Array<{
-    name: string;
-    url: string;
-    contentType: string;
-  }>>().notNull().default([]),
+  attachments: json("attachments")
+    .$type<
+      Array<{
+        name: string;
+        url: string;
+        contentType: string;
+      }>
+    >()
+    .notNull()
+    .default([]),
 
   // TODO: Determine if nested threads are needed (replies to messages within Sfera)
   // If yes, this field allows threading like Reddit/Slack

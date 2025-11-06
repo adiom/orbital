@@ -1,9 +1,9 @@
+import { and, desc, eq } from "drizzle-orm";
+import { auth } from "@/app/(auth)/auth";
+import { generateAvroraResponse } from "@/lib/ai/sfera-avrora";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
-import { auth } from "@/app/(auth)/auth";
-import { eq, and, desc } from "drizzle-orm";
 import { hasAvroraMention } from "@/lib/mentions/parser";
-import { generateAvroraResponse } from "@/lib/ai/sfera-avrora";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -40,7 +40,10 @@ export async function POST(request: Request, context: RouteContext) {
     const { content, parentMessageId, attachments = [] } = body;
 
     // Require either content or attachments
-    if ((!content || content.trim() === "") && (!attachments || attachments.length === 0)) {
+    if (
+      (!content || content.trim() === "") &&
+      (!attachments || attachments.length === 0)
+    ) {
       return Response.json(
         { error: "Content or attachments are required" },
         { status: 400 }
@@ -55,7 +58,7 @@ export async function POST(request: Request, context: RouteContext) {
         userId: session.user.id,
         content: content?.trim() || "",
         parentMessageId: parentMessageId || null,
-        attachments: attachments,
+        attachments,
         isForked: false,
         forkCount: 0,
         createdAt: new Date(),
@@ -76,14 +79,19 @@ export async function POST(request: Request, context: RouteContext) {
         messageId: newMessage.id,
         userId: session.user.id,
         userEmail: session.user.email,
-        content: content.substring(0, 100) + (content.length > 100 ? "..." : ""),
+        content:
+          content.substring(0, 100) + (content.length > 100 ? "..." : ""),
       });
 
       // Generate Avrora response asynchronously
       setTimeout(async () => {
         try {
           console.log("🤖 Starting Avrora response generation...");
-          await generateAvroraResponse(sferaId, newMessage.id, session.user!.id);
+          await generateAvroraResponse(
+            sferaId,
+            newMessage.id,
+            session.user!.id
+          );
         } catch (error) {
           console.error("❌ Failed to generate Avrora response:", error);
         }

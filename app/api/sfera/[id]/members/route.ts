@@ -1,7 +1,7 @@
+import { and, eq } from "drizzle-orm";
+import { auth } from "@/app/(auth)/auth";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, user } from "@/lib/db/schema";
-import { auth } from "@/app/(auth)/auth";
-import { eq, and } from "drizzle-orm";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -69,7 +69,10 @@ export async function POST(request: Request, context: RouteContext) {
       .select()
       .from(sferaMember)
       .where(
-        and(eq(sferaMember.sferaId, sferaId), eq(sferaMember.userId, userIdToAdd))
+        and(
+          eq(sferaMember.sferaId, sferaId),
+          eq(sferaMember.userId, userIdToAdd)
+        )
       )
       .limit(1);
 
@@ -173,9 +176,6 @@ export async function DELETE(request: Request, context: RouteContext) {
     return Response.json({ success: true });
   } catch (error) {
     console.error("Failed to remove member:", error);
-    return Response.json(
-      { error: "Failed to remove member" },
-      { status: 500 }
-    );
+    return Response.json({ error: "Failed to remove member" }, { status: 500 });
   }
 }

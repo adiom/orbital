@@ -7,8 +7,6 @@
 //   message,
 //   type MessageDeprecated,
 //   messageDeprecated,
-//   vote,
-//   voteDeprecated,
 // } from '../schema';
 // import { drizzle } from 'drizzle-orm/postgres-js';
 // import { inArray } from 'drizzle-orm';
@@ -35,12 +33,6 @@
 //   role: string;
 //   attachments: any[];
 //   createdAt: Date;
-// };
-
-// type NewVoteInsert = {
-//   messageId: string;
-//   chatId: string;
-//   isUpvoted: boolean;
 // };
 
 // interface MessageDeprecatedContentPart {
@@ -231,12 +223,6 @@
 //       }
 //     }
 
-//     for (let j = 0; j < newVotesToInsert.length; j += INSERT_BATCH_SIZE) {
-//       const voteBatch = newVotesToInsert.slice(j, j + INSERT_BATCH_SIZE);
-//       if (voteBatch.length > 0) {
-//         await db.insert(vote).values(voteBatch);
-//       }
-//     }
 //   }
 
 //   console.info(`Migration completed: ${processedCount} chats processed`);

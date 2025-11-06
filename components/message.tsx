@@ -28,7 +28,6 @@ import { Weather } from "./weather";
 const PurePreviewMessage = ({
   chatId,
   message,
-  vote,
   isLoading,
   setMessages,
   regenerate,
@@ -37,7 +36,6 @@ const PurePreviewMessage = ({
 }: {
   chatId: string;
   message: ChatMessage;
-  vote: Vote | undefined;
   isLoading: boolean;
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
   regenerate: UseChatHelpers<ChatMessage>["regenerate"];
@@ -157,7 +155,6 @@ const PurePreviewMessage = ({
                       }
                     >
                       <Response>{sanitizeText(part.text)}</Response>
-                    
                     </MessageContent>
                   </div>
                 );
@@ -296,7 +293,6 @@ const PurePreviewMessage = ({
               key={`action-${message.id}`}
               message={message}
               setMode={setMode}
-              vote={vote}
             />
           )}
         </div>
@@ -318,9 +314,6 @@ export const PreviewMessage = memo(
       return false;
     }
     if (!equal(prevProps.message.parts, nextProps.message.parts)) {
-      return false;
-    }
-    if (!equal(prevProps.vote, nextProps.vote)) {
       return false;
     }
 

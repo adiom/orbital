@@ -30,7 +30,6 @@ const MENTION_PATTERNS = [
 // Action triggers
 const ACTION_PATTERNS = [
   /(создай|create|сделай|make|генерируй|generate)\s+(артефакт|artifact|документ|document|файл|file)/i,
-  /(начни|start|запусти|launch)\s+(голосование|vote|voting|опрос|poll)/i,
   /(подведи|summarize|резюме|summary|итоги|results)/i,
   /(экспортируй|export|сохрани|save)\s+(историю|history|чат|chat)/i,
 ];

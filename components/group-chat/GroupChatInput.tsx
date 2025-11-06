@@ -6,7 +6,11 @@ interface GroupChatInputProps {
   onSend?: (message: string) => void;
 }
 
-export function GroupChatInput({ chatId, userId, onSend }: GroupChatInputProps) {
+export function GroupChatInput({
+  chatId,
+  userId,
+  onSend,
+}: GroupChatInputProps) {
   const [value, setValue] = useState("");
 
   const handleSend = () => {
@@ -17,15 +21,24 @@ export function GroupChatInput({ chatId, userId, onSend }: GroupChatInputProps) 
   };
 
   return (
-    <div className="group-chat-input" style={{ display: 'flex', gap: 8, padding: '0.5rem 0' }}>
+    <div
+      className="group-chat-input"
+      style={{ display: "flex", gap: 8, padding: "0.5rem 0" }}
+    >
       <input
-        type="text"
-        value={value}
-        onChange={e => setValue(e.target.value)}
+        onChange={(e) => setValue(e.target.value)}
         placeholder="Введите сообщение..."
         style={{ flex: 1, padding: 8 }}
+        type="text"
+        value={value}
       />
-      <button type="button" onClick={handleSend} style={{ padding: '8px 16px' }}>Отправить</button>
+      <button
+        onClick={handleSend}
+        style={{ padding: "8px 16px" }}
+        type="button"
+      >
+        Отправить
+      </button>
     </div>
   );
 }

@@ -1,12 +1,12 @@
+import { and, eq } from "drizzle-orm";
+import { auth } from "@/app/(auth)/auth";
 import { db } from "@/lib/db";
 import {
   sfera,
+  sferaForkedSfera,
   sferaMember,
   sferaMessage,
-  sferaForkedSfera,
 } from "@/lib/db/schema";
-import { auth } from "@/app/(auth)/auth";
-import { eq, and } from "drizzle-orm";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -58,7 +58,10 @@ export async function POST(request: Request, context: RouteContext) {
 
     if (existingFork) {
       return Response.json(
-        { error: "Message has already been forked", forkedSferaId: existingFork.forkedSferaId },
+        {
+          error: "Message has already been forked",
+          forkedSferaId: existingFork.forkedSferaId,
+        },
         { status: 400 }
       );
     }
@@ -68,10 +71,7 @@ export async function POST(request: Request, context: RouteContext) {
       .select()
       .from(sferaMessage)
       .where(
-        and(
-          eq(sferaMessage.id, messageId),
-          eq(sferaMessage.sferaId, sferaId)
-        )
+        and(eq(sferaMessage.id, messageId), eq(sferaMessage.sferaId, sferaId))
       )
       .limit(1);
 
@@ -87,11 +87,15 @@ export async function POST(request: Request, context: RouteContext) {
       .limit(1);
 
     if (!parentSfera) {
-      return Response.json({ error: "Parent Sfera not found" }, { status: 404 });
+      return Response.json(
+        { error: "Parent Sfera not found" },
+        { status: 404 }
+      );
     }
 
     // Generate title from message content (first 50 chars)
-    const autoTitle = messageToFork.content.slice(0, 50).trim() +
+    const autoTitle =
+      messageToFork.content.slice(0, 50).trim() +
       (messageToFork.content.length > 50 ? "..." : "");
 
     // Create new Sfera
@@ -144,8 +148,8 @@ export async function POST(request: Request, context: RouteContext) {
       .where(eq(sferaMember.sferaId, sferaId));
 
     const membersToAdd = parentMembers
-      .map(m => m.userId)
-      .filter(id => id !== session.user.id);
+      .map((m) => m.userId)
+      .filter((id) => id !== session.user.id);
 
     if (membersToAdd.length > 0) {
       const sferaMemberValues = membersToAdd.map((userId: string) => ({

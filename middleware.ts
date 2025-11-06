@@ -49,8 +49,8 @@ export const config = {
   matcher: [
     "/",
     "/chat/:id",
-    "/docs",           // Добавлено
-    "/api/docs",       // Добавлено  
+    "/docs", // Добавлено
+    "/api/docs", // Добавлено
     "/api/:path*",
     "/login",
     "/register",

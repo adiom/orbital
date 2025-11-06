@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { Loader2, UserPlus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -13,8 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { X, UserPlus, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function NewSferaPage() {
   const router = useRouter();
@@ -22,7 +22,9 @@ export default function NewSferaPage() {
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [visibility, setVisibility] = useState<"private" | "public" | "dao">("private");
+  const [visibility, setVisibility] = useState<"private" | "public" | "dao">(
+    "private"
+  );
   const [memberEmails, setMemberEmails] = useState<string[]>([]);
   const [newMemberEmail, setNewMemberEmail] = useState("");
 
@@ -96,9 +98,10 @@ export default function NewSferaPage() {
   return (
     <div className="container mx-auto max-w-2xl p-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Create New Sfera</h1>
+        <h1 className="font-bold text-3xl">Create New Sfera</h1>
         <p className="mt-2 text-muted-foreground">
-          Create a collaborative discussion space where every message can branch into new conversations
+          Create a collaborative discussion space where every message can branch
+          into new conversations
         </p>
       </div>
 
@@ -114,12 +117,12 @@ export default function NewSferaPage() {
                 Title <span className="text-destructive">*</span>
               </Label>
               <Input
+                disabled={isCreating}
                 id="title"
-                value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Product Design Discussion"
                 required
-                disabled={isCreating}
+                value={title}
               />
             </div>
 
@@ -127,12 +130,12 @@ export default function NewSferaPage() {
             <div className="space-y-2">
               <Label htmlFor="description">Description (optional)</Label>
               <Textarea
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="What is this Sfera about?"
                 className="min-h-[100px]"
                 disabled={isCreating}
+                id="description"
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What is this Sfera about?"
+                value={description}
               />
             </div>
 
@@ -140,9 +143,9 @@ export default function NewSferaPage() {
             <div className="space-y-2">
               <Label htmlFor="visibility">Visibility</Label>
               <Select
-                value={visibility}
-                onValueChange={(value: any) => setVisibility(value)}
                 disabled={isCreating}
+                onValueChange={(value: any) => setVisibility(value)}
+                value={visibility}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -153,7 +156,7 @@ export default function NewSferaPage() {
                   <SelectItem value="dao">DAO</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-muted-foreground text-xs">
                 {visibility === "private" && "Only invited members can access"}
                 {visibility === "public" && "Anyone can view and join"}
                 {visibility === "dao" && "Governed by DAO token holders"}
@@ -165,29 +168,29 @@ export default function NewSferaPage() {
               <Label>
                 Members <span className="text-destructive">*</span>
               </Label>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 Add at least one member to create a Sfera
               </p>
 
               {/* Add member input */}
               <div className="flex gap-2">
                 <Input
-                  value={newMemberEmail}
+                  disabled={isCreating}
                   onChange={(e) => setNewMemberEmail(e.target.value)}
-                  placeholder="Enter member email"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
                       handleAddMember();
                     }
                   }}
-                  disabled={isCreating}
+                  placeholder="Enter member email"
+                  value={newMemberEmail}
                 />
                 <Button
+                  disabled={isCreating}
+                  onClick={handleAddMember}
                   type="button"
                   variant="outline"
-                  onClick={handleAddMember}
-                  disabled={isCreating}
                 >
                   <UserPlus className="h-4 w-4" />
                 </Button>
@@ -198,16 +201,16 @@ export default function NewSferaPage() {
                 <div className="mt-4 space-y-2">
                   {memberEmails.map((email) => (
                     <div
-                      key={email}
                       className="flex items-center justify-between rounded-md border border-border bg-muted/50 px-3 py-2"
+                      key={email}
                     >
                       <span className="text-sm">{email}</span>
                       <Button
+                        disabled={isCreating}
+                        onClick={() => handleRemoveMember(email)}
+                        size="sm"
                         type="button"
                         variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveMember(email)}
-                        disabled={isCreating}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -222,14 +225,14 @@ export default function NewSferaPage() {
         {/* Actions */}
         <div className="mt-6 flex justify-end gap-4">
           <Button
+            disabled={isCreating}
+            onClick={() => router.back()}
             type="button"
             variant="outline"
-            onClick={() => router.back()}
-            disabled={isCreating}
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={isCreating}>
+          <Button disabled={isCreating} type="submit">
             {isCreating ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

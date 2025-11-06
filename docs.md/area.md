@@ -58,7 +58,7 @@ Permission management в групповых AI workspaces требует дин�
 
 **Object-level access control** — права привязываются не к пользователю глобально, а к конкретным entities внутри Area . Участник может edit созданный им content, comment на чужой, но approve требует consensus через governance voting .
 
-**Dynamic permission escalation** — система автоматически расширяет права при необходимости через approval workflow . Если участник пытается выполнить restricted action, Avrora инициирует vote среди stakeholders с соответствующими правами .
+**Dynamic permission escalation** — система автоматически расширяет права при необходимости через approval workflow . Если участник пытается выполнить restricted action, Avrora инициирует процесс одобрения среди stakeholders с соответствующими правами .
 
 **Reputation-weighted governance** — вклад измеряется через composite score: время активности, созданный контент, финансовые инвестиции, peer endorsements . При voting процессах вес голоса пропорционален reputation, предотвращая hostile takeovers и стимулируя quality contributions .
 
