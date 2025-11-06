@@ -1,9 +1,9 @@
 import { db } from "@/lib/db";
-import { sfera, sferaMember, user } from "@/lib/db/schema";
+import { sfera, sferaMember, sferaForkedSfera, user } from "@/lib/db/schema";
 import { auth } from "@/app/(auth)/auth";
 import { eq, desc, and, inArray } from "drizzle-orm";
 
-// GET /api/sfera - List all Sferas for current user
+// GET /api/sfera - List all Sferas for current user with fork relationships
 export async function GET(request: Request) {
   const session = await auth();
 
@@ -29,7 +29,30 @@ export async function GET(request: Request) {
       .where(eq(sferaMember.userId, session.user.id))
       .orderBy(desc(sfera.updatedAt));
 
-    return Response.json({ sferas: userSferas });
+    // Get fork relationships for these Sferas
+    const sferaIds = userSferas.map(s => s.id);
+
+    let forkRelationships = [];
+    if (sferaIds.length > 0) {
+      forkRelationships = await db
+        .select({
+          parentSferaId: sferaForkedSfera.parentSferaId,
+          forkedSferaId: sferaForkedSfera.forkedSferaId,
+          createdAt: sferaForkedSfera.createdAt,
+        })
+        .from(sferaForkedSfera)
+        .where(
+          and(
+            inArray(sferaForkedSfera.parentSferaId, sferaIds),
+            inArray(sferaForkedSfera.forkedSferaId, sferaIds)
+          )
+        );
+    }
+
+    return Response.json({
+      sferas: userSferas,
+      forkRelationships
+    });
   } catch (error) {
     console.error("Failed to fetch sferas:", error);
     return Response.json(

@@ -35,10 +35,33 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const body = await request.json();
-    const { userId, role = "member" } = body;
+    const { userId, email, role = "member" } = body;
 
-    if (!userId) {
-      return Response.json({ error: "User ID is required" }, { status: 400 });
+    let userIdToAdd = userId;
+
+    // If email provided, resolve to userId
+    if (email && !userId) {
+      const [foundUser] = await db
+        .select({ id: user.id, email: user.email })
+        .from(user)
+        .where(eq(user.email, email))
+        .limit(1);
+
+      if (!foundUser) {
+        return Response.json(
+          { error: "User not found with this email" },
+          { status: 404 }
+        );
+      }
+
+      userIdToAdd = foundUser.id;
+    }
+
+    if (!userIdToAdd) {
+      return Response.json(
+        { error: "User ID or email is required" },
+        { status: 400 }
+      );
     }
 
     // Check if user already a member
@@ -46,7 +69,7 @@ export async function POST(request: Request, context: RouteContext) {
       .select()
       .from(sferaMember)
       .where(
-        and(eq(sferaMember.sferaId, sferaId), eq(sferaMember.userId, userId))
+        and(eq(sferaMember.sferaId, sferaId), eq(sferaMember.userId, userIdToAdd))
       )
       .limit(1);
 
@@ -60,19 +83,36 @@ export async function POST(request: Request, context: RouteContext) {
     // Add member
     await db.insert(sferaMember).values({
       sferaId,
-      userId,
+      userId: userIdToAdd,
       role,
       joinedAt: new Date(),
     });
 
-    return Response.json({ success: true }, { status: 201 });
+    // Return member info
+    const [addedUser] = await db
+      .select({ userId: user.id, email: user.email })
+      .from(user)
+      .where(eq(user.id, userIdToAdd))
+      .limit(1);
+
+    return Response.json(
+      {
+        success: true,
+        member: {
+          userId: userIdToAdd,
+          email: addedUser.email,
+          role,
+        },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Failed to add member:", error);
     return Response.json({ error: "Failed to add member" }, { status: 500 });
   }
 }
 
-// DELETE /api/sfera/[id]/members/[userId] - Remove member from Sfera
+// DELETE /api/sfera/[id]/members - Remove member from Sfera
 export async function DELETE(request: Request, context: RouteContext) {
   const session = await auth();
 
@@ -81,14 +121,15 @@ export async function DELETE(request: Request, context: RouteContext) {
   }
 
   const { id: sferaId } = await context.params;
-  const url = new URL(request.url);
-  const userIdToRemove = url.searchParams.get("userId");
-
-  if (!userIdToRemove) {
-    return Response.json({ error: "User ID is required" }, { status: 400 });
-  }
 
   try {
+    const body = await request.json();
+    const { userId: userIdToRemove } = body;
+
+    if (!userIdToRemove) {
+      return Response.json({ error: "User ID is required" }, { status: 400 });
+    }
+
     // Check if requester is admin or owner
     const [membership] = await db
       .select()

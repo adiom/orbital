@@ -384,6 +384,13 @@ export const sferaMessage = pgTable("SferaMessage", {
     .references(() => user.id),
   content: text("content").notNull(),
 
+  // Attachments (photos, files, etc.)
+  attachments: json("attachments").$type<Array<{
+    name: string;
+    url: string;
+    contentType: string;
+  }>>().notNull().default([]),
+
   // TODO: Determine if nested threads are needed (replies to messages within Sfera)
   // If yes, this field allows threading like Reddit/Slack
   // If no, all messages are root-level only

@@ -1,7 +1,9 @@
 import { db } from "@/lib/db";
-import { sfera, sferaMember, sferaMessage } from "@/lib/db/schema";
+import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { auth } from "@/app/(auth)/auth";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
+import { hasAvroraMention } from "@/lib/mentions/parser";
+import { generateAvroraResponse } from "@/lib/ai/sfera-avrora";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -64,6 +66,27 @@ export async function POST(request: Request, context: RouteContext) {
       .update(sfera)
       .set({ updatedAt: new Date() })
       .where(eq(sfera.id, sferaId));
+
+    // Check if @avrora was mentioned
+    if (hasAvroraMention(content)) {
+      console.log("🔔 @avrora mentioned in Sfera:", {
+        sferaId,
+        messageId: newMessage.id,
+        userId: session.user.id,
+        userEmail: session.user.email,
+        content: content.substring(0, 100) + (content.length > 100 ? "..." : ""),
+      });
+
+      // Generate Avrora response asynchronously
+      setTimeout(async () => {
+        try {
+          console.log("🤖 Starting Avrora response generation...");
+          await generateAvroraResponse(sferaId, newMessage.id, session.user!.id);
+        } catch (error) {
+          console.error("❌ Failed to generate Avrora response:", error);
+        }
+      }, 0);
+    }
 
     return Response.json({ message: newMessage }, { status: 201 });
   } catch (error) {
