@@ -1,16 +1,10 @@
 import { useState } from "react";
 
 type GroupChatInputProps = {
-  chatId: string;
-  userId: string;
   onSend?: (message: string) => void;
 };
 
-export function GroupChatInput({
-  chatId,
-  userId,
-  onSend,
-}: GroupChatInputProps) {
+export function GroupChatInput({ onSend }: GroupChatInputProps) {
   const [value, setValue] = useState("");
 
   const handleSend = () => {

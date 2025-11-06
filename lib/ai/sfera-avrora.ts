@@ -109,7 +109,6 @@ Sfera Context:
       system: systemPrompt,
       prompt: `Context of recent discussion:\n${conversationContext}\n\nRespond to the message from ${triggerMessage.userEmail}.`,
       temperature: 0.7,
-      maxTokens: 1000,
     });
 
     console.log("✅ AI response generated:", {
@@ -168,8 +167,6 @@ async function ensureAvroraMembership(sferaId: string): Promise<void> {
     await db.insert(user).values({
       id: AVRORA_USER_ID,
       email: "avrora@avrora.ai",
-      name: "Avrora",
-      // Add other required user fields based on your schema
     });
     console.log("✅ Avrora user created");
   }

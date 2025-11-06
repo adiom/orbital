@@ -6,14 +6,10 @@ type GroupMessage = {
 };
 
 type GroupMessagesListProps = {
-  chatId: string;
   messages: GroupMessage[];
 };
 
-export function GroupMessagesList({
-  chatId,
-  messages,
-}: GroupMessagesListProps) {
+export function GroupMessagesList({ messages }: GroupMessagesListProps) {
   return (
     <div
       className="group-messages-list"

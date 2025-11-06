@@ -162,12 +162,16 @@ export function SferaSettings({
           {/* Title and Description */}
           <div className="space-y-4">
             <div>
-              <label className="mb-1.5 block font-medium text-gray-700 text-sm">
+              <label
+                className="mb-1.5 block font-medium text-gray-700 text-sm"
+                htmlFor="sfera-title"
+              >
                 Title
               </label>
               <Input
                 className="border-gray-200"
                 disabled={!isOwner}
+                id="sfera-title"
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Sfera title"
                 value={title}
@@ -175,12 +179,16 @@ export function SferaSettings({
             </div>
 
             <div>
-              <label className="mb-1.5 block font-medium text-gray-700 text-sm">
+              <label
+                className="mb-1.5 block font-medium text-gray-700 text-sm"
+                htmlFor="sfera-description"
+              >
                 Description
               </label>
               <Textarea
                 className="min-h-[80px] border-gray-200"
                 disabled={!isOwner}
+                id="sfera-description"
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe what this Sfera is about..."
                 value={description}
@@ -190,9 +198,9 @@ export function SferaSettings({
 
           {/* Members */}
           <div>
-            <label className="mb-2 block font-medium text-gray-700 text-sm">
+            <h3 className="mb-2 block font-medium text-gray-700 text-sm">
               Members ({members.length})
-            </label>
+            </h3>
 
             {/* Add Member */}
             {isOwner && (
@@ -244,6 +252,7 @@ export function SferaSettings({
                     <button
                       className="text-gray-400 transition-colors hover:text-red-600"
                       onClick={() => handleRemoveMember(member.userId)}
+                      type="button"
                     >
                       <X className="h-4 w-4" />
                     </button>

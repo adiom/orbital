@@ -595,7 +595,17 @@ export default function ChatInterface() {
               isStreaming && "opacity-80"
             )}
             onClick={handleInputContainerClick}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                if (textareaRef.current) {
+                  textareaRef.current.focus();
+                }
+              }
+            }}
             ref={inputContainerRef}
+            role="button"
+            tabIndex={0}
           >
             <div className="pb-9">
               <Textarea

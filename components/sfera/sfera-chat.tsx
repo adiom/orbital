@@ -2,11 +2,11 @@
 
 import { ChevronRight, Loader2, Menu, PenSquare, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { SferaMessage } from "./SferaMessage";
-import { SferaMessageInput } from "./SferaMessageInput";
-import { SferaSettings } from "./SferaSettings";
+import { SferaMessageInput } from "./sfera-message-input";
+import { SferaSettings } from "./sfera-settings";
+import { SferaMessage } from "./sfera-message";
 
 type Message = {
   id: string;
@@ -60,7 +60,7 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
-  const fetchSfera = async () => {
+  const fetchSfera = useCallback(async () => {
     try {
       const response = await fetch(`/api/sfera/${sferaId}`);
       if (!response.ok) {
@@ -76,7 +76,7 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [sferaId]);
 
   useEffect(() => {
     fetchSfera();
@@ -141,6 +141,7 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
               <button
                 className="flex items-center gap-1 text-gray-500 text-xs hover:text-gray-700 hover:underline"
                 onClick={() => router.push(`/sfera/${parentSfera.id}`)}
+                type="button"
               >
                 <span>{parentSfera.title}</span>
                 <ChevronRight className="h-3 w-3" />

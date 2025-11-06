@@ -1,23 +1,19 @@
 import { memo } from "react";
 import { toast } from "sonner";
-import { useSWRConfig } from "swr";
 import { useCopyToClipboard } from "usehooks-ts";
 import type { ChatMessage } from "@/lib/types";
 import { Action, Actions } from "./elements/actions";
 import { CopyIcon, PencilEditIcon } from "./icons";
 
 export function PureMessageActions({
-  chatId,
   message,
   isLoading,
   setMode,
 }: {
-  chatId: string;
   message: ChatMessage;
   isLoading: boolean;
   setMode?: (mode: "view" | "edit") => void;
 }) {
-  const { mutate } = useSWRConfig();
   const [_, copyToClipboard] = useCopyToClipboard();
 
   if (isLoading) {

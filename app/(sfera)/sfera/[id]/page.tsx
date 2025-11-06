@@ -1,5 +1,5 @@
 import { auth } from "@/app/(auth)/auth";
-import { SferaChat } from "@/components/sfera/SferaChat";
+import { SferaChat } from "@/components/sfera/sfera-chat";
 
 type PageProps = {
   params: Promise<{ id: string }>;

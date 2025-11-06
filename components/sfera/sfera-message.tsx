@@ -190,7 +190,15 @@ export function SferaMessage({
             isOverflowing && "relative"
           )}
           onClick={() => isOverflowing && setIsExpanded(!isExpanded)}
+          onKeyDown={(e) => {
+            if (isOverflowing && (e.key === "Enter" || e.key === " ")) {
+              e.preventDefault();
+              setIsExpanded(!isExpanded);
+            }
+          }}
           ref={contentRef}
+          role={isOverflowing ? "button" : undefined}
+          tabIndex={isOverflowing ? 0 : undefined}
         >
           {textSegments.map((segment, index) =>
             segment.isMention && segment.mention?.type === "avrora" ? (
@@ -243,6 +251,7 @@ export function SferaMessage({
           className="text-gray-400 transition-colors hover:text-gray-600"
           onClick={handleCopy}
           title="Copy message"
+          type="button"
         >
           <Copy className="h-4 w-4" />
         </button>
@@ -251,6 +260,7 @@ export function SferaMessage({
           className="text-gray-400 transition-colors hover:text-gray-600"
           onClick={onReply}
           title="Reply to this message"
+          type="button"
         >
           <Reply className="h-4 w-4" />
         </button>
@@ -262,6 +272,7 @@ export function SferaMessage({
               className="flex items-center gap-1.5 text-blue-600 transition-colors hover:text-blue-700"
               onClick={handleEnterFork}
               title="Enter forked Sfera"
+              type="button"
             >
               <LogIn className="h-4 w-4" />
               <span className="font-medium text-xs">Enter Fork</span>
@@ -273,6 +284,7 @@ export function SferaMessage({
             disabled={isForking}
             onClick={handleFork}
             title="Fork this message into a new Sfera"
+            type="button"
           >
             <GitBranch className="h-4 w-4" />
             <span className="font-medium text-xs">

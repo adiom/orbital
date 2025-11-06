@@ -4,12 +4,10 @@ type GroupParticipant = {
 };
 
 type GroupParticipantsListProps = {
-  chatId: string;
   participants?: GroupParticipant[];
 };
 
 export function GroupParticipantsList({
-  chatId,
   participants = [],
 }: GroupParticipantsListProps) {
   return (

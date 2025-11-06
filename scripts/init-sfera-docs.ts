@@ -490,13 +490,14 @@ Only owners and admins can access settings.`,
   ],
 };
 
-async function createSferaFromNode(
-  node: SferaNode,
-  userId: string,
-  memberIds: string[],
-  parentMessageId?: string,
-  parentSferaId?: string
-): Promise<string> {
+async function createSferaFromNode(options: {
+  node: SferaNode;
+  userId: string;
+  memberIds: string[];
+  parentMessageId?: string;
+  parentSferaId?: string;
+}): Promise<string> {
+  const { node, userId, memberIds, parentMessageId, parentSferaId } = options;
   console.log(`Creating Sfera: ${node.title}`);
 
   // Create Sfera
@@ -575,13 +576,13 @@ async function createSferaFromNode(
     for (const child of node.children) {
       const messageToFork = messageIds[child.forkFromMessage];
       if (messageToFork) {
-        await createSferaFromNode(
-          child.node,
+        await createSferaFromNode({
+          node: child.node,
           userId,
           memberIds,
-          messageToFork,
-          newSfera.id
-        );
+          parentMessageId: messageToFork,
+          parentSferaId: newSfera.id,
+        });
       }
     }
   }
@@ -621,7 +622,11 @@ async function main() {
 
   // Create documentation structure
   console.log("Creating documentation Sferas...\n");
-  const rootId = await createSferaFromNode(docsStructure, owner.id, memberIds);
+  const rootId = await createSferaFromNode({
+    node: docsStructure,
+    userId: owner.id,
+    memberIds,
+  });
 
   console.log("\n✅ Documentation structure created!");
   console.log(`\nRoot Sfera ID: ${rootId}`);
