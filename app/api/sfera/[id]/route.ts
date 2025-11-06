@@ -83,6 +83,7 @@ export async function GET(request: Request, context: RouteContext) {
         userId: sferaMessage.userId,
         userEmail: user.email,
         parentMessageId: sferaMessage.parentMessageId,
+        attachments: sferaMessage.attachments,
         isForked: sferaMessage.isForked,
         forkedSferaId: sferaForkedSfera.forkedSferaId,
         createdAt: sferaMessage.createdAt,

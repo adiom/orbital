@@ -37,11 +37,12 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const body = await request.json();
-    const { content, parentMessageId } = body;
+    const { content, parentMessageId, attachments = [] } = body;
 
-    if (!content || content.trim() === "") {
+    // Require either content or attachments
+    if ((!content || content.trim() === "") && (!attachments || attachments.length === 0)) {
       return Response.json(
-        { error: "Content is required" },
+        { error: "Content or attachments are required" },
         { status: 400 }
       );
     }
@@ -52,8 +53,9 @@ export async function POST(request: Request, context: RouteContext) {
       .values({
         sferaId,
         userId: session.user.id,
-        content: content.trim(),
+        content: content?.trim() || "",
         parentMessageId: parentMessageId || null,
+        attachments: attachments,
         isForked: false,
         forkCount: 0,
         createdAt: new Date(),

@@ -14,6 +14,11 @@ interface Message {
   userId: string;
   userEmail: string;
   parentMessageId: string | null;
+  attachments?: Array<{
+    name: string;
+    url: string;
+    contentType: string;
+  }>;
   isForked: boolean;
   forkedSferaId: string | null;
   createdAt: Date;

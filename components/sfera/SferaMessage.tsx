@@ -6,6 +6,7 @@ import { GitBranch, LogIn, Copy, Share2, RefreshCcw, Sparkles, CornerDownRight, 
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { segmentTextWithMentions } from "@/lib/mentions/parser";
+import Image from "next/image";
 
 interface SferaMessageProps {
   message: {
@@ -14,6 +15,11 @@ interface SferaMessageProps {
     userId: string;
     userEmail: string;
     parentMessageId: string | null;
+    attachments?: Array<{
+      name: string;
+      url: string;
+      contentType: string;
+    }>;
     isForked: boolean;
     forkedSferaId: string | null;
     createdAt: Date;
@@ -185,6 +191,27 @@ export function SferaMessage({ message, parentMessage, sferaId, onFork, onReply 
             </div>
           )}
         </div>
+
+        {/* Image attachments */}
+        {message.attachments && message.attachments.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {message.attachments.map((attachment, index) => (
+              <div
+                key={index}
+                className="relative w-64 h-48 overflow-hidden rounded-lg border bg-muted cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => window.open(attachment.url, '_blank')}
+              >
+                <Image
+                  alt={attachment.name}
+                  className="object-cover"
+                  fill
+                  src={attachment.url}
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Message Actions */}
