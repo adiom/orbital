@@ -204,12 +204,14 @@ export function SferaMessage({
             segment.isMention && segment.mention?.type === "avrora" ? (
               <span
                 className="rounded bg-blue-100 px-1 font-medium text-blue-700"
-                key={index}
+                key={`mention-${index}-${segment.text.slice(0, 10)}`}
               >
                 {segment.text}
               </span>
             ) : (
-              <span key={index}>{segment.text}</span>
+              <span key={`text-${index}-${segment.text.slice(0, 10)}`}>
+                {segment.text}
+              </span>
             )
           )}
 
@@ -229,8 +231,16 @@ export function SferaMessage({
             {message.attachments.map((attachment, index) => (
               <div
                 className="relative h-48 w-64 cursor-pointer overflow-hidden rounded-lg border bg-muted transition-opacity hover:opacity-90"
-                key={index}
+                key={`attachment-${attachment.url}-${index}`}
                 onClick={() => window.open(attachment.url, "_blank")}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    window.open(attachment.url, "_blank");
+                  }
+                }}
+                role="button"
+                tabIndex={0}
               >
                 <Image
                   alt={attachment.name}

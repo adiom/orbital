@@ -4,9 +4,9 @@ import { ChevronRight, Loader2, Menu, PenSquare, Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { SferaMessage } from "./sfera-message";
 import { SferaMessageInput } from "./sfera-message-input";
 import { SferaSettings } from "./sfera-settings";
-import { SferaMessage } from "./sfera-message";
 
 type Message = {
   id: string;

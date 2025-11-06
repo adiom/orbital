@@ -6,10 +6,12 @@ import { Action, Actions } from "./elements/actions";
 import { CopyIcon, PencilEditIcon } from "./icons";
 
 export function PureMessageActions({
+  chatId: _chatId,
   message,
   isLoading,
   setMode,
 }: {
+  chatId: string;
   message: ChatMessage;
   isLoading: boolean;
   setMode?: (mode: "view" | "edit") => void;

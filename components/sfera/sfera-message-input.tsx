@@ -229,7 +229,7 @@ export function SferaMessageInput({
           {attachments.map((attachment, index) => (
             <div
               className="group relative size-20 overflow-hidden rounded-lg border bg-muted"
-              key={index}
+              key={`preview-${attachment.url}-${index}`}
             >
               <Image
                 alt={attachment.name}
@@ -276,7 +276,14 @@ export function SferaMessageInput({
           isSending && "opacity-80"
         )}
         onClick={handleInputContainerClick}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            handleInputContainerClick();
+          }
+        }}
         ref={inputContainerRef}
+        role="button"
+        tabIndex={0}
       >
         <div className="pb-9">
           <Textarea
