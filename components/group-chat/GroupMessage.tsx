@@ -1,11 +1,9 @@
-import React from "react";
-
-interface GroupMessageProps {
+type GroupMessageProps = {
   userId: string;
   content: string;
   createdAt?: string;
   role?: string;
-}
+};
 
 export function GroupMessage({
   userId,

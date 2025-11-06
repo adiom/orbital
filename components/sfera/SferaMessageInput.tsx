@@ -1,30 +1,30 @@
 "use client";
 
-import { ArrowUp, GitBranch, ImageIcon, Plus, X } from "lucide-react";
+import { ArrowUp, GitBranch, ImageIcon, X } from "lucide-react";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-interface ReplyingToMessage {
+type ReplyingToMessage = {
   id: string;
   content: string;
   userEmail: string;
-}
+};
 
-interface Attachment {
+type Attachment = {
   name: string;
   url: string;
   contentType: string;
-}
+};
 
-interface SferaMessageInputProps {
+type SferaMessageInputProps = {
   sferaId: string;
   replyingTo?: ReplyingToMessage | null;
   onCancelReply?: () => void;
   onMessageSent?: () => void;
-}
+};
 
 export function SferaMessageInput({
   sferaId,
@@ -43,7 +43,9 @@ export function SferaMessageInput({
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0) {
+      return;
+    }
 
     setIsUploading(true);
 
@@ -109,7 +111,9 @@ export function SferaMessageInput({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if ((!content.trim() && attachments.length === 0) || isSending) return;
+    if ((!content.trim() && attachments.length === 0) || isSending) {
+      return;
+    }
 
     // Haptic feedback
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {

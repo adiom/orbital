@@ -5,19 +5,16 @@ import {
   CornerDownRight,
   GitBranch,
   LogIn,
-  RefreshCcw,
   Reply,
-  Share2,
   Sparkles,
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { segmentTextWithMentions } from "@/lib/mentions/parser";
 import { cn } from "@/lib/utils";
 
-interface SferaMessageProps {
+type SferaMessageProps = {
   message: {
     id: string;
     content: string;
@@ -43,7 +40,7 @@ interface SferaMessageProps {
   sferaId: string;
   onFork?: (messageId: string) => void;
   onReply?: () => void;
-}
+};
 
 export function SferaMessage({
   message,
@@ -64,10 +61,12 @@ export function SferaMessage({
       const height = contentRef.current.scrollHeight;
       setIsOverflowing(height > 75);
     }
-  }, [message.content]);
+  }, []);
 
   const handleFork = async () => {
-    if (isForking || message.isForked) return;
+    if (isForking || message.isForked) {
+      return;
+    }
 
     // Haptic feedback
     if (typeof navigator !== "undefined" && "vibrate" in navigator) {

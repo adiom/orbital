@@ -1,8 +1,8 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { auth } from "@/app/(auth)/auth";
 import { generateAvroraResponse } from "@/lib/ai/sfera-avrora";
 import { db } from "@/lib/db";
-import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
+import { sfera, sferaMember, sferaMessage } from "@/lib/db/schema";
 import { hasAvroraMention } from "@/lib/mentions/parser";
 
 type RouteContext = {
@@ -90,7 +90,7 @@ export async function POST(request: Request, context: RouteContext) {
           await generateAvroraResponse(
             sferaId,
             newMessage.id,
-            session.user!.id
+            session.user?.id
           );
         } catch (error) {
           console.error("❌ Failed to generate Avrora response:", error);

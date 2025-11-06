@@ -13,13 +13,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-interface Member {
+type Member = {
   userId: string;
   email: string;
   role: string;
-}
+};
 
-interface SferaSettingsProps {
+type SferaSettingsProps = {
   sferaId: string;
   currentTitle: string;
   currentDescription: string | null;
@@ -28,7 +28,7 @@ interface SferaSettingsProps {
   isOpen: boolean;
   onClose: () => void;
   onUpdate: () => void;
-}
+};
 
 export function SferaSettings({
   sferaId,
@@ -51,7 +51,7 @@ export function SferaSettings({
     setTitle(currentTitle);
     setDescription(currentDescription || "");
     setMembers(currentMembers);
-  }, [currentTitle, currentDescription, currentMembers, isOpen]);
+  }, [currentTitle, currentDescription, currentMembers]);
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -90,7 +90,9 @@ export function SferaSettings({
   };
 
   const handleAddMember = async () => {
-    if (!newMemberEmail.trim()) return;
+    if (!newMemberEmail.trim()) {
+      return;
+    }
 
     setIsAddingMember(true);
     try {
@@ -122,7 +124,9 @@ export function SferaSettings({
   };
 
   const handleRemoveMember = async (userId: string) => {
-    if (!confirm("Are you sure you want to remove this member?")) return;
+    if (!confirm("Are you sure you want to remove this member?")) {
+      return;
+    }
 
     try {
       const response = await fetch(`/api/sfera/${sferaId}/members`, {

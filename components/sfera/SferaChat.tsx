@@ -8,7 +8,7 @@ import { SferaMessage } from "./SferaMessage";
 import { SferaMessageInput } from "./SferaMessageInput";
 import { SferaSettings } from "./SferaSettings";
 
-interface Message {
+type Message = {
   id: string;
   content: string;
   userId: string;
@@ -22,15 +22,15 @@ interface Message {
   isForked: boolean;
   forkedSferaId: string | null;
   createdAt: Date;
-}
+};
 
-interface Member {
+type Member = {
   userId: string;
   email: string;
   role: string;
-}
+};
 
-interface SferaData {
+type SferaData = {
   id: string;
   title: string;
   description: string | null;
@@ -38,17 +38,17 @@ interface SferaData {
   ownerId: string;
   createdAt: Date;
   updatedAt: Date;
-}
+};
 
-interface ParentSfera {
+type ParentSfera = {
   id: string;
   title: string;
-}
+};
 
-interface SferaChatProps {
+type SferaChatProps = {
   sferaId: string;
   currentUserId?: string;
-}
+};
 
 export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
   const router = useRouter();
@@ -80,7 +80,7 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
 
   useEffect(() => {
     fetchSfera();
-  }, [sferaId]);
+  }, [fetchSfera]);
 
   const handleMessageSent = () => {
     // Clear reply state and refresh messages
@@ -88,7 +88,7 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
     fetchSfera();
   };
 
-  const handleFork = (messageId: string) => {
+  const handleFork = (_messageId: string) => {
     // Refresh to update fork status
     fetchSfera();
   };

@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
-interface GroupChatInputProps {
+type GroupChatInputProps = {
   chatId: string;
   userId: string;
   onSend?: (message: string) => void;
-}
+};
 
 export function GroupChatInput({
   chatId,

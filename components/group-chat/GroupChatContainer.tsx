@@ -1,8 +1,8 @@
 import type React from "react";
 
-interface GroupChatContainerProps {
+type GroupChatContainerProps = {
   children: React.ReactNode;
-}
+};
 
 export function GroupChatContainer({ children }: GroupChatContainerProps) {
   return (

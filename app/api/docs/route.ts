@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-export async function GET() {
+export function GET() {
   const spec = {
     openapi: "3.0.0",
     info: {

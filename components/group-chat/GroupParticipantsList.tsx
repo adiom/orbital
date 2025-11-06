@@ -1,14 +1,12 @@
-import React from "react";
-
-interface GroupParticipant {
+type GroupParticipant = {
   userId: string;
   role: string;
-}
+};
 
-interface GroupParticipantsListProps {
+type GroupParticipantsListProps = {
   chatId: string;
   participants?: GroupParticipant[];
-}
+};
 
 export function GroupParticipantsList({
   chatId,

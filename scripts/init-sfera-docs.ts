@@ -17,7 +17,7 @@ import {
 const OWNER_EMAIL = "your-email@example.com"; // Replace with your email
 const TEAM_EMAILS = ["team@example.com"]; // Replace with team member emails
 
-interface SferaNode {
+type SferaNode = {
   title: string;
   description: string;
   messages: string[];
@@ -25,7 +25,7 @@ interface SferaNode {
     forkFromMessage: number; // index of message to fork from
     node: SferaNode;
   }[];
-}
+};
 
 // Documentation structure
 const docsStructure: SferaNode = {

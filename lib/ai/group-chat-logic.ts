@@ -51,6 +51,11 @@ export function analyzeGroupChatContext(
 
   const lastMessage = messages.at(-1);
 
+  // Don't respond if no last message
+  if (!lastMessage) {
+    return { shouldRespond: false };
+  }
+
   // Don't respond to AI's own messages
   if (lastMessage.role === "assistant") {
     return { shouldRespond: false };

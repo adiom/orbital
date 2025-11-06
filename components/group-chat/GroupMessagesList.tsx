@@ -1,16 +1,14 @@
-import React from "react";
-
-interface GroupMessage {
+type GroupMessage = {
   id: string;
   userId: string;
   content: string;
   createdAt?: string;
-}
+};
 
-interface GroupMessagesListProps {
+type GroupMessagesListProps = {
   chatId: string;
   messages: GroupMessage[];
-}
+};
 
 export function GroupMessagesList({
   chatId,

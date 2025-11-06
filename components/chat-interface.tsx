@@ -24,26 +24,26 @@ import { cn } from "@/lib/utils";
 type ActiveButton = "none" | "add" | "deepSearch" | "think";
 type MessageType = "user" | "system";
 
-interface Message {
+type Message = {
   id: string;
   content: string;
   type: MessageType;
   completed?: boolean;
   newSection?: boolean;
-}
+};
 
-interface MessageSection {
+type MessageSection = {
   id: string;
   messages: Message[];
   isNewSection: boolean;
   isActive?: boolean;
   sectionIndex: number;
-}
+};
 
-interface StreamingWord {
+type StreamingWord = {
   id: number;
   text: string;
-}
+};
 
 // Faster word delay for smoother streaming
 const WORD_DELAY = 40; // ms per word
@@ -69,9 +69,9 @@ export default function ChatInterface() {
   const [completedMessages, setCompletedMessages] = useState<Set<string>>(
     new Set()
   );
-  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [_activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
-  const shouldFocusAfterStreamingRef = useRef(false);
+  const _shouldFocusAfterStreamingRef = useRef(false);
   const mainContainerRef = useRef<HTMLDivElement>(null);
   // Store selection state
   const selectionStateRef = useRef<{
@@ -80,8 +80,8 @@ export default function ChatInterface() {
   }>({ start: null, end: null });
 
   // Constants for layout calculations to account for the padding values
-  const HEADER_HEIGHT = 48; // 12px height + padding
-  const INPUT_AREA_HEIGHT = 100; // Approximate height of input area with padding
+  const _HEADER_HEIGHT = 48; // 12px height + padding
+  const _INPUT_AREA_HEIGHT = 100; // Approximate height of input area with padding
   const TOP_PADDING = 48; // pt-12 (3rem = 48px)
   const BOTTOM_PADDING = 128; // pb-32 (8rem = 128px)
   const ADDITIONAL_OFFSET = 16; // Reduced offset for fine-tuning
@@ -135,7 +135,7 @@ export default function ChatInterface() {
       sectionIndex: 0,
     };
 
-    messages.forEach((message) => {
+    for (const message of messages) {
       if (message.newSection) {
         // Start a new section
         if (currentSection.messages.length > 0) {
@@ -162,7 +162,7 @@ export default function ChatInterface() {
         // Add to current section
         currentSection.messages.push(message);
       }
-    });
+    }
 
     // Add the last section if it has messages
     if (currentSection.messages.length > 0) {
@@ -195,14 +195,6 @@ export default function ChatInterface() {
       textareaRef.current.focus();
     }
   }, [isMobile]);
-
-  // Set focus back to textarea after streaming ends (only on desktop)
-  useEffect(() => {
-    if (!isStreaming && shouldFocusAfterStreamingRef.current && !isMobile) {
-      focusTextarea();
-      shouldFocusAfterStreamingRef.current = false;
-    }
-  }, [isStreaming, isMobile]);
 
   // Calculate available content height (viewport minus header and input)
   const getContentHeight = () => {
@@ -253,7 +245,7 @@ export default function ChatInterface() {
     }
   };
 
-  const simulateTextStreaming = async (text: string) => {
+  const simulateTextStreaming = (text: string) => {
     // Split text into words
     const words = text.split(" ");
     let currentIndex = 0;
@@ -271,7 +263,7 @@ export default function ChatInterface() {
             ...prev,
             {
               id: Date.now() + currentIndex,
-              text: newWords.join(" ") + " ",
+              text: `${newWords.join(" ")} `,
             },
           ]);
 
@@ -284,7 +276,7 @@ export default function ChatInterface() {
     });
   };
 
-  const getAIResponse = (userMessage: string) => {
+  const getAIResponse = (_userMessage: string) => {
     const responses = [
       `That's an interesting perspective. Let me elaborate on that a bit further. When we consider the implications of what you've shared, several key points come to mind. First, it's important to understand the context and how it relates to broader concepts. This allows us to develop a more comprehensive understanding of the situation. Would you like me to explore any specific aspect of this in more detail?`,
 
@@ -493,19 +485,34 @@ export default function ChatInterface() {
         {/* Message actions */}
         {message.type === "system" && message.completed && (
           <div className="mt-1 mb-2 flex items-center gap-2 px-4">
-            <button className="text-gray-400 transition-colors hover:text-gray-600">
+            <button
+              className="text-gray-400 transition-colors hover:text-gray-600"
+              type="button"
+            >
               <RefreshCcw className="h-4 w-4" />
             </button>
-            <button className="text-gray-400 transition-colors hover:text-gray-600">
+            <button
+              className="text-gray-400 transition-colors hover:text-gray-600"
+              type="button"
+            >
               <Copy className="h-4 w-4" />
             </button>
-            <button className="text-gray-400 transition-colors hover:text-gray-600">
+            <button
+              className="text-gray-400 transition-colors hover:text-gray-600"
+              type="button"
+            >
               <Share2 className="h-4 w-4" />
             </button>
-            <button className="text-gray-400 transition-colors hover:text-gray-600">
+            <button
+              className="text-gray-400 transition-colors hover:text-gray-600"
+              type="button"
+            >
               <ThumbsUp className="h-4 w-4" />
             </button>
-            <button className="text-gray-400 transition-colors hover:text-gray-600">
+            <button
+              className="text-gray-400 transition-colors hover:text-gray-600"
+              type="button"
+            >
               <ThumbsDown className="h-4 w-4" />
             </button>
           </div>

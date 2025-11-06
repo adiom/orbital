@@ -114,7 +114,7 @@ Sfera Context:
 
     console.log("✅ AI response generated:", {
       length: text.length,
-      preview: text.substring(0, 100) + "...",
+      preview: `${text.substring(0, 100)}...`,
     });
 
     // Ensure Avrora is a member of the Sfera

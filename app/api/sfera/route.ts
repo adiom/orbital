@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { sfera, sferaForkedSfera, sferaMember, user } from "@/lib/db/schema";
 
 // GET /api/sfera - List all Sferas for current user with fork relationships
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   const session = await auth();
 
   if (!session || !session.user) {

@@ -2,10 +2,10 @@
 
 import { GitBranch, Loader2, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-interface Sfera {
+type Sfera = {
   id: string;
   title: string;
   description: string | null;
@@ -13,19 +13,19 @@ interface Sfera {
   role: string;
   createdAt: Date;
   updatedAt: Date;
-}
+};
 
-interface ForkRelationship {
+type ForkRelationship = {
   parentSferaId: string;
   forkedSferaId: string;
   createdAt: Date;
-}
+};
 
-interface NodePosition {
+type NodePosition = {
   x: number;
   y: number;
   id: string;
-}
+};
 
 export default function SferasPage() {
   const router = useRouter();
@@ -40,11 +40,7 @@ export default function SferasPage() {
   );
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchSferas();
-  }, []);
-
-  const fetchSferas = async () => {
+  const fetchSferas = useCallback(async () => {
     try {
       const response = await fetch("/api/sfera");
       if (!response.ok) {
@@ -58,30 +54,36 @@ export default function SferasPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchSferas();
+  }, [fetchSferas]);
 
   // Build tree structure
-  const buildTree = () => {
+  const buildTree = useCallback(() => {
     const childrenMap = new Map<string, string[]>();
     const parentMap = new Map<string, string>();
 
-    forkRelationships.forEach((rel) => {
+    for (const rel of forkRelationships) {
       if (!childrenMap.has(rel.parentSferaId)) {
         childrenMap.set(rel.parentSferaId, []);
       }
-      childrenMap.get(rel.parentSferaId)!.push(rel.forkedSferaId);
+      childrenMap.get(rel.parentSferaId)?.push(rel.forkedSferaId);
       parentMap.set(rel.forkedSferaId, rel.parentSferaId);
-    });
+    }
 
     // Find root nodes (nodes without parents)
     const roots = sferas.filter((s) => !parentMap.has(s.id));
 
     return { childrenMap, parentMap, roots };
-  };
+  }, [forkRelationships, sferas]);
 
   // Calculate node positions using force-directed layout
   useEffect(() => {
-    if (sferas.length === 0) return;
+    if (sferas.length === 0) {
+      return;
+    }
 
     const { parentMap, roots } = buildTree();
     const positions = new Map<string, NodePosition>();
@@ -91,7 +93,8 @@ export default function SferasPage() {
 
     if (roots.length === 0 && sferas.length > 0) {
       // No tree structure, use circular layout
-      sferas.forEach((sfera, index) => {
+      for (let index = 0; index < sferas.length; index++) {
+        const sfera = sferas[index];
         const angle = (index / sferas.length) * 2 * Math.PI;
         const radius = Math.min(containerWidth, containerHeight) * 0.35;
         positions.set(sfera.id, {
@@ -99,51 +102,61 @@ export default function SferasPage() {
           x: containerWidth / 2 + radius * Math.cos(angle),
           y: containerHeight / 2 + radius * Math.sin(angle),
         });
-      });
+      }
     } else {
       // Tree layout
       const levels = new Map<string, number>();
       const getLevel = (id: string): number => {
-        if (levels.has(id)) return levels.get(id)!;
+        const cachedLevel = levels.get(id);
+        if (cachedLevel !== undefined) {
+          return cachedLevel;
+        }
         const parent = parentMap.get(id);
         const level = parent ? getLevel(parent) + 1 : 0;
         levels.set(id, level);
         return level;
       };
 
-      sferas.forEach((s) => getLevel(s.id));
+      for (const s of sferas) {
+        getLevel(s.id);
+      }
       const maxLevel = Math.max(...Array.from(levels.values()));
 
       // Group by level
       const levelGroups = new Map<number, string[]>();
-      sferas.forEach((s) => {
+      for (const s of sferas) {
         const level = levels.get(s.id) || 0;
         if (!levelGroups.has(level)) {
           levelGroups.set(level, []);
         }
-        levelGroups.get(level)!.push(s.id);
-      });
+        levelGroups.get(level)?.push(s.id);
+      }
 
       // Position nodes
-      levelGroups.forEach((ids, level) => {
+      for (const [level, ids] of levelGroups) {
         const y = (level / (maxLevel || 1)) * (containerHeight - 100) + 50;
-        ids.forEach((id, index) => {
+        for (let index = 0; index < ids.length; index++) {
+          const id = ids[index];
           const x = ((index + 1) / (ids.length + 1)) * containerWidth;
           positions.set(id, { id, x, y });
-        });
-      });
+        }
+      }
     }
 
     setNodePositions(positions);
-  }, [sferas, forkRelationships]);
+  }, [sferas, buildTree]);
 
   // Draw canvas
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || nodePositions.size === 0) return;
+    if (!canvas || nodePositions.size === 0) {
+      return;
+    }
 
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) {
+      return;
+    }
 
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
@@ -158,7 +171,7 @@ export default function SferasPage() {
     // Draw connections
     ctx.strokeStyle = "#e5e7eb";
     ctx.lineWidth = 2;
-    forkRelationships.forEach((rel) => {
+    for (const rel of forkRelationships) {
       const parent = nodePositions.get(rel.parentSferaId);
       const child = nodePositions.get(rel.forkedSferaId);
       if (parent && child) {
@@ -189,12 +202,14 @@ export default function SferasPage() {
         ctx.fillStyle = "#e5e7eb";
         ctx.fill();
       }
-    });
+    }
   }, [nodePositions, forkRelationships]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      return;
+    }
 
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -212,13 +227,15 @@ export default function SferasPage() {
 
   const handleCanvasMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) {
+      return;
+    }
 
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    let foundHover = null;
+    let foundHover: string | null = null;
     for (const [id, pos] of nodePositions) {
       const distance = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
       if (distance < 40) {
@@ -303,7 +320,9 @@ export default function SferasPage() {
           {/* Node overlays */}
           {Array.from(nodePositions.entries()).map(([id, pos]) => {
             const sfera = sferas.find((s) => s.id === id);
-            if (!sfera) return null;
+            if (!sfera) {
+              return null;
+            }
 
             const isHovered = hoveredNode === id;
             const childCount = forkRelationships.filter(
@@ -320,14 +339,21 @@ export default function SferasPage() {
                   transform: "translate(-50%, -50%)",
                 }}
               >
-                <div
+                <button
                   className={`pointer-events-auto relative cursor-pointer rounded-2xl border-2 bg-white shadow-lg transition-all duration-200 ${isHovered ? "scale-110 border-blue-500 shadow-xl" : "border-gray-200"}
                   `}
                   onClick={() => router.push(`/sfera/${id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(`/sfera/${id}`);
+                    }
+                  }}
                   style={{
                     width: "160px",
                     padding: "12px",
                   }}
+                  type="button"
                 >
                   {/* Role badge */}
                   <div className="-top-2 -right-2 absolute rounded-full bg-blue-600 px-2 py-0.5 font-medium text-[10px] text-white">
@@ -349,7 +375,7 @@ export default function SferasPage() {
                       </div>
                     )}
                   </div>
-                </div>
+                </button>
               </div>
             );
           })}

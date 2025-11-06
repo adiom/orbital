@@ -30,7 +30,9 @@ export default function NewSferaPage() {
 
   const handleAddMember = () => {
     const email = newMemberEmail.trim();
-    if (!email) return;
+    if (!email) {
+      return;
+    }
 
     // Basic email validation
     if (!email.includes("@")) {

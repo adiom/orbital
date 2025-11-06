@@ -27,7 +27,7 @@ async function checkSferaMembership(sferaId: string, userId: string) {
 }
 
 // GET /api/sfera/[id] - Get Sfera details with messages
-export async function GET(request: Request, context: RouteContext) {
+export async function GET(_request: Request, context: RouteContext) {
   const session = await auth();
 
   if (!session || !session.user) {
@@ -140,9 +140,15 @@ export async function PUT(request: Request, context: RouteContext) {
       updatedAt: new Date(),
     };
 
-    if (title) updateData.title = title;
-    if (description !== undefined) updateData.description = description;
-    if (visibility) updateData.visibility = visibility;
+    if (title) {
+      updateData.title = title;
+    }
+    if (description !== undefined) {
+      updateData.description = description;
+    }
+    if (visibility) {
+      updateData.visibility = visibility;
+    }
 
     const [updatedSfera] = await db
       .update(sfera)
@@ -158,7 +164,7 @@ export async function PUT(request: Request, context: RouteContext) {
 }
 
 // DELETE /api/sfera/[id] - Delete Sfera
-export async function DELETE(request: Request, context: RouteContext) {
+export async function DELETE(_request: Request, context: RouteContext) {
   const session = await auth();
 
   if (!session || !session.user) {

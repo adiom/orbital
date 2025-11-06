@@ -1,9 +1,7 @@
-import React from "react";
-
-interface GroupChatHeaderProps {
+type GroupChatHeaderProps = {
   area?: { title?: string };
   chat?: { title?: string };
-}
+};
 
 export function GroupChatHeader({ area, chat }: GroupChatHeaderProps) {
   return (
