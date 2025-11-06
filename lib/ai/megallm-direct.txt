@@ -1,0 +1,108 @@
+/**
+ * Calls MegaLLM API directly with image support
+ */
+export async function callMegaLLMWithImages(params: {
+  model: string;
+  messages: ChatMessage[];
+  systemPrompt?: string;
+  maxTokens?: number;
+  apiKey: string;
+}): Promise<Response> {
+  const { model, messages, systemPrompt, maxTokens = 4096, apiKey } = params;
+
+  // Convert messages to MegaLLM format with base64 images
+  const megallmMessages = await convertToMegaLLMMessages(messages);
+
+  const requestBody: any = {
+    model,
+    max_tokens: maxTokens,
+    messages: megallmMessages,
+    stream: true, // Enable streaming
+  };
+
+  // Add system prompt if provided
+  if (systemPrompt) {
+    requestBody.system = systemPrompt;
+  }
+
+  console.log("MegaLLM API Request:", JSON.stringify(requestBody, null, 2));
+
+  const response = await fetch("https://api.megallm.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("MegaLLM API Error:", response.status, errorText);
+    throw new Error(`MegaLLM API error: ${response.status} ${errorText}`);
+  }
+
+  return response;
+}
+
+/**
+ * Parses streaming response from MegaLLM API
+ */
+export function parseMegaLLMStream(response: Response): ReadableStream<Uint8Array> {
+  return response.body!;
+}
+
+/**
+ * Converts UI messages to MegaLLM API format with base64 images
+ */
+export async function convertToMegaLLMMessages(
+  messages: ChatMessage[]
+): Promise<MegaLLMMessage[]> {
+  const converted: MegaLLMMessage[] = [];
+
+  for (const message of messages) {
+    const content: MegaLLMContentPart[] = [];
+
+    for (const part of message.parts) {
+      // Handle text parts
+      if (part.type === "text" && part.text) {
+        content.push({
+          type: "text",
+          text: part.text,
+        });
+      }
+      // Handle file/image parts
+      else if (part.type === "file" && part.url && part.mediaType) {
+        if (isImagePart(part)) {
+          try {
+            // Convert image URL to base64
+            const base64Data = await imageUrlToBase64(part.url);
+            const mediaType = getMediaType(part.mediaType);
+
+            content.push({
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: mediaType,
+                data: base64Data,
+              },
+            });
+          } catch (error) {
+            console.error("Error converting image to base64:", error);
+            // Skip image if conversion fails
+          }
+        }
+      }
+      // Skip other part types that aren't supported
+    }
+
+    if (content.length > 0) {
+      converted.push({
+        role: message.role,
+        content,
+      });
+    }
+  }
+
+  return converted;
+}

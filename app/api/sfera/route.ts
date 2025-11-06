@@ -32,7 +32,11 @@ export async function GET(request: Request) {
     // Get fork relationships for these Sferas
     const sferaIds = userSferas.map(s => s.id);
 
-    let forkRelationships = [];
+    let forkRelationships: {
+  parentSferaId: string;
+  forkedSferaId: string;
+  createdAt: Date;
+}[] = [];
     if (sferaIds.length > 0) {
       forkRelationships = await db
         .select({

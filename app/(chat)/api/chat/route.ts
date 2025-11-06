@@ -19,8 +19,8 @@ import { getUsage } from "tokenlens/helpers";
 import { auth, type UserType } from "@/app/(auth)/auth";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
-import { callMegaLLMWithImages, hasImages } from "@/lib/ai/megallm-direct";
-import { parseMegaLLMStream } from "@/lib/ai/megallm-stream-parser";
+//import { callMegaLLMWithImages, hasImages } from "@/lib/ai/megallm-direct";
+//import { parseMegaLLMStream } from "@/lib/ai/megallm-stream-parser";
 import type { ChatModel } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
@@ -237,14 +237,14 @@ export async function POST(request: Request) {
     let errorMessage = "An error occurred during response generation.";
 
     // Check if messages contain images
-    const containsImages = hasImages(uiMessages);
+    //const containsImages = hasImages(uiMessages);
 
     console.log("=== DEBUG: Message Analysis ===");
-    console.log("Contains Images:", containsImages);
+    //console.log("Contains Images:", containsImages);
     console.log("UIMessages:", JSON.stringify(uiMessages, null, 2));
     console.log("================================");
 
-    // Use custom MegaLLM API for messages with images (temporary workaround)
+    /* Use custom MegaLLM API for messages with images (temporary workaround)
     if (containsImages) {
       console.log("Using custom MegaLLM API for image support");
 
@@ -263,7 +263,7 @@ export async function POST(request: Request) {
             };
             const modelId = modelIdMap[selectedChatModel] || "gpt-4o-mini";
 
-            // Call MegaLLM API with images
+            /* Call MegaLLM API with images
             const response = await callMegaLLMWithImages({
               model: modelId,
               messages: uiMessages,
@@ -350,7 +350,7 @@ export async function POST(request: Request) {
 
       return new Response(stream.pipeThrough(new JsonToSseTransformStream()));
     }
-
+    */
     // Standard flow for text-only messages
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
