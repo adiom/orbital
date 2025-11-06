@@ -38,7 +38,7 @@ export function SferaMessageInput({
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const inputContainerRef = useRef<HTMLDivElement>(null);
+  const inputContainerRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,9 +189,9 @@ export function SferaMessageInput({
     }
   };
 
-  const handleInputContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (
-      (e.target === e.currentTarget ||
+  const handleInputContainerClick = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    if ((!e ||
+        e.target === e.currentTarget ||
         (e.currentTarget === inputContainerRef.current &&
           !(e.target as HTMLElement).closest("button"))) &&
       textareaRef.current
@@ -270,7 +270,8 @@ export function SferaMessageInput({
         type="file"
       />
 
-      <div
+      <button
+        type="button"
         className={cn(
           "relative w-full cursor-text rounded-3xl border border-gray-200 bg-white p-3",
           isSending && "opacity-80"
@@ -282,8 +283,6 @@ export function SferaMessageInput({
           }
         }}
         ref={inputContainerRef}
-        role="button"
-        tabIndex={0}
       >
         <div className="pb-9">
           <Textarea
@@ -349,7 +348,7 @@ export function SferaMessageInput({
             </Button>
           </div>
         </div>
-      </div>
+      </button>
     </form>
   );
 }

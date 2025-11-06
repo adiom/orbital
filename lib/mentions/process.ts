@@ -45,18 +45,18 @@ export async function processMentions(
  */
 export async function getMessageMentions(messageId: string): Promise<
   Array<{
-    id: string;
-    mentionType: string;
-    mentionText: string;
+    messageId: string;
     mentionedUserId: string | null;
+    isAiMention: boolean;
+    createdAt: Date;
   }>
 > {
   const mentions = await db
     .select({
-      id: messageMention.id,
-      mentionType: messageMention.mentionType,
-      mentionText: messageMention.mentionText,
+      messageId: messageMention.messageId,
       mentionedUserId: messageMention.mentionedUserId,
+      isAiMention: messageMention.isAiMention,
+      createdAt: messageMention.createdAt,
     })
     .from(messageMention)
     .where(eq(messageMention.messageId, messageId));

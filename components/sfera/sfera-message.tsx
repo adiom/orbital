@@ -52,7 +52,7 @@ export function SferaMessage({
   const router = useRouter();
   const [isForking, setIsForking] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLButtonElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
 
   // Check if content is overflowing 75px
@@ -181,7 +181,8 @@ export function SferaMessage({
         )}
 
         {/* Message Content with highlighted mentions */}
-        <div
+        <button
+          type="button"
           className={cn(
             "whitespace-pre-wrap text-[15px] text-gray-900 leading-relaxed transition-all duration-200",
             isOverflowing &&
@@ -197,8 +198,6 @@ export function SferaMessage({
             }
           }}
           ref={contentRef}
-          role={isOverflowing ? "button" : undefined}
-          tabIndex={isOverflowing ? 0 : undefined}
         >
           {textSegments.map((segment, index) =>
             segment.isMention && segment.mention?.type === "avrora" ? (
@@ -223,13 +222,14 @@ export function SferaMessage({
               </span>
             </div>
           )}
-        </div>
+        </button>
 
         {/* Image attachments */}
         {message.attachments && message.attachments.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
             {message.attachments.map((attachment, index) => (
-              <div
+              <button
+                type="button"
                 className="relative h-48 w-64 cursor-pointer overflow-hidden rounded-lg border bg-muted transition-opacity hover:opacity-90"
                 key={`attachment-${attachment.url}-${index}`}
                 onClick={() => window.open(attachment.url, "_blank")}
@@ -239,8 +239,6 @@ export function SferaMessage({
                     window.open(attachment.url, "_blank");
                   }
                 }}
-                role="button"
-                tabIndex={0}
               >
                 <Image
                   alt={attachment.name}
@@ -249,7 +247,7 @@ export function SferaMessage({
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   src={attachment.url}
                 />
-              </div>
+              </button>
             ))}
           </div>
         )}
