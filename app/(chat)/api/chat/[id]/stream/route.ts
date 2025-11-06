@@ -10,6 +10,9 @@ import type { Chat } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
 import type { ChatMessage } from "@/lib/types";
 import { getStreamContext } from "../../route";
+import { db } from "@/lib/db";
+import { chatMember } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 
 export async function GET(
   _: Request,
@@ -46,26 +49,55 @@ export async function GET(
     return new ChatSDKError("not_found:chat").toResponse();
   }
 
-  if (chat.visibility === "private" && chat.userId !== session.user.id) {
+  // Check access for private chats
+  let hasAccess = chat.userId === session.user.id; // Owner always has access
+
+  // For group chats, check membership
+  if (chat.chatType === "group" && session?.user?.id) {
+    const [membership] = await db
+      .select()
+      .from(chatMember)
+      .where(
+        and(
+          eq(chatMember.chatId, chat.id),
+          eq(chatMember.userId, session.user.id)
+        )
+      );
+
+    // If user is a member of the group chat, they have access
+    if (membership) {
+      hasAccess = true;
+    }
+  }
+
+  if (chat.visibility === "private" && !hasAccess) {
     return new ChatSDKError("forbidden:chat").toResponse();
-  }
-
-  const streamIds = await getStreamIdsByChatId({ chatId });
-
-  if (!streamIds.length) {
-    return new ChatSDKError("not_found:stream").toResponse();
-  }
-
-  const recentStreamId = streamIds.at(-1);
-
-  if (!recentStreamId) {
-    return new ChatSDKError("not_found:stream").toResponse();
   }
 
   const emptyDataStream = createUIMessageStream<ChatMessage>({
     // biome-ignore lint/suspicious/noEmptyBlockStatements: "Needs to exist"
     execute: () => {},
   });
+
+  const streamIds = await getStreamIdsByChatId({ chatId });
+
+  // If no stream exists, return empty stream with 200 status
+  // This prevents blocking the UI when autoResume tries to resume a non-existent stream
+  if (!streamIds.length) {
+    return new Response(
+      emptyDataStream.pipeThrough(new JsonToSseTransformStream()),
+      { status: 200 }
+    );
+  }
+
+  const recentStreamId = streamIds.at(-1);
+
+  if (!recentStreamId) {
+    return new Response(
+      emptyDataStream.pipeThrough(new JsonToSseTransformStream()),
+      { status: 200 }
+    );
+  }
 
   const stream = await streamContext.resumableStream(recentStreamId, () =>
     emptyDataStream.pipeThrough(new JsonToSseTransformStream())

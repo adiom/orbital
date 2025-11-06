@@ -246,6 +246,7 @@ export function Weather({
   });
 
   const [isMobile, setIsMobile] = useState(false);
+  const [currentHour, setCurrentHour] = useState<number | null>(null);
 
   useEffect(() => {
     const handleResize = () => {
@@ -256,6 +257,11 @@ export function Weather({
     window.addEventListener("resize", handleResize);
 
     return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    // Set current hour only on client to avoid hydration mismatch
+    setCurrentHour(new Date().getHours());
   }, []);
 
   const hoursToShow = isMobile ? 5 : 6;
@@ -330,7 +336,7 @@ export function Weather({
           <div className="flex justify-between gap-2">
             {displayTimes.map((time, index) => {
               const hourTime = new Date(time);
-              const isCurrentHour = hourTime.getHours() === new Date().getHours();
+              const isCurrentHour = currentHour !== null && hourTime.getHours() === currentHour;
               
               return (
                 <div 

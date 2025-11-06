@@ -55,13 +55,12 @@ export function CreateGroupChatDialog({ areaId }: CreateGroupChatDialogProps) {
 
       const data = await response.json();
 
-      // Close dialog and refresh
+      // Close dialog and reset form
       setOpen(false);
       setTitle("");
-      router.refresh();
 
-      // Optionally navigate to the new chat
-      // router.push(`/chat/${data.chat.id}`);
+      // Navigate to the new chat
+      router.push(`/area/${areaId}/chat/${data.chat.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create chat");
     } finally {

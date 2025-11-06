@@ -299,12 +299,13 @@ function PureMultimodalInput({
         )}
 
       <input
-        className="-top-4 -left-4 pointer-events-none fixed size-0.5 opacity-0"
+        className="sr-only"
         multiple
         onChange={handleFileChange}
         ref={fileInputRef}
         tabIndex={-1}
         type="file"
+        accept="image/*,video/*,audio/*,application/pdf,text/*"
       />
 
       <PromptInput

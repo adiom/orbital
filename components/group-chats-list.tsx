@@ -72,7 +72,7 @@ export function GroupChatsList({ areaId }: GroupChatsListProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {chats.map((chat) => (
-        <Link key={chat.id} href={`/chat/${chat.id}`}>
+        <Link key={chat.id} href={`/area/${areaId}/chat/${chat.id}`}>
           <Card className="hover:bg-accent transition-colors cursor-pointer h-full">
             <CardHeader>
               <div className="flex items-start justify-between">

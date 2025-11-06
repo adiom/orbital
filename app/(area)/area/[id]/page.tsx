@@ -25,12 +25,15 @@ export default async function AreaPage({
     notFound();
   }
 
+  // Get members (but don't require membership - all areas are open)
   const members = await getAreaMembers({ areaId: id });
   const userMember = members.find((m) => m.userId === session.user.id);
 
-  if (!userMember) {
-    redirect("/areas");
-  }
+  // For now, all users can access all areas (open access)
+  // If you want to enforce membership later, uncomment:
+  // if (!userMember) {
+  //   redirect("/areas");
+  // }
 
   return (
     <div className="flex h-screen">
@@ -67,7 +70,7 @@ export default async function AreaPage({
                 <span>{members.length}</span>
               </button>
 
-              {["owner", "admin"].includes(userMember.role) && (
+              {userMember && ["owner", "admin"].includes(userMember.role) && (
                 <AreaSettingsSheet
                   areaId={id}
                   members={members}

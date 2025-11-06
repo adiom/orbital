@@ -7,9 +7,6 @@ import { DataStreamHandler } from "@/components/data-stream-handler";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { getChatById, getMessagesByChatId } from "@/lib/db/queries";
 import { convertToUIMessages } from "@/lib/utils";
-import { db } from "@/lib/db";
-import { chatMember } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -26,13 +23,28 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     redirect("/api/auth/guest");
   }
 
-  if (chat.visibility === "private") {
-    if (!session.user) {
-      return notFound();
-    }
+  // For group chats, all users can read and write (public access for now)
+  let isReadonly = false;
+  let hasAccess = true;
 
-    if (session.user.id !== chat.userId) {
-      return notFound();
+  if (chat.chatType === "group") {
+    // All group chats are open - anyone can participate
+    isReadonly = false;
+    hasAccess = true;
+  } else {
+    // For non-group chats, check ownership
+    isReadonly = session?.user?.id !== chat.userId;
+    hasAccess = session.user?.id === chat.userId;
+
+    // Check access for private chats
+    if (chat.visibility === "private") {
+      if (!session.user) {
+        return notFound();
+      }
+
+      if (!hasAccess) {
+        return notFound();
+      }
     }
   }
 
@@ -41,26 +53,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   });
 
   const uiMessages = convertToUIMessages(messagesFromDb);
-
-  // For group chats, check if user is a member
-  let isReadonly = session?.user?.id !== chat.userId; // Default: only owner can write
-
-  if (chat.chatType === "group" && session?.user?.id) {
-    const [membership] = await db
-      .select()
-      .from(chatMember)
-      .where(
-        and(
-          eq(chatMember.chatId, chat.id),
-          eq(chatMember.userId, session.user.id)
-        )
-      );
-
-    // If user is a member of the group chat, they can write
-    if (membership) {
-      isReadonly = false;
-    }
-  }
 
   const cookieStore = await cookies();
   const chatModelFromCookie = cookieStore.get("chat-model");
@@ -76,6 +68,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           initialMessages={uiMessages}
           initialVisibilityType={chat.visibility}
           isReadonly={isReadonly}
+          areaId={chat.areaId}
+          chatType={chat.chatType}
         />
         <DataStreamHandler />
       </>
@@ -92,6 +86,8 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         initialMessages={uiMessages}
         initialVisibilityType={chat.visibility}
         isReadonly={isReadonly}
+        areaId={chat.areaId}
+        chatType={chat.chatType}
       />
       <DataStreamHandler />
     </>

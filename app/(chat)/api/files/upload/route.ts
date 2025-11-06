@@ -8,13 +8,39 @@ import { auth } from "@/app/(auth)/auth";
 const FileSchema = z.object({
   file: z
     .instanceof(Blob)
-    .refine((file) => file.size <= 5 * 1024 * 1024, {
-      message: "File size should be less than 5MB",
+    .refine((file) => file.size <= 10 * 1024 * 1024, {
+      message: "File size should be less than 10MB",
     })
-    // Update the file type based on the kind of files you want to accept
-    .refine((file) => ["image/jpeg", "image/png"].includes(file.type), {
-      message: "File type should be JPEG or PNG",
-    }),
+    .refine(
+      (file) => {
+        const allowedTypes = [
+          // Images
+          "image/jpeg",
+          "image/png",
+          "image/gif",
+          "image/webp",
+          "image/svg+xml",
+          // Documents
+          "application/pdf",
+          "text/plain",
+          "text/markdown",
+          "text/csv",
+          // Videos
+          "video/mp4",
+          "video/webm",
+          "video/quicktime",
+          // Audio
+          "audio/mpeg",
+          "audio/wav",
+          "audio/webm",
+          "audio/ogg",
+        ];
+        return allowedTypes.includes(file.type);
+      },
+      {
+        message: "File type not supported. Supported types: images (JPEG, PNG, GIF, WebP, SVG), documents (PDF, TXT, MD, CSV), videos (MP4, WebM, MOV), audio (MP3, WAV, WebM, OGG)",
+      }
+    ),
 });
 
 export async function POST(request: Request) {

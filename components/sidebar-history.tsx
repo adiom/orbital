@@ -4,7 +4,7 @@ import { isToday, isYesterday, subMonths, subWeeks } from "date-fns";
 import { motion } from "framer-motion";
 import { useParams, useRouter } from "next/navigation";
 import type { User } from "next-auth";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import useSWRInfinite from "swr/infinite";
 import {
@@ -111,6 +111,17 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     fallbackData: [],
   });
 
+  const chatsFromHistory = useMemo(() => {
+    if (!paginatedChatHistories) return [];
+    return paginatedChatHistories.flatMap(
+      (paginatedChatHistory) => paginatedChatHistory.chats
+    );
+  }, [paginatedChatHistories]);
+
+  const groupedChats = useMemo(() => {
+    return groupChatsByDate(chatsFromHistory);
+  }, [chatsFromHistory]);
+  
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -205,6 +216,8 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     );
   }
 
+  
+
   return (
     <>
       <SidebarGroup>
@@ -212,12 +225,6 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
           <SidebarMenu>
             {paginatedChatHistories &&
               (() => {
-                const chatsFromHistory = paginatedChatHistories.flatMap(
-                  (paginatedChatHistory) => paginatedChatHistory.chats
-                );
-
-                const groupedChats = groupChatsByDate(chatsFromHistory);
-
                 return (
                   <div className="flex flex-col gap-6">
                     {groupedChats.today.length > 0 && (
