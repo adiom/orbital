@@ -119,7 +119,9 @@ export const document = pgTable(
     createdAt: timestamp("createdAt").notNull(),
     title: text("title").notNull(),
     content: text("content"),
-    kind: varchar("text", { enum: ["text", "code", "image", "sheet"] })
+    kind: varchar("text", {
+      enum: ["text", "code", "image", "sheet", "mini-app", "chart", "game"],
+    })
       .notNull()
       .default("text"),
     userId: uuid("userId")
@@ -354,6 +356,26 @@ export const sferaMessage = pgTable("SferaMessage", {
     .notNull()
     .default([]),
 
+  // AI Tool execution results (for generative content)
+  toolResults: json("toolResults")
+    .$type<
+      Array<{
+        toolName: string;
+        success: boolean;
+        error?: string;
+        imageUrl?: string;
+        audioUrl?: string;
+        videoUrl?: string;
+        prompt?: string;
+        duration?: number;
+        aspectRatio?: string;
+        message?: string;
+        [key: string]: unknown;
+      }>
+    >()
+    .notNull()
+    .default([]),
+
   // TODO: Determine if nested threads are needed (replies to messages within Sfera)
   // If yes, this field allows threading like Reddit/Slack
   // If no, all messages are root-level only
@@ -391,3 +413,52 @@ export const sferaForkedSfera = pgTable("SferaForkedSfera", {
 });
 
 export type SferaForkedSfera = InferSelectModel<typeof sferaForkedSfera>;
+
+// ============ AVRORA: AI Tools Execution Tracking ============
+
+export const toolExecution = pgTable("ToolExecution", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  toolName: varchar("toolName", { length: 255 }).notNull(),
+  sferaId: uuid("sferaId").references(() => sfera.id, { onDelete: "cascade" }),
+  chatId: uuid("chatId").references(() => chat.id, { onDelete: "cascade" }),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id),
+  input: jsonb("input").notNull(),
+  output: jsonb("output"),
+  status: varchar("status", {
+    enum: ["pending", "success", "error"],
+  })
+    .notNull()
+    .default("pending"),
+  errorMessage: text("errorMessage"),
+  executedAt: timestamp("executedAt").notNull().defaultNow(),
+});
+
+export type ToolExecution = InferSelectModel<typeof toolExecution>;
+
+// ============ AVRORA: Sfera Artifacts (связь артефактов с Sfera) ============
+
+export const sferaArtifact = pgTable(
+  "SferaArtifact",
+  {
+    sferaId: uuid("sferaId")
+      .notNull()
+      .references(() => sfera.id, { onDelete: "cascade" }),
+    documentId: uuid("documentId").notNull(),
+    documentCreatedAt: timestamp("documentCreatedAt").notNull(),
+    createdByMessageId: uuid("createdByMessageId")
+      .notNull()
+      .references(() => sferaMessage.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.sferaId, table.documentId] }),
+    documentRef: foreignKey({
+      columns: [table.documentId, table.documentCreatedAt],
+      foreignColumns: [document.id, document.createdAt],
+    }),
+  })
+);
+
+export type SferaArtifact = InferSelectModel<typeof sferaArtifact>;

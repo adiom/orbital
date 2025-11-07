@@ -23,11 +23,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { ConstelaMessage } from "@/hooks/use-constela";
 import { cn } from "@/lib/utils";
 
-type ParentPreview = Pick<ConstelaMessage, "id" | "content" | "userEmail" | "createdAt"> | null;
+type ParentPreview = Pick<
+  ConstelaMessage,
+  "id" | "content" | "userEmail" | "createdAt"
+> | null;
 
 export type ConstelaMessageProps = {
   message: ConstelaMessage;
@@ -59,9 +66,10 @@ export const ConstelaMessage = ({
 
   const isAvrora =
     message.userId === AVRORA_USER_ID ||
-    message.userEmail.toLowerCase() === "avrora@avrora.ai";
+    message.userEmail.toLowerCase() === "avrora@avrora.click";
 
-  const canEdit = canModerate || (!!currentUserId && currentUserId === message.userId);
+  const canEdit =
+    canModerate || (!!currentUserId && currentUserId === message.userId);
   const canDelete = canEdit && !message.isForked;
 
   const createdAtLabel = useMemo(() => {
@@ -104,7 +112,9 @@ export const ConstelaMessage = ({
           return;
         }
 
-        throw new Error((payload as { error?: string }).error || "Failed to fork");
+        throw new Error(
+          (payload as { error?: string }).error || "Failed to fork"
+        );
       }
 
       const payload = (await response.json()) as { sfera: { id: string } };
@@ -112,7 +122,9 @@ export const ConstelaMessage = ({
       router.push(`/constela/${payload.sfera.id}`);
     } catch (error) {
       console.error("Fork failed", error);
-      toast.error(error instanceof Error ? error.message : "Failed to create branch");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create branch"
+      );
     } finally {
       setIsForking(false);
     }
@@ -135,8 +147,8 @@ export const ConstelaMessage = ({
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {message.attachments.map((attachment, index) => (
           <button
-            key={`attachment-${attachment.url}-${index}`}
             className="group relative overflow-hidden rounded-xl border bg-muted/40 text-left shadow-sm transition hover:shadow-md"
+            key={`attachment-${attachment.url}-${index}`}
             onClick={() => window.open(attachment.url, "_blank")}
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") {
@@ -147,13 +159,13 @@ export const ConstelaMessage = ({
             type="button"
           >
             <Image
-              src={attachment.url}
               alt={attachment.name}
-              width={320}
-              height={200}
               className="h-40 w-full object-cover"
+              height={200}
+              src={attachment.url}
+              width={320}
             />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-2 text-xs text-white">
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-2 text-white text-xs">
               {attachment.name}
             </div>
           </button>
@@ -177,10 +189,10 @@ export const ConstelaMessage = ({
             ) : (
               <Image
                 alt={message.userEmail}
+                className="size-9 rounded-full"
+                height={32}
                 src={`https://avatar.vercel.sh/${encodeURIComponent(message.userEmail)}`}
                 width={32}
-                height={32}
-                className="size-9 rounded-full"
               />
             )}
           </div>
@@ -216,10 +228,12 @@ export const ConstelaMessage = ({
                   type="button"
                 >
                   <ArrowUpRight className="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium">View branch</span>
+                  <span className="font-medium text-xs">View branch</span>
                 </button>
               </TooltipTrigger>
-              <TooltipContent>Open branch created from this message</TooltipContent>
+              <TooltipContent>
+                Open branch created from this message
+              </TooltipContent>
             </Tooltip>
           ) : null}
 
@@ -242,12 +256,12 @@ export const ConstelaMessage = ({
                 <Reply className="mr-2 h-4 w-4" />
                 Reply
               </DropdownMenuItem>
-              {!message.isForked ? (
+              {message.isForked ? null : (
                 <DropdownMenuItem disabled={isForking} onClick={handleFork}>
                   <GitBranch className="mr-2 h-4 w-4" />
                   {isForking ? "Creating branch…" : "Create branch"}
                 </DropdownMenuItem>
-              ) : null}
+              )}
               {canEdit ? (
                 <DropdownMenuItem onClick={() => onEdit?.(message)}>
                   <PenSquare className="mr-2 h-4 w-4" />
@@ -269,17 +283,19 @@ export const ConstelaMessage = ({
       </header>
 
       {parentMessage ? (
-        <aside className="mt-3 rounded-xl border border-dashed border-muted-foreground/30 bg-muted/50 p-3 text-xs">
+        <aside className="mt-3 rounded-xl border border-muted-foreground/30 border-dashed bg-muted/50 p-3 text-xs">
           <div className="flex items-center gap-2 text-muted-foreground">
             <MessageSquarePlus className="h-3.5 w-3.5" />
             Replying to {parentMessage.userEmail}
           </div>
           <Separator className="my-2" />
-          <p className="line-clamp-2 text-muted-foreground/90">{parentMessage.content}</p>
+          <p className="line-clamp-2 text-muted-foreground/90">
+            {parentMessage.content}
+          </p>
         </aside>
       ) : null}
 
-      <div className="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
+      <div className="mt-4 whitespace-pre-wrap text-[15px] text-foreground leading-relaxed">
         {message.content}
       </div>
 

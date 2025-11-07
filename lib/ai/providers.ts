@@ -1,4 +1,5 @@
-import { createAnthropic } from "@ai-sdk/anthropic";
+import { createOpenAI } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
 import {
   customProvider,
   extractReasoningMiddleware,
@@ -6,10 +7,13 @@ import {
 } from "ai";
 import { isTestEnvironment } from "../constants";
 
-const openai = createAnthropic({
+const openai = createOpenAI({
   apiKey: process.env.MEGALLM_API_KEY,
   baseURL: "https://ai.megallm.io/v1",
 });
+
+// Gemini provider for image generation
+export const geminiProvider = google;
 
 export const myProvider = isTestEnvironment
   ? (() => {

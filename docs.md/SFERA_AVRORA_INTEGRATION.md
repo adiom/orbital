@@ -59,7 +59,7 @@ Avrora can now be summoned in any Sfera discussion by mentioning `@avrora` in yo
 ### Database
 
 - Avrora is represented as a special user with ID: `00000000-0000-0000-0000-000000000001`
-- Email: `avrora@avrora.ai`
+- Email: `avrora@avrora.click`
 - Automatically added as member when first mentioned
 
 ### AI Model

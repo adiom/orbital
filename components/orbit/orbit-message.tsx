@@ -143,7 +143,7 @@ export function OrbitMessage({
 
   const isAvroraMessage =
     message.userId === "00000000-0000-0000-0000-000000000001" ||
-    message.userEmail === "avrora@avrora.ai";
+    message.userEmail === "avrora@avrora.click";
 
   const textSegments = segmentTextWithMentions(message.content);
 
