@@ -42,7 +42,6 @@ export function startWebSocketServer() {
   wss.on("connection", async (ws, req) => {
     const { query } = parse(req.url || "", true);
     const chatId = query.chatId as string;
-    const areaId = query.areaId as string | undefined;
     const token = extractTokenFromRequest(req);
 
     // Verify authentication
@@ -87,7 +86,6 @@ export function startWebSocketServer() {
       ws,
       userId,
       chatId,
-      areaId,
     };
 
     wsManager.addClient(clientId, client);
@@ -98,7 +96,6 @@ export function startWebSocketServer() {
         type: "connected",
         clientId,
         chatId,
-        areaId,
       })
     );
 

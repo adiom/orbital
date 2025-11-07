@@ -5,7 +5,6 @@ export type WebSocketClient = {
   ws: WebSocket;
   userId: string;
   chatId: string;
-  areaId?: string;
 };
 
 class WebSocketManager {

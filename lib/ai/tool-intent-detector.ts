@@ -12,6 +12,7 @@ export interface ToolIntent {
     | "generateMusic"
     | "generateVideo"
     | "summarizeDiscussion"
+    | "webSearch"
     | null;
   parameters: Record<string, any>;
   confidence: "high" | "medium" | "low";
@@ -22,6 +23,12 @@ export interface ToolIntent {
  */
 export function detectToolIntent(message: string): ToolIntent {
   const lowerMessage = message.toLowerCase();
+
+  // Web search detection
+  const webSearchIntent = detectWebSearchIntent(message);
+  if (webSearchIntent.toolName) {
+    return webSearchIntent;
+  }
 
   // Image generation detection
   const imageIntent = detectImageGenerationIntent(message);
@@ -225,6 +232,71 @@ function detectSummaryIntent(message: string): ToolIntent {
       parameters: { summaryLength },
       confidence: "high",
     };
+  }
+
+  return {
+    toolName: null,
+    parameters: {},
+    confidence: "low",
+  };
+}
+
+/**
+ * Detect web search intent
+ */
+function detectWebSearchIntent(message: string): ToolIntent {
+  const lowerMessage = message.toLowerCase();
+
+  // Web search patterns (русский и английский)
+  const searchKeywords = [
+    "найди",
+    "найди информацию",
+    "поищи",
+    "погугли",
+    "что нового",
+    "какие новости",
+    "что произошло",
+    "расскажи о",
+    "информация о",
+    "search for",
+    "find",
+    "look up",
+    "what's new",
+    "latest news",
+    "tell me about",
+  ];
+
+  const hasSearchKeyword = searchKeywords.some((keyword) =>
+    lowerMessage.includes(keyword)
+  );
+
+  if (hasSearchKeyword) {
+    // Extract query from message
+    let query = message.replace(/@avrora|@аврора/gi, "").trim();
+
+    // Remove search keywords to get cleaner query
+    const cleanupPatterns = [
+      /^(?:найди|поищи|погугли)\s+(?:информацию\s+)?(?:о|про)?\s*/i,
+      /^(?:search for|find|look up)\s+/i,
+      /^(?:что нового|какие новости)\s+(?:о|про|в|about)?\s*/i,
+      /^(?:расскажи|tell me)\s+(?:о|про|about)\s+/i,
+    ];
+
+    for (const pattern of cleanupPatterns) {
+      query = query.replace(pattern, "").trim();
+    }
+
+    if (query.length > 2) {
+      return {
+        toolName: "webSearch",
+        parameters: {
+          query,
+          maxResults: 5,
+          searchDepth: "basic",
+        },
+        confidence: "high",
+      };
+    }
   }
 
   return {

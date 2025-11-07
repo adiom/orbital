@@ -15,7 +15,6 @@ export type WebSocketMessage = {
 
 export type UseWebSocketOptions = {
   chatId: string;
-  areaId?: string;
   token?: string;
   onMessage?: (message: WebSocketMessage) => void;
   onConnect?: () => void;
@@ -27,7 +26,6 @@ export type UseWebSocketOptions = {
 
 export function useWebSocket({
   chatId,
-  areaId,
   token,
   onMessage,
   onConnect,
@@ -53,9 +51,6 @@ export function useWebSocket({
       // Build WebSocket URL with query params
       const url = new URL(wsUrl);
       url.searchParams.set("chatId", chatId);
-      if (areaId) {
-        url.searchParams.set("areaId", areaId);
-      }
       if (token) {
         url.searchParams.set("token", token);
       }
@@ -110,7 +105,6 @@ export function useWebSocket({
     }
   }, [
     chatId,
-    areaId,
     token,
     wsUrl,
     onConnect,

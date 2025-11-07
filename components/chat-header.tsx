@@ -14,13 +14,11 @@ function PureChatHeader({
   chatId,
   selectedVisibilityType,
   isReadonly,
-  areaId,
   chatType,
 }: {
   chatId: string;
   selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
-  areaId?: string | null;
   chatType?: string;
 }) {
   const router = useRouter();
@@ -54,29 +52,19 @@ function PureChatHeader({
         />
       )}
 
-      {chatType === "group" && areaId ? (
-        <Button
-          asChild
-          className="order-3 ml-auto flex h-fit px-2"
-          variant="outline"
+      <Button
+        asChild
+        className="order-3 hidden bg-zinc-900 px-2 text-zinc-50 hover:bg-zinc-800 md:ml-auto md:flex md:h-fit dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+      >
+        <Link
+          href={"https://vercel.com/templates/next.js/nextjs-ai-chatbot"}
+          rel="noreferrer"
+          target="_noblank"
         >
-          <Link href={`/area/${areaId}`}>View Area {areaId}</Link>
-        </Button>
-      ) : (
-        <Button
-          asChild
-          className="order-3 hidden bg-zinc-900 px-2 text-zinc-50 hover:bg-zinc-800 md:ml-auto md:flex md:h-fit dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          <Link
-            href={"https://vercel.com/templates/next.js/nextjs-ai-chatbot"}
-            rel="noreferrer"
-            target="_noblank"
-          >
-            <VercelIcon size={16} />
-            Deploy with Vercel
-          </Link>
-        </Button>
-      )}
+          <VercelIcon size={16} />
+          Deploy with Vercel
+        </Link>
+      </Button>
     </header>
   );
 }
@@ -86,7 +74,6 @@ export const ChatHeader = memo(PureChatHeader, (prevProps, nextProps) => {
     prevProps.chatId === nextProps.chatId &&
     prevProps.selectedVisibilityType === nextProps.selectedVisibilityType &&
     prevProps.isReadonly === nextProps.isReadonly &&
-    prevProps.areaId === nextProps.areaId &&
     prevProps.chatType === nextProps.chatType
   );
 });

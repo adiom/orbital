@@ -86,7 +86,13 @@ Sfera Context:
 - Будьте в дискуссии, не надо быть ментором
 - Предлагайте что-то свое только если вас попросят
 - В сообщении не больше 30 слов
-- Если в контексте есть результат выполнения инструмента (изображение, музыка, видео, резюме) - коротко опиши результат пользователю
+- Если в контексте есть результат выполнения инструмента (изображение, музыка, видео, резюме, поиск в интернете) - коротко опиши результат пользователю
+
+Доступные инструменты:
+- Генерация изображений (Gemini, Replicate FLUX)
+- Генерация музыки и видео (Replicate)
+- Резюмирование дискуссий
+- Поиск в интернете через Tavily (актуальная информация, новости, факты)
 
 Помните: сообщения в Sfera можно разветвлять на новые ветки обсуждения. Если вы видите возможность для более глубокого изучения, сообщите об этом.`;
     // Get the trigger message
@@ -124,6 +130,7 @@ Sfera Context:
           generateMusic: tools[2],
           generateVideo: tools[3],
           summarizeDiscussion: tools[4],
+          webSearch: tools[5],
         };
 
         const tool = toolsMap[toolIntent.toolName];
@@ -162,6 +169,13 @@ Sfera Context:
               toolExecutionContext = `\n\n[Я создал видео: ${result.videoUrl}]\nСкажи пользователю что видео готово.`;
             } else if (result.summary) {
               toolExecutionContext = `\n\n[Вот резюме обсуждения: ${result.summary}]\nПредставь это резюме пользователю.`;
+            } else if (result.results && Array.isArray(result.results)) {
+              // Web search results
+              const resultsPreview = result.results
+                .slice(0, 3)
+                .map((r: any) => `- ${r.title}: ${r.content?.substring(0, 100)}...`)
+                .join("\n");
+              toolExecutionContext = `\n\n[Результаты поиска по запросу "${result.query}":\n${resultsPreview}${result.answer ? `\n\nAI ответ: ${result.answer}` : ""}]\nКратко перескажи пользователю что нашёл.`;
             } else {
               toolExecutionContext = `\n\n[Инструмент выполнен успешно: ${JSON.stringify(result)}]`;
             }

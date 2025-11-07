@@ -27,6 +27,7 @@ pnpm install
 # Разработка
 pnpm dev                # Next.js dev сервер с Turbo
 pnpm dev:ws            # WebSocket сервер (отдельный процесс)
+никогда не запускай pnpm dev - я это сделаю сам
 
 # Операции с БД
 pnpm db:migrate        # Применить миграции

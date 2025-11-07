@@ -12,8 +12,11 @@ import {
 } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { useDebounceCallback, useWindowSize } from "usehooks-ts";
+import { chartArtifact } from "@/artifacts/chart/client";
 import { codeArtifact } from "@/artifacts/code/client";
+import { gameArtifact } from "@/artifacts/game/client";
 import { imageArtifact } from "@/artifacts/image/client";
+import { miniAppArtifact } from "@/artifacts/mini-app/client";
 import { sheetArtifact } from "@/artifacts/sheet/client";
 import { textArtifact } from "@/artifacts/text/client";
 import { useArtifact } from "@/hooks/use-artifact";
@@ -34,6 +37,9 @@ export const artifactDefinitions = [
   codeArtifact,
   imageArtifact,
   sheetArtifact,
+  miniAppArtifact,
+  chartArtifact,
+  gameArtifact,
 ];
 export type ArtifactKind = (typeof artifactDefinitions)[number]["kind"];
 

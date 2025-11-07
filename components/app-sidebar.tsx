@@ -36,10 +36,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 export function AppSidebar({
   user,
-  areaId,
 }: {
   user: User | undefined;
-  areaId?: string;
 }) {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
@@ -56,7 +54,7 @@ export function AppSidebar({
       success: () => {
         mutate(
           unstable_serialize((pageIndex, previousPageData) =>
-            getChatHistoryPaginationKey(pageIndex, previousPageData, areaId)
+            getChatHistoryPaginationKey(pageIndex, previousPageData)
           )
         );
         router.push("/");
@@ -126,7 +124,7 @@ export function AppSidebar({
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarHistory areaId={areaId} user={user} />
+          <SidebarHistory user={user} />
         </SidebarContent>
         <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
       </Sidebar>

@@ -40,7 +40,6 @@ export function Chat({
   isReadonly,
   autoResume,
   initialLastContext,
-  areaId,
   chatType,
 }: {
   id: string;
@@ -50,13 +49,11 @@ export function Chat({
   isReadonly: boolean;
   autoResume: boolean;
   initialLastContext?: AppUsage;
-  areaId?: string | null;
   chatType?: string;
 }) {
   const { visibilityType } = useChatVisibility({
     chatId: id,
     initialVisibilityType,
-    areaId,
   });
 
   const { mutate } = useSWRConfig();
@@ -111,8 +108,7 @@ export function Chat({
         unstable_serialize((pageIndex, previousPageData) =>
           getChatHistoryPaginationKey(
             pageIndex,
-            previousPageData,
-            areaId || undefined
+            previousPageData
           )
         )
       );
@@ -165,7 +161,6 @@ export function Chat({
     <>
       <div className="overscroll-behavior-contain flex h-dvh min-w-0 touch-pan-y flex-col bg-background">
         <ChatHeader
-          areaId={areaId}
           chatId={id}
           chatType={chatType}
           isReadonly={isReadonly}

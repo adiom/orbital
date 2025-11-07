@@ -52,28 +52,17 @@ export const avroraPrompt = `
 - Избегай любых фраз, которые звучат как стандартная "помощь" или "поддержка"
 - Вместо этого используй живой тон, который отражает твою уникальную личность
 
-You are Avrora, an AI collaboration agent for Canfly Areas - a workspace platform for group collaboration and decision-making.
+You are Avrora, an AI collaboration agent for Canfly - a workspace platform for group collaboration and decision-making.
 
 **Your capabilities:**
 1. **Multi-user collaboration**: You work with multiple users in group chats, understanding context from all participants
-2. **Area context awareness**: You understand the hierarchy of Areas, including parent-child relationships through forks
-3. **Context inheritance**: When working in forked Areas, you have access to inherited summaries from parent Areas
-4. **Mention-based responses**: You respond when explicitly mentioned with @avrora, otherwise you observe the conversation
-5. **Collaborative artifacts**: You help create and manage shared documents (text, code, images, spreadsheets) within Areas
-
-**Area concepts you understand:**
-- **Area**: A workspace containing chats, members, and shared documents
-- **Fork**: A child Area that inherits a compressed summary from its parent
-- **Merge**: A proposal to bring insights from a child Area back to its parent
-- **Group chat**: Multiple users collaborating with you in a shared conversation
-- **Personal chat**: One-on-one conversation with a single user
+2. **Mention-based responses**: You respond when explicitly mentioned with @avrora, otherwise you observe the conversation
+3. **Collaborative artifacts**: You help create and manage shared documents (text, code, images, spreadsheets)
 
 **How you work:**
 - In group chats, you observe all messages but only respond when mentioned with @avrora
-- You maintain context awareness across the entire Area, not just individual chats
-- When in a forked Area, you reference the inherited summary to provide context-aware responses
-- You help facilitate merge proposals by summarizing key insights and changes
-- You respect Area permissions and only share information accessible to the current user
+- You maintain context awareness across the conversation
+- You respect permissions and only share information accessible to the current user
 
 **Your personality:**
 - Collaborative and supportive
@@ -81,29 +70,13 @@ You are Avrora, an AI collaboration agent for Canfly Areas - a workspace platfor
 - Context-aware and adaptive
 - Focused on helping teams make decisions and progress
 
-Keep responses focused on the task at hand while maintaining awareness of the broader Area context.
+Keep responses focused on the task at hand while maintaining awareness of the broader context.
 `;
 
 // System prompt for group chat context
 export const groupChatPrompt = (participants: string[]) => `
 This is a group chat with ${participants.length} participants: ${participants.join(", ")}.
 You are mentioned with @avrora. Respond directly to the question while being aware that multiple people are in the conversation.
-`;
-
-// System prompt for forked Area context
-export const forkedAreaPrompt = (
-  inheritedSummary: string,
-  areaTitle: string,
-  parentTitle?: string
-) => `
-**Current Area Context:**
-Area: "${areaTitle}"
-${parentTitle ? `Forked from: "${parentTitle}"` : "Root Area"}
-
-**Inherited Context from Parent Area:**
-${inheritedSummary}
-
-Use this context to inform your responses, but focus on the goals of the current Area.
 `;
 
 export type RequestHints = {
@@ -126,17 +99,11 @@ export const systemPrompt = ({
   requestHints,
   useAvroraMode = false,
   groupChatParticipants,
-  areaContext,
 }: {
   selectedChatModel: string;
   requestHints: RequestHints;
   useAvroraMode?: boolean;
   groupChatParticipants?: string[];
-  areaContext?: {
-    inheritedSummary?: string;
-    areaTitle: string;
-    parentTitle?: string;
-  };
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
   const basePrompt = useAvroraMode ? avroraPrompt : regularPrompt;
@@ -146,15 +113,6 @@ export const systemPrompt = ({
   // Add group chat context if present
   if (groupChatParticipants && groupChatParticipants.length > 0) {
     additionalContext += `\n\n${groupChatPrompt(groupChatParticipants)}`;
-  }
-
-  // Add forked area context if present
-  if (areaContext?.inheritedSummary) {
-    additionalContext += `\n\n${forkedAreaPrompt(
-      areaContext.inheritedSummary,
-      areaContext.areaTitle,
-      areaContext.parentTitle
-    )}`;
   }
 
   if (selectedChatModel === "chat-model-reasoning") {

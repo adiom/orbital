@@ -6,7 +6,7 @@ export function GET() {
     info: {
       title: "Avrora Chat API",
       version: "1.0.0",
-      description: "API для чат-системы с ИИ и управлением областями (Areas)",
+      description: "API для чат-системы с ИИ и коллаборативными пространствами",
     },
     servers: [
       {
@@ -135,55 +135,6 @@ export function GET() {
         },
       },
 
-      // Areas API
-      "/api/areas": {
-        get: {
-          summary: "Получить areas пользователя",
-          description:
-            "Возвращает список всех областей (areas) текущего пользователя",
-          tags: ["Areas"],
-          security: [{ bearerAuth: [] }],
-          responses: {
-            200: { description: "Список areas" },
-            401: { description: "Не авторизован" },
-          },
-        },
-        post: {
-          summary: "Создать новую area",
-          description: "Создает новую область (area) для организации чатов",
-          tags: ["Areas"],
-          security: [{ bearerAuth: [] }],
-          requestBody: {
-            required: true,
-            content: {
-              "application/json": {
-                schema: {
-                  type: "object",
-                  properties: {
-                    title: { type: "string", description: "Название area" },
-                    description: {
-                      type: "string",
-                      description: "Описание area",
-                    },
-                    visibility: {
-                      type: "string",
-                      enum: ["public", "private"],
-                      default: "private",
-                    },
-                  },
-                  required: ["title"],
-                },
-              },
-            },
-          },
-          responses: {
-            201: { description: "Area создана" },
-            400: { description: "Неверные данные" },
-            401: { description: "Не авторизован" },
-          },
-        },
-      },
-
       // Files API
       "/api/files/upload": {
         post: {
@@ -305,18 +256,6 @@ export function GET() {
             },
           },
           required: ["id", "role", "parts"],
-        },
-        Area: {
-          type: "object",
-          properties: {
-            id: { type: "string", format: "uuid" },
-            title: { type: "string" },
-            description: { type: "string" },
-            ownerId: { type: "string", format: "uuid" },
-            visibility: { type: "string", enum: ["public", "private"] },
-            createdAt: { type: "string", format: "date-time" },
-            updatedAt: { type: "string", format: "date-time" },
-          },
         },
       },
     },

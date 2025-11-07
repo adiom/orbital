@@ -89,17 +89,21 @@ export const createMagicLink = async (
       process.env.NEXT_PUBLIC_SITE_URL ||
       process.env.NEXTAUTH_URL ||
       'http://localhost:3000';
-    const _magicLink = `${baseUrl}/hi/${token}`;
+    const magicLink = `${baseUrl}/hi/${token}`;
 
-    // В dev-режиме показываем код вместо отправки email
+    // В dev-режиме выводим код и ссылку в консоль для удобного тестирования
     if (process.env.NODE_ENV === 'development') {
-      console.log(token); // Возвращаем код для формы
-      };
-    
+      console.log('[magic-link]', {
+        email: validatedData.email,
+        token,
+        magicLink,
+      });
+    }
 
     return {
       status: 'success',
       message: 'Magic link отправлен на ваш email',
+      magicLink,
     };
   } catch (error) {
     console.error('Ошибка создания magic link:', error);

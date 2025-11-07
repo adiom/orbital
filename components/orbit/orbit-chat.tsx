@@ -10,7 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { OrbitSettings } from "./orbit-settings";
 import {
@@ -244,6 +244,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const [isAvroraThinking, setIsAvroraThinking] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const fetchOrbit = useCallback(
     async (signal?: AbortSignal) => {
@@ -311,6 +312,17 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
       controller.abort();
     };
   }, [fetchOrbit]);
+
+  // Auto-scroll to bottom when messages change or Avrora is thinking
+  useEffect(() => {
+    const scrollToBottom = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    // Small delay to ensure DOM is updated
+    const timer = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timer);
+  }, [messages, isAvroraThinking]);
 
   const handleMessageSent = () => {
     setReplyingTo(null);
@@ -566,6 +578,9 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
                   </div>
                 </article>
               )}
+
+              {/* Invisible anchor for auto-scroll */}
+              <div ref={messagesEndRef} />
             </>
           )}
         </div>
