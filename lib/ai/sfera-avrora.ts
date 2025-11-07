@@ -144,11 +144,11 @@ Sfera Context:
             hasData: !!result,
           });
 
-          // Store result
+          // Store result for display in UI
           toolResults = [
             {
               toolName: toolIntent.toolName,
-              result,
+              ...result, // Spread result properties (success, imageUrl, prompt, etc.)
             },
           ];
 
