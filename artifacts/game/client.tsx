@@ -40,7 +40,7 @@ export const gameArtifact = new Artifact<"game", Metadata>({
       // TODO: Implement game runtime environment
       return (
         <div className="flex h-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8">
-          <PlayIcon size={48} className="mb-4 text-gray-400" />
+          <PlayIcon size={48} />
           <p className="mb-2 font-semibold text-gray-700 text-lg">
             Game Runtime
           </p>

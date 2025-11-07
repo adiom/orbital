@@ -7,21 +7,20 @@
 
 "use client";
 
+import { AnimatePresence, motion } from "framer-motion";
 import {
   CheckCircle2,
   Download,
-  Image as ImageIcon,
+  ExternalLink,
+  Maximize2,
   Music,
+  Search,
+  Sparkles,
   Video,
   XCircle,
-  Maximize2,
-  Sparkles,
-  Search,
-  ExternalLink,
 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { ChartArtifact } from "./chart-artifact";
 
@@ -48,7 +47,6 @@ type ToolResult = {
   chartTitle?: string;
   xKey?: string;
   yKey?: string;
-  // Web search results
   query?: string;
   answer?: string;
   results?: Array<{
@@ -86,30 +84,30 @@ function ImageZoomModal({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
           exit={{ opacity: 0 }}
+          initial={{ opacity: 0 }}
           onClick={onClose}
         >
           <motion.div
-            className="relative max-h-[90vh] max-w-[90vw]"
-            initial={{ scale: 0.9 }}
             animate={{ scale: 1 }}
+            className="relative max-h-[90vh] max-w-[90vw]"
             exit={{ scale: 0.9 }}
+            initial={{ scale: 0.9 }}
             onClick={(e) => e.stopPropagation()}
           >
             <Image
-              src={src}
               alt={alt}
-              width={1200}
+              className="h-auto max-h-[90vh] w-auto max-w-[90vw] object-contain"
               height={1200}
-              className="h-auto w-auto max-h-[90vh] max-w-[90vw] object-contain"
+              src={src}
               unoptimized
+              width={1200}
             />
             <button
-              onClick={onClose}
               className="absolute top-2 right-2 rounded-full bg-black/50 p-2 text-white hover:bg-black/70"
+              onClick={onClose}
               type="button"
             >
               ✕
@@ -152,7 +150,9 @@ export function ToolResultDisplay({
           <p className="font-medium text-red-900 dark:text-red-100">
             Tool execution failed
           </p>
-          <p className="mt-1 text-red-700 dark:text-red-300">{normalizedResult.error}</p>
+          <p className="mt-1 text-red-700 dark:text-red-300">
+            {normalizedResult.error}
+          </p>
         </div>
       </div>
     );
@@ -168,9 +168,12 @@ export function ToolResultDisplay({
     return (
       <>
         <motion.div
-          className={cn("group overflow-hidden rounded-lg border shadow-sm", className)}
-          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          className={cn(
+            "group overflow-hidden rounded-lg border shadow-sm",
+            className
+          )}
+          initial={{ opacity: 0, y: 20 }}
           transition={{ duration: 0.3 }}
         >
           <div className="relative aspect-square w-full max-w-md">
@@ -183,10 +186,10 @@ export function ToolResultDisplay({
             />
             {/* Zoom button overlay */}
             <button
-              onClick={() => setIsImageZoomed(true)}
               className="absolute top-2 right-2 rounded-full bg-black/50 p-2 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100"
-              type="button"
+              onClick={() => setIsImageZoomed(true)}
               title="Zoom image"
+              type="button"
             >
               <Maximize2 className="h-4 w-4" />
             </button>
@@ -197,7 +200,9 @@ export function ToolResultDisplay({
                 <Sparkles className="h-4 w-4 text-blue-600" />
                 <p className="text-muted-foreground text-xs">
                   <span className="font-medium text-blue-700">Prompt:</span>{" "}
-                  <span className="text-foreground">{normalizedResult.prompt}</span>
+                  <span className="text-foreground">
+                    {normalizedResult.prompt}
+                  </span>
                 </p>
               </div>
               {normalizedResult.aspectRatio && (
@@ -210,10 +215,10 @@ export function ToolResultDisplay({
         </motion.div>
 
         <ImageZoomModal
-          src={normalizedResult.imageUrl}
           alt={normalizedResult.prompt || "Generated image"}
           isOpen={isImageZoomed}
           onClose={() => setIsImageZoomed(false)}
+          src={normalizedResult.imageUrl}
         />
       </>
     );
@@ -227,9 +232,12 @@ export function ToolResultDisplay({
   ) {
     return (
       <motion.div
-        className={cn("rounded-lg border bg-gradient-to-br from-purple-50 to-pink-50 p-4 shadow-sm", className)}
-        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
+        className={cn(
+          "rounded-lg border bg-gradient-to-br from-purple-50 to-pink-50 p-4 shadow-sm",
+          className
+        )}
+        initial={{ opacity: 0, y: 20 }}
         transition={{ duration: 0.3 }}
       >
         <div className="flex items-center gap-3">
@@ -271,9 +279,12 @@ export function ToolResultDisplay({
   ) {
     return (
       <motion.div
-        className={cn("rounded-lg border bg-gradient-to-br from-blue-50 to-cyan-50 p-4 shadow-sm", className)}
-        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
+        className={cn(
+          "rounded-lg border bg-gradient-to-br from-blue-50 to-cyan-50 p-4 shadow-sm",
+          className
+        )}
+        initial={{ opacity: 0, y: 20 }}
         transition={{ duration: 0.3 }}
       >
         <div className="mb-3 flex items-center gap-3">
@@ -334,11 +345,11 @@ export function ToolResultDisplay({
     return (
       <ChartArtifact
         chartType={normalizedResult.chartType}
+        className={className}
         data={normalizedResult.chartData}
         title={normalizedResult.chartTitle}
         xKey={normalizedResult.xKey}
         yKey={normalizedResult.yKey}
-        className={className}
       />
     );
   }
@@ -351,9 +362,12 @@ export function ToolResultDisplay({
   ) {
     return (
       <motion.div
-        className={cn("overflow-hidden rounded-lg border bg-gradient-to-br from-emerald-50 to-teal-50 shadow-sm", className)}
-        initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
+        className={cn(
+          "overflow-hidden rounded-lg border bg-gradient-to-br from-emerald-50 to-teal-50 shadow-sm",
+          className
+        )}
+        initial={{ opacity: 0, y: 20 }}
         transition={{ duration: 0.3 }}
       >
         <div className="border-b bg-gradient-to-r from-emerald-100 to-teal-100 p-3">
@@ -363,7 +377,8 @@ export function ToolResultDisplay({
           </div>
           {normalizedResult.query && (
             <p className="mt-1 text-emerald-700 text-sm">
-              Query: <span className="font-medium">{normalizedResult.query}</span>
+              Query:{" "}
+              <span className="font-medium">{normalizedResult.query}</span>
             </p>
           )}
         </div>
@@ -380,35 +395,50 @@ export function ToolResultDisplay({
           </div>
         )}
 
-        <div className="p-4 space-y-3">
-          {normalizedResult.results.map((result, index) => (
-            <a
-              key={`search-result-${index}`}
-              href={result.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block rounded-lg border border-emerald-200 bg-white p-3 transition-all hover:border-emerald-300 hover:shadow-md"
-            >
-              <div className="mb-1.5 flex items-start justify-between gap-2">
-                <h4 className="line-clamp-1 font-medium text-emerald-900 text-sm">
-                  {result.title}
-                </h4>
-                <ExternalLink className="h-4 w-4 flex-shrink-0 text-emerald-600" />
-              </div>
-              <p className="line-clamp-2 text-emerald-700 text-xs leading-relaxed">
-                {result.content}
-              </p>
-              <p className="mt-1.5 text-emerald-600 text-xs truncate">
-                {result.url}
-              </p>
-            </a>
-          ))}
+        <div className="space-y-3 p-4">
+          {Array.isArray(normalizedResult.results) &&
+            normalizedResult.results.map(
+              (
+                searchResult: NonNullable<ToolResult["results"]>[number],
+                resultIndex: number
+              ) => {
+                const key =
+                  searchResult.url ??
+                  (searchResult.title
+                    ? `${searchResult.title}-${resultIndex}`
+                    : `search-result-${resultIndex}`);
+
+                return (
+                  <a
+                    className="block rounded-lg border border-emerald-200 bg-white p-3 transition-all hover:border-emerald-300 hover:shadow-md"
+                    href={searchResult.url ? searchResult.url : "#"}
+                    key={key}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    <div className="mb-1.5 flex items-start justify-between gap-2">
+                      <h4 className="line-clamp-1 font-medium text-emerald-900 text-sm">
+                        {searchResult.title}
+                      </h4>
+                      <ExternalLink className="h-4 w-4 flex-shrink-0 text-emerald-600" />
+                    </div>
+                    <p className="line-clamp-2 text-emerald-700 text-xs leading-relaxed">
+                      {searchResult.content}
+                    </p>
+                    <p className="mt-1.5 truncate text-emerald-600 text-xs">
+                      {searchResult.url}
+                    </p>
+                  </a>
+                );
+              }
+            )}
         </div>
 
         <div className="border-t bg-emerald-50/30 px-4 py-2">
           <p className="text-center text-emerald-600 text-xs">
             Found {normalizedResult.results.length} results
-            {normalizedResult.searchDepth && ` • ${normalizedResult.searchDepth} search`}
+            {normalizedResult.searchDepth &&
+              ` • ${normalizedResult.searchDepth} search`}
           </p>
         </div>
       </motion.div>

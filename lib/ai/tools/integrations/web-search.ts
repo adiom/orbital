@@ -7,6 +7,22 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+const webSearchParameters = z.object({
+  query: z.string().describe("The search query"),
+  maxResults: z
+    .number()
+    .min(1)
+    .max(10)
+    .default(5)
+    .describe("Maximum number of results to return (1-10)"),
+  searchDepth: z
+    .enum(["basic", "advanced"])
+    .default("basic")
+    .describe(
+      "Search depth: basic for quick results, advanced for comprehensive"
+    ),
+});
+
 export const webSearch = tool({
   description: `Search the internet for current information, news, facts, and answers.
 Use this when you need to:
@@ -14,20 +30,12 @@ Use this when you need to:
 - Look up facts, statistics, or data
 - Get answers to questions requiring up-to-date knowledge
 - Research topics or verify information`,
-  parameters: z.object({
-    query: z.string().describe("The search query"),
-    maxResults: z
-      .number()
-      .optional()
-      .default(5)
-      .describe("Maximum number of results to return (1-10)"),
-    searchDepth: z
-      .enum(["basic", "advanced"])
-      .optional()
-      .default("basic")
-      .describe("Search depth: basic for quick results, advanced for comprehensive"),
-  }),
-  execute: async ({ query, maxResults = 5, searchDepth = "basic" }) => {
+  inputSchema: webSearchParameters,
+  execute: async ({
+    query,
+    maxResults,
+    searchDepth,
+  }: z.infer<typeof webSearchParameters>) => {
     const apiKey = process.env.TAVILY_API_KEY;
 
     if (!apiKey) {
@@ -75,12 +83,13 @@ Use this when you need to:
         success: true,
         query,
         answer: data.answer || null,
-        results: data.results?.map((result: any) => ({
-          title: result.title,
-          url: result.url,
-          content: result.content,
-          score: result.score,
-        })) || [],
+        results:
+          data.results?.map((result: any) => ({
+            title: result.title,
+            url: result.url,
+            content: result.content,
+            score: result.score,
+          })) || [],
         searchDepth,
       };
     } catch (error) {
