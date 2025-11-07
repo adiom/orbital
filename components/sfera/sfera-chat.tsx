@@ -39,6 +39,7 @@ type Message = {
   userEmail: string;
   parentMessageId: string | null;
   attachments?: Attachment[];
+  toolResults?: Array<Record<string, unknown>>;
   isForked: boolean;
   forkedSferaId: string | null;
   createdAt: Date;
@@ -138,6 +139,9 @@ const parseMessage = (value: unknown): Message | null => {
     parentMessageId:
       typeof parentMessageId === "string" ? parentMessageId : null,
     attachments: parseAttachments(record.attachments),
+    toolResults: Array.isArray(record.toolResults)
+      ? (record.toolResults as Array<Record<string, unknown>>)
+      : undefined,
     isForked,
     forkedSferaId: typeof forkedSferaId === "string" ? forkedSferaId : null,
     createdAt:

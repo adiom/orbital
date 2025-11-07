@@ -49,11 +49,16 @@ export function ToolResultDisplay({
   result,
   className,
 }: ToolResultDisplayProps) {
+  // Debug logging
+  console.log("🔍 [ToolResultDisplay] Received result:", result);
+
   // Handle legacy format: { toolName, result: {...} } -> unwrap to { toolName, ...result }
   const normalizedResult =
     "result" in result && typeof result.result === "object"
       ? { toolName: result.toolName, ...(result.result as any) }
       : result;
+
+  console.log("✅ [ToolResultDisplay] Normalized result:", normalizedResult);
 
   // Error state
   if (!normalizedResult.success && normalizedResult.error) {

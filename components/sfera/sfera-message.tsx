@@ -14,6 +14,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { ToolResultsList } from "./tool-result-display";
 import { segmentTextWithMentions } from "@/lib/mentions/parser";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,19 @@ type SferaMessageProps = {
       name: string;
       url: string;
       contentType: string;
+    }>;
+    toolResults?: Array<{
+      toolName: string;
+      success: boolean;
+      error?: string;
+      imageUrl?: string;
+      audioUrl?: string;
+      videoUrl?: string;
+      prompt?: string;
+      duration?: number;
+      aspectRatio?: string;
+      message?: string;
+      [key: string]: unknown;
     }>;
     isForked: boolean;
     forkedSferaId: string | null;
@@ -150,7 +164,7 @@ export function SferaMessage({
   // Check if this is an Avrora message
   const isAvroraMessage =
     message.userId === "00000000-0000-0000-0000-000000000001" ||
-    message.userEmail === "avrora@avrora.ai";
+    message.userEmail === "avrora@avrora.click";
 
   // Segment text to highlight mentions
   const textSegments = segmentTextWithMentions(message.content);
@@ -273,6 +287,21 @@ export function SferaMessage({
                 />
               </button>
             ))}
+          </div>
+        )}
+
+        {/* AI Tool Results */}
+        {(() => {
+          console.log("📊 [SferaMessage] message.toolResults:", message.toolResults);
+          return null;
+        })()}
+        {message.toolResults && message.toolResults.length > 0 && (
+          <div className="mt-3">
+            {(() => {
+              console.log("🎨 [SferaMessage] Rendering toolResults:", message.toolResults);
+              return null;
+            })()}
+            <ToolResultsList results={message.toolResults} />
           </div>
         )}
       </div>
