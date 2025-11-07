@@ -75,6 +75,12 @@ ${contextMessages}
         model,
         prompt: summaryPrompt,
         temperature: 0.5,
+        maxOutputTokens:
+          summaryLength === "brief"
+            ? 150
+            : summaryLength === "medium"
+              ? 300
+              : 600,
       });
 
       console.log("✅ Summary generated:", summary.substring(0, 100) + "...");
