@@ -1,6 +1,13 @@
 "use client";
 
-import { ChevronRight, Loader2, Menu, PenSquare, Settings, Trash2 } from "lucide-react";
+import {
+  ChevronRight,
+  Loader2,
+  Menu,
+  PenSquare,
+  Settings,
+  Trash2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -72,6 +79,7 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
 
   const fetchSfera = useCallback(async () => {
     try {
@@ -98,6 +106,7 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
   const handleMessageSent = () => {
     // Clear reply state and refresh messages
     setReplyingTo(null);
+    setEditingMessage(null);
     fetchSfera();
   };
 
@@ -109,6 +118,39 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
   const handleSettingsUpdate = () => {
     // Refresh after settings update
     fetchSfera();
+  };
+
+  const handleEditMessage = (message: Message) => {
+    setReplyingTo(null);
+    setEditingMessage(message);
+  };
+
+  const handleDeleteMessage = async (message: Message) => {
+    if (!window.confirm("Delete this message?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/sfera/${sferaId}/messages/${message.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete message");
+      }
+
+      toast.success("Message deleted");
+      fetchSfera();
+    } catch (error) {
+      console.error("Error deleting message:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete message"
+      );
+    }
   };
 
   const isOwnerOrAdmin =
@@ -222,6 +264,10 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
               return (
                 <SferaMessage
                   key={message.id}
+                  canModerate={Boolean(isOwnerOrAdmin)}
+                  currentUserId={currentUserId}
+                  onDelete={() => handleDeleteMessage(message)}
+                  onEdit={() => handleEditMessage(message)}
                   message={message}
                   onFork={handleFork}
                   onReply={() => setReplyingTo(message)}
@@ -238,7 +284,9 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
       <div className="fixed right-0 bottom-0 left-0 bg-gray-50 p-4">
         <div className="mx-auto max-w-3xl">
           <SferaMessageInput
+            editingMessage={editingMessage}
             onCancelReply={() => setReplyingTo(null)}
+            onCancelEdit={() => setEditingMessage(null)}
             onMessageSent={handleMessageSent}
             replyingTo={replyingTo}
             sferaId={sferaId}

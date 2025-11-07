@@ -2,7 +2,8 @@
 
 import { ArrowUp, GitBranch, ImageIcon, X } from "lucide-react";
 import Image from "next/image";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -19,17 +20,27 @@ type Attachment = {
   contentType: string;
 };
 
+type EditingMessage = {
+  id: string;
+  content: string;
+  attachments?: Attachment[];
+};
+
 type SferaMessageInputProps = {
   sferaId: string;
   replyingTo?: ReplyingToMessage | null;
+  editingMessage?: EditingMessage | null;
   onCancelReply?: () => void;
+  onCancelEdit?: () => void;
   onMessageSent?: () => void;
 };
 
 export function SferaMessageInput({
   sferaId,
   replyingTo,
+  editingMessage,
   onCancelReply,
+  onCancelEdit,
   onMessageSent,
 }: SferaMessageInputProps) {
   const [content, setContent] = useState("");
@@ -40,6 +51,33 @@ export function SferaMessageInput({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputContainerRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingMessage) {
+      const nextContent = editingMessage.content || "";
+      setContent(nextContent);
+      setHasTyped(nextContent.trim().length > 0);
+      setAttachments(editingMessage.attachments ?? []);
+
+      requestAnimationFrame(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+          textarea.style.height = "auto";
+          const newHeight = Math.max(24, Math.min(textarea.scrollHeight, 160));
+          textarea.style.height = `${newHeight}px`;
+        }
+      });
+    } else {
+      setContent("");
+      setHasTyped(false);
+      setAttachments([]);
+
+      const textarea = textareaRef.current;
+      if (textarea) {
+        textarea.style.height = "auto";
+      }
+    }
+  }, [editingMessage]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -54,7 +92,7 @@ export function SferaMessageInput({
 
       // Only allow images for now
       if (!file.type.startsWith("image/")) {
-        alert("Only image files are supported");
+        toast.error("Only image files are supported");
         return;
       }
 
@@ -89,7 +127,7 @@ export function SferaMessageInput({
       }
     } catch (error) {
       console.error("Error uploading file:", error);
-      alert("Failed to upload file");
+      toast.error("Failed to upload file");
     } finally {
       setIsUploading(false);
       // Reset file input
@@ -122,14 +160,26 @@ export function SferaMessageInput({
 
     setIsSending(true);
     try {
-      const response = await fetch(`/api/sfera/${sferaId}/messages`, {
-        method: "POST",
+      const isEditing = Boolean(editingMessage);
+      const endpoint = isEditing
+        ? `/api/sfera/${sferaId}/messages/${editingMessage?.id}`
+        : `/api/sfera/${sferaId}/messages`;
+      const method = isEditing ? "PATCH" : "POST";
+      const payload = isEditing
+        ? {
+            content: content.trim(),
+            attachments,
+          }
+        : {
+            content: content.trim(),
+            parentMessageId: replyingTo?.id || null,
+            attachments,
+          };
+
+      const response = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content: content.trim(),
-          parentMessageId: replyingTo?.id || null,
-          attachments,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -145,9 +195,14 @@ export function SferaMessageInput({
       }
 
       onMessageSent?.();
+      if (editingMessage) {
+        onCancelEdit?.();
+      }
     } catch (error) {
       console.error("Error sending message:", error);
-      alert("Failed to send message");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to send message"
+      );
     } finally {
       setIsSending(false);
     }
@@ -190,7 +245,8 @@ export function SferaMessageInput({
   };
 
   const handleInputContainerClick = (e?: React.MouseEvent<HTMLButtonElement>) => {
-    if ((!e ||
+    if (
+      (!e ||
         e.target === e.currentTarget ||
         (e.currentTarget === inputContainerRef.current &&
           !(e.target as HTMLElement).closest("button"))) &&
@@ -201,12 +257,12 @@ export function SferaMessageInput({
   };
 
   return (
-    <form className="w-full" onSubmit={handleSubmit}>
-      {/* Reply preview */}
+    <form onSubmit={handleSubmit}>
+      {/* Reply indicator */}
       {replyingTo && (
-        <div className="mb-2 flex items-start justify-between rounded-2xl border border-gray-200 bg-white p-3">
+        <div className="mb-2 flex items-start justify-between rounded-2xl border border-blue-200 bg-blue-50 p-3">
           <div className="min-w-0 flex-1">
-            <div className="mb-1 font-medium text-gray-700 text-xs">
+            <div className="mb-1 font-medium text-blue-700 text-xs">
               Replying to {replyingTo.userEmail}
             </div>
             <div className="line-clamp-1 text-gray-500 text-xs">
@@ -216,6 +272,27 @@ export function SferaMessageInput({
           <button
             className="ml-2 flex-shrink-0 text-gray-400 hover:text-gray-600"
             onClick={onCancelReply}
+            type="button"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Editing indicator */}
+      {editingMessage && (
+        <div className="mb-2 flex items-start justify-between rounded-2xl border border-amber-200 bg-amber-50 p-3">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1 font-medium text-amber-700 text-xs">
+              Editing message
+            </div>
+            <div className="line-clamp-1 text-amber-700/80 text-xs">
+              {editingMessage.content}
+            </div>
+          </div>
+          <button
+            className="ml-2 flex-shrink-0 text-amber-500 hover:text-amber-700"
+            onClick={onCancelEdit}
             type="button"
           >
             <X className="h-4 w-4" />
@@ -290,7 +367,13 @@ export function SferaMessageInput({
             disabled={isSending}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder={isSending ? "Sending..." : "Write your message..."}
+            placeholder={
+              isSending
+                ? "Sending..."
+                : editingMessage
+                  ? "Update your message..."
+                  : "Write your message..."
+            }
             ref={textareaRef}
             value={content}
           />
@@ -344,7 +427,9 @@ export function SferaMessageInput({
                     : "text-gray-500"
                 )}
               />
-              <span className="sr-only">Submit</span>
+              <span className="sr-only">
+                {editingMessage ? "Save changes" : "Submit"}
+              </span>
             </Button>
           </div>
         </div>

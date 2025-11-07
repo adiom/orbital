@@ -5,9 +5,6 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth } from "../(auth)/auth";
 import { redirect } from "next/navigation";
 
-    redirect('/sferas');
-
-
 export default async function AreaLayout({
   children,
   params,
@@ -22,6 +19,8 @@ export default async function AreaLayout({
   ]);
   const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
   const areaId = resolvedParams?.id;
+
+  redirect("/sferas");
 
   return (
     <DataStreamProvider>
