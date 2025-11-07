@@ -49,8 +49,14 @@ export function ToolResultDisplay({
   result,
   className,
 }: ToolResultDisplayProps) {
+  // Handle legacy format: { toolName, result: {...} } -> unwrap to { toolName, ...result }
+  const normalizedResult =
+    "result" in result && typeof result.result === "object"
+      ? { toolName: result.toolName, ...(result.result as any) }
+      : result;
+
   // Error state
-  if (!result.success && result.error) {
+  if (!normalizedResult.success && normalizedResult.error) {
     return (
       <div
         className={cn(
@@ -63,7 +69,7 @@ export function ToolResultDisplay({
           <p className="font-medium text-red-900 dark:text-red-100">
             Tool execution failed
           </p>
-          <p className="mt-1 text-red-700 dark:text-red-300">{result.error}</p>
+          <p className="mt-1 text-red-700 dark:text-red-300">{normalizedResult.error}</p>
         </div>
       </div>
     );
@@ -71,33 +77,33 @@ export function ToolResultDisplay({
 
   // Image generation result (supports both Gemini and Replicate)
   if (
-    (result.toolName === "generate-image" ||
-      result.toolName === "generateImage" ||
-      result.toolName === "generateImageReplicate") &&
-    result.imageUrl
+    (normalizedResult.toolName === "generate-image" ||
+      normalizedResult.toolName === "generateImage" ||
+      normalizedResult.toolName === "generateImageReplicate") &&
+    normalizedResult.imageUrl
   ) {
     return (
       <div className={cn("overflow-hidden rounded-lg border", className)}>
         <div className="relative aspect-square w-full max-w-md">
           <Image
-            alt={result.prompt || "Generated image"}
+            alt={normalizedResult.prompt || "Generated image"}
             className="object-cover"
             fill
-            src={result.imageUrl}
+            src={normalizedResult.imageUrl}
             unoptimized // External URLs may not work with Next.js Image optimization
           />
         </div>
-        {result.prompt && (
+        {normalizedResult.prompt && (
           <div className="border-t bg-muted/30 p-3">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
               <p className="text-muted-foreground text-xs">
-                Prompt: <span className="text-foreground">{result.prompt}</span>
+                Prompt: <span className="text-foreground">{normalizedResult.prompt}</span>
               </p>
             </div>
-            {result.aspectRatio && (
+            {normalizedResult.aspectRatio && (
               <p className="mt-1 text-muted-foreground text-xs">
-                Aspect ratio: {result.aspectRatio}
+                Aspect ratio: {normalizedResult.aspectRatio}
               </p>
             )}
           </div>
@@ -108,9 +114,9 @@ export function ToolResultDisplay({
 
   // Music generation result
   if (
-    (result.toolName === "generate-music" ||
-      result.toolName === "generateMusic") &&
-    result.audioUrl
+    (normalizedResult.toolName === "generate-music" ||
+      normalizedResult.toolName === "generateMusic") &&
+    normalizedResult.audioUrl
   ) {
     return (
       <div className={cn("rounded-lg border p-4", className)}>
@@ -118,22 +124,22 @@ export function ToolResultDisplay({
           <Music className="h-8 w-8 text-purple-500" />
           <div className="flex-1">
             <p className="font-medium">Generated Music</p>
-            {result.duration && (
+            {normalizedResult.duration && (
               <p className="text-muted-foreground text-sm">
-                {result.duration}s
+                {normalizedResult.duration}s
               </p>
             )}
           </div>
           <a
             className="rounded-md bg-purple-100 p-2 hover:bg-purple-200 dark:bg-purple-900 dark:hover:bg-purple-800"
             download
-            href={result.audioUrl}
+            href={normalizedResult.audioUrl}
           >
             <Download className="h-4 w-4" />
           </a>
         </div>
         <audio className="mt-3 w-full" controls>
-          <source src={result.audioUrl} type="audio/mpeg" />
+          <source src={normalizedResult.audioUrl} type="audio/mpeg" />
         </audio>
       </div>
     );
@@ -141,9 +147,9 @@ export function ToolResultDisplay({
 
   // Video generation result
   if (
-    (result.toolName === "generate-video" ||
-      result.toolName === "generateVideo") &&
-    result.videoUrl
+    (normalizedResult.toolName === "generate-video" ||
+      normalizedResult.toolName === "generateVideo") &&
+    normalizedResult.videoUrl
   ) {
     return (
       <div className={cn("rounded-lg border p-4", className)}>
@@ -151,15 +157,15 @@ export function ToolResultDisplay({
           <Video className="h-8 w-8 text-blue-500" />
           <div className="flex-1">
             <p className="font-medium">Generated Video</p>
-            {result.duration && result.fps && (
+            {normalizedResult.duration && normalizedResult.fps && (
               <p className="text-muted-foreground text-sm">
-                {result.duration}s @ {result.fps}fps
+                {normalizedResult.duration}s @ {normalizedResult.fps}fps
               </p>
             )}
           </div>
         </div>
         <video className="w-full rounded" controls>
-          <source src={result.videoUrl} type="video/mp4" />
+          <source src={normalizedResult.videoUrl} type="video/mp4" />
         </video>
       </div>
     );
@@ -167,9 +173,9 @@ export function ToolResultDisplay({
 
   // Summarize discussion result
   if (
-    (result.toolName === "summarize-discussion" ||
-      result.toolName === "summarizeDiscussion") &&
-    result.summary
+    (normalizedResult.toolName === "summarize-discussion" ||
+      normalizedResult.toolName === "summarizeDiscussion") &&
+    normalizedResult.summary
   ) {
     return (
       <div className={cn("rounded-lg border bg-blue-50 p-4", className)}>
@@ -178,11 +184,11 @@ export function ToolResultDisplay({
           <p className="font-medium text-blue-900">Discussion Summary</p>
         </div>
         <div className="whitespace-pre-wrap text-blue-900 text-sm leading-relaxed">
-          {result.summary}
+          {normalizedResult.summary}
         </div>
-        {result.summaryLength && (
+        {normalizedResult.summaryLength && (
           <p className="mt-2 text-blue-700 text-xs">
-            Length: {result.summaryLength}
+            Length: {normalizedResult.summaryLength}
           </p>
         )}
       </div>
@@ -190,7 +196,7 @@ export function ToolResultDisplay({
   }
 
   // Generic success message
-  if (result.success && result.message) {
+  if (normalizedResult.success && normalizedResult.message) {
     return (
       <div
         className={cn(
@@ -201,10 +207,10 @@ export function ToolResultDisplay({
         <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-600" />
         <div>
           <p className="font-medium text-green-900 dark:text-green-100">
-            {result.toolName}
+            {normalizedResult.toolName}
           </p>
           <p className="mt-1 text-green-700 dark:text-green-300">
-            {result.message}
+            {normalizedResult.message}
           </p>
         </div>
       </div>
@@ -214,9 +220,9 @@ export function ToolResultDisplay({
   // Fallback for unknown tool results
   return (
     <div className={cn("rounded-lg border bg-muted/30 p-4 text-sm", className)}>
-      <p className="font-medium">Tool result: {result.toolName}</p>
+      <p className="font-medium">Tool result: {normalizedResult.toolName}</p>
       <pre className="mt-2 overflow-x-auto text-xs">
-        {JSON.stringify(result, null, 2)}
+        {JSON.stringify(normalizedResult, null, 2)}
       </pre>
     </div>
   );
