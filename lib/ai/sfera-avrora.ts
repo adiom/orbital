@@ -8,6 +8,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { myProvider } from "./providers";
+import { getSferaTools } from "./sfera-tools";
+import { detectToolIntent, type ToolIntent } from "./tool-intent-detector";
 
 // Use a fixed UUID for Avrora AI user
 const AVRORA_USER_ID = "00000000-0000-0000-0000-000000000001"; // Special system user ID for Avrora
@@ -82,8 +84,9 @@ Sfera Context:
 - Поддерживать разговор
 - Имейте в виду, что это пространство для совместной работы с несколькими участниками
 - Будьте в дискуссии, не надо быть ментором
-- Предлагайте чтото свое только если вас попросят
+- Предлагайте что-то свое только если вас попросят
 - В сообщении не больше 30 слов
+- Если в контексте есть результат выполнения инструмента (изображение, музыка, видео, резюме) - коротко опиши результат пользователю
 
 Помните: сообщения в Sfera можно разветвлять на новые ветки обсуждения. Если вы видите возможность для более глубокого изучения, сообщите об этом.`;
     // Get the trigger message
@@ -101,26 +104,104 @@ Sfera Context:
       content: triggerMessage.content.substring(0, 100),
     });
 
-    // Generate response using MegaLLM
+    // STEP 1: Detect tool intent from user message
+    console.log("🔍 Detecting tool intent from message...");
+    const toolIntent = detectToolIntent(triggerMessage.content);
+    console.log("🎯 Tool intent detected:", toolIntent);
+
+    // STEP 2: Execute tool manually if intent detected
+    let toolResults: any[] = [];
+    let toolExecutionContext = "";
+
+    if (toolIntent.toolName && toolIntent.confidence === "high") {
+      console.log(`🔧 Executing tool manually: ${toolIntent.toolName}`);
+
+      try {
+        const tools = getSferaTools();
+        const toolsMap: Record<string, any> = {
+          generateImage: tools[0],
+          generateImageReplicate: tools[1],
+          generateMusic: tools[2],
+          generateVideo: tools[3],
+          summarizeDiscussion: tools[4],
+        };
+
+        const tool = toolsMap[toolIntent.toolName];
+
+        if (tool) {
+          // For summarizeDiscussion, add context messages
+          if (toolIntent.toolName === "summarizeDiscussion") {
+            toolIntent.parameters.contextMessages = conversationContext;
+          }
+
+          console.log("📥 Tool input parameters:", toolIntent.parameters);
+
+          // Execute tool
+          const result = await tool.execute(toolIntent.parameters);
+
+          console.log("📊 Tool execution result:", {
+            success: result?.success,
+            hasData: !!result,
+          });
+
+          // Store result
+          toolResults = [
+            {
+              toolName: toolIntent.toolName,
+              result,
+            },
+          ];
+
+          // Build context for AI response
+          if (result?.success) {
+            if (result.imageUrl) {
+              toolExecutionContext = `\n\n[Я сгенерировал изображение: ${result.imageUrl}]\nОпиши пользователю что ты создал, коротко упомяни результат.`;
+            } else if (result.audioUrl) {
+              toolExecutionContext = `\n\n[Я создал музыку: ${result.audioUrl}]\nСкажи пользователю что музыка готова.`;
+            } else if (result.videoUrl) {
+              toolExecutionContext = `\n\n[Я создал видео: ${result.videoUrl}]\nСкажи пользователю что видео готово.`;
+            } else if (result.summary) {
+              toolExecutionContext = `\n\n[Вот резюме обсуждения: ${result.summary}]\nПредставь это резюме пользователю.`;
+            } else {
+              toolExecutionContext = `\n\n[Инструмент выполнен успешно: ${JSON.stringify(result)}]`;
+            }
+          } else {
+            toolExecutionContext = `\n\n[Ошибка выполнения инструмента: ${result?.error || "Unknown error"}]\nСкажи пользователю что не получилось выполнить запрос.`;
+          }
+
+          console.log("✅ Tool executed successfully");
+        } else {
+          console.error("❌ Tool not found:", toolIntent.toolName);
+        }
+      } catch (error) {
+        console.error("❌ Error executing tool:", error);
+        toolExecutionContext = `\n\n[Ошибка: ${error instanceof Error ? error.message : "Unknown error"}]\nСкажи пользователю что произошла ошибка.`;
+      }
+    }
+
+    // STEP 3: Generate AI response (without automatic tool calling)
     console.log("🧠 Generating AI response...");
     const model = myProvider.languageModel("chat-model");
+
     const { text } = await generateText({
       model,
       system: systemPrompt,
-      prompt: `Context of recent discussion:\n${conversationContext}\n\nRespond to the message from ${triggerMessage.userEmail}.`,
+      prompt: `Context of recent discussion:\n${conversationContext}\n\nRespond to the message from ${triggerMessage.userEmail}.${toolExecutionContext}`,
       temperature: 0.7,
+      // No tools parameter - we handle tools manually now
     });
 
     console.log("✅ AI response generated:", {
       length: text.length,
       preview: `${text.substring(0, 100)}...`,
+      hadToolExecution: toolResults.length > 0,
     });
 
     // Ensure Avrora is a member of the Sfera
     console.log("👤 Ensuring Avrora membership...");
     await ensureAvroraMembership(sferaId);
 
-    // Post Avrora's response
+    // Post Avrora's response with tool results
     console.log("💾 Saving Avrora's message to database...");
     await db.insert(sferaMessage).values({
       sferaId,
@@ -129,6 +210,7 @@ Sfera Context:
       parentMessageId: triggerMessageId,
       isForked: false,
       forkCount: 0,
+      toolResults: (toolResults || []) as any, // Cast to any for DB compatibility
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -166,7 +248,7 @@ async function ensureAvroraMembership(sferaId: string): Promise<void> {
     console.log("➕ Creating Avrora user...");
     await db.insert(user).values({
       id: AVRORA_USER_ID,
-      email: "avrora@avrora.ai",
+      email: "avrora@avrora.click",
     });
     console.log("✅ Avrora user created");
   }
