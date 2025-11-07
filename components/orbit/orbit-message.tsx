@@ -14,6 +14,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { ToolResultsList } from "./tool-result-display";
 import { segmentTextWithMentions } from "@/lib/mentions/parser";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +29,9 @@ type OrbitMessageProps = {
       name: string;
       url: string;
       contentType: string;
+    }>;
+    toolResults?: Array<{
+      [key: string]: unknown;
     }>;
     isForked: boolean;
     forkedSferaId: string | null;
@@ -278,6 +282,13 @@ export function OrbitMessage({
                 />
               </button>
             ))}
+          </div>
+        )}
+
+        {/* AI Tool Results */}
+        {message.toolResults && message.toolResults.length > 0 && (
+          <div className="mt-4">
+            <ToolResultsList results={message.toolResults} />
           </div>
         )}
       </div>

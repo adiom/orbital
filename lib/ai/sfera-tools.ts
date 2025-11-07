@@ -14,6 +14,7 @@ import {
   textToSpeech,
 } from "./tools/generative";
 import { summarizeDiscussion } from "./tools/analytics";
+import { webSearch } from "./tools/integrations";
 
 /**
  * Registry of all available Sfera tools
@@ -45,8 +46,10 @@ export function getSferaTools(): Tool<any, any>[] {
   tools.push(summarizeDiscussion);
   // TODO: Add more analytics tools (extract-topics, find-connections, sentiment)
 
+  // Integration tools
+  tools.push(webSearch);
+
   // TODO: Add mini-app tools (create-mini-app, create-chart, create-game)
-  // TODO: Add integration tools (web-search, mcp-bridge)
 
   return tools;
 }

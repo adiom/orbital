@@ -245,6 +245,18 @@ export const areaDocument = pgTable(
   })
 );
 
+export const magicToken = pgTable('MagicToken', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  token: varchar('token', { length: 64 }).notNull().unique(),
+  email: varchar('email', { length: 64 }).notNull(),
+  expiresAt: timestamp('expiresAt').notNull(),
+  used: boolean('used').notNull().default(false),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+});
+
+export type MagicToken = InferSelectModel<typeof magicToken>;
+
+
 export type AreaDocument = InferSelectModel<typeof areaDocument>;
 
 export const areaMergeProposal = pgTable("AreaMergeProposal", {

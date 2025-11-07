@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useSession } from 'next-auth/react';
+import { redirect } from "next/navigation";
 
 type Orbit = {
   id: string;
@@ -29,6 +31,12 @@ type NodePosition = {
 };
 
 export default function OrbitsPage() {
+  const { status } = useSession();
+
+  if (status === 'unauthenticated') {
+    redirect('/login');
+  }
+
   const router = useRouter();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [orbits, setOrbits] = useState<Orbit[]>([]);

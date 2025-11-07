@@ -16,7 +16,6 @@ export default async function Layout({
   const [session, cookieStore] = await Promise.all([auth(), cookies()]);
   const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
 
-  redirect("/sferas");
 
   return (
     <>

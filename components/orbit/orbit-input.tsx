@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import { hasAvroraMention } from "@/lib/mentions/parser";
 
 type ReplyingToMessage = {
   id: string;
@@ -33,6 +34,7 @@ type OrbitInputProps = {
   onCancelReply?: () => void;
   onCancelEdit?: () => void;
   onMessageSent?: () => void;
+  onAvroraThinking?: () => void;
 };
 
 export function OrbitInput({
@@ -42,6 +44,7 @@ export function OrbitInput({
   onCancelReply,
   onCancelEdit,
   onMessageSent,
+  onAvroraThinking,
 }: OrbitInputProps) {
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -153,9 +156,14 @@ export function OrbitInput({
       navigator.vibrate(50);
     }
 
+    // Check if message mentions Avrora and trigger thinking indicator
+    const isEditing = Boolean(editingMessage);
+    if (!isEditing && hasAvroraMention(content)) {
+      onAvroraThinking?.();
+    }
+
     setIsSending(true);
     try {
-      const isEditing = Boolean(editingMessage);
       const endpoint = isEditing
         ? `/api/sfera/${orbitId}/messages/${editingMessage?.id}`
         : `/api/sfera/${orbitId}/messages`;

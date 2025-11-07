@@ -5,6 +5,14 @@ import Credentials from "next-auth/providers/credentials";
 import { DUMMY_PASSWORD } from "@/lib/constants";
 import { createGuestUser, getUser } from "@/lib/db/queries";
 import { authConfig } from "./auth.config";
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import { magicToken, user as userTable } from '@/lib/db/schema';
+import { eq, and, gt } from 'drizzle-orm';
+
+// biome-ignore lint: Forbidden non-null assertion.
+const client = postgres(process.env.POSTGRES_URL!);
+const db = drizzle(client);
 
 export type UserType = "guest" | "regular";
 
@@ -42,7 +50,51 @@ export const {
   providers: [
     Credentials({
       credentials: {},
-      async authorize({ email, password }: any) {
+      async authorize({ email, password, token }: any) {
+        // Если передан token, верифицируем magic token
+        if (token && email) {
+          const [foundToken] = await db
+            .select()
+            .from(magicToken)
+            .where(
+              and(
+                eq(magicToken.token, token),
+                eq(magicToken.email, email),
+                eq(magicToken.used, false),
+                gt(magicToken.expiresAt, new Date())
+              )
+            )
+            .limit(1);
+
+          if (!foundToken) {
+            return null;
+          }
+
+          // Найти или создать пользователя
+          let [existingUser] = await db
+            .select()
+            .from(userTable)
+            .where(eq(userTable.email, email))
+            .limit(1);
+
+          if (!existingUser) {
+            const [newUser] = await db
+              .insert(userTable)
+              .values({ email })
+              .returning();
+            existingUser = newUser;
+          }
+
+          // Пометить токен как использованный
+          await db
+            .update(magicToken)
+            .set({ used: true })
+            .where(eq(magicToken.id, foundToken.id));
+
+          return { ...existingUser, type: "regular" };
+        }
+
+        // Обычная авторизация по email/password
         const users = await getUser(email);
 
         if (users.length === 0) {
@@ -50,20 +102,20 @@ export const {
           return null;
         }
 
-        const [user] = users;
+        const [dbUser] = users;
 
-        if (!user.password) {
+        if (!dbUser.password) {
           await compare(password, DUMMY_PASSWORD);
           return null;
         }
 
-        const passwordsMatch = await compare(password, user.password);
+        const passwordsMatch = await compare(password, dbUser.password);
 
         if (!passwordsMatch) {
           return null;
         }
 
-        return { ...user, type: "regular" };
+        return { ...dbUser, type: "regular" };
       },
     }),
     Credentials({

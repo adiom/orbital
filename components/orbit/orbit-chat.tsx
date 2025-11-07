@@ -12,7 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { SferaSettings } from "@/components/sfera/sfera-settings";
+import { OrbitSettings } from "./orbit-settings";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +40,7 @@ type Message = {
   userEmail: string;
   parentMessageId: string | null;
   attachments?: Attachment[];
+  toolResults?: Array<Record<string, unknown>>;
   isForked: boolean;
   forkedSferaId: string | null;
   createdAt: Date;
@@ -139,6 +140,9 @@ const parseMessage = (value: unknown): Message | null => {
     parentMessageId:
       typeof parentMessageId === "string" ? parentMessageId : null,
     attachments: parseAttachments(record.attachments),
+    toolResults: Array.isArray(record.toolResults)
+      ? (record.toolResults as Array<Record<string, unknown>>)
+      : undefined,
     isForked,
     forkedSferaId: typeof forkedSferaId === "string" ? forkedSferaId : null,
     createdAt:
@@ -239,6 +243,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [isAvroraThinking, setIsAvroraThinking] = useState(false);
 
   const fetchOrbit = useCallback(
     async (signal?: AbortSignal) => {
@@ -310,7 +315,12 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   const handleMessageSent = () => {
     setReplyingTo(null);
     setEditingMessage(null);
+    setIsAvroraThinking(false);
     fetchOrbit();
+  };
+
+  const handleAvroraThinking = () => {
+    setIsAvroraThinking(true);
   };
 
   const handleFork = (_messageId: string) => {
@@ -509,26 +519,54 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
               </div>
             </div>
           ) : (
-            messages.map((message) => {
-              const parentMessage = message.parentMessageId
-                ? messages.find((m) => m.id === message.parentMessageId)
-                : null;
+            <>
+              {messages.map((message) => {
+                const parentMessage = message.parentMessageId
+                  ? messages.find((m) => m.id === message.parentMessageId)
+                  : null;
 
-              return (
-                <OrbitMessage
-                  canModerate={Boolean(isOwnerOrAdmin)}
-                  currentUserId={currentUserId}
-                  key={message.id}
-                  message={message}
-                  onDelete={() => handleDeleteMessage(message)}
-                  onEdit={() => handleEditMessage(message)}
-                  onFork={handleFork}
-                  onReply={() => setReplyingTo(message)}
-                  orbitId={orbitId}
-                  parentMessage={parentMessage}
-                />
-              );
-            })
+                return (
+                  <OrbitMessage
+                    canModerate={Boolean(isOwnerOrAdmin)}
+                    currentUserId={currentUserId}
+                    key={message.id}
+                    message={message}
+                    onDelete={() => handleDeleteMessage(message)}
+                    onEdit={() => handleEditMessage(message)}
+                    onFork={handleFork}
+                    onReply={() => setReplyingTo(message)}
+                    orbitId={orbitId}
+                    parentMessage={parentMessage}
+                  />
+                );
+              })}
+
+              {/* Avrora thinking indicator */}
+              {isAvroraThinking && (
+                <article className="group relative mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div className="relative overflow-hidden rounded-3xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-5 shadow-sm">
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 text-gray-500 text-xs">
+                        <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 px-2.5 py-1">
+                          <Sparkles className="h-3 w-3 text-white" />
+                          <span className="font-semibold text-white">
+                            Avrora AI
+                          </span>
+                        </div>
+                        <span className="font-medium text-blue-700">
+                          avrora@avrora.click
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-blue-700">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-[15px] italic">думает...</span>
+                    </div>
+                  </div>
+                </article>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -541,6 +579,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
             onCancelEdit={() => setEditingMessage(null)}
             onCancelReply={() => setReplyingTo(null)}
             onMessageSent={handleMessageSent}
+            onAvroraThinking={handleAvroraThinking}
             orbitId={orbitId}
             replyingTo={replyingTo}
           />
@@ -550,7 +589,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
       {/* Settings Dialog */}
       {orbit && (
         <>
-          <SferaSettings
+          <OrbitSettings
             currentDescription={orbit.description}
             currentMembers={members}
             currentTitle={orbit.title}
@@ -558,7 +597,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
             isOwner={orbit.ownerId === currentUserId}
             onClose={() => setIsSettingsOpen(false)}
             onUpdate={handleSettingsUpdate}
-            sferaId={orbitId}
+            orbitId={orbitId}
           />
 
           <AlertDialog

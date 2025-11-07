@@ -1,77 +1,165 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
-import { useActionState, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from 'next/navigation';
+import type { JSX } from 'react';
+import {
+  useActionState,
+  useEffect,
+  useState,
+  startTransition,
+  Suspense,
+} from 'react';
+import { motion } from 'framer-motion';
+import dynamic from 'next/dynamic';
 
-import { AuthForm } from "@/components/auth-form";
-import { SubmitButton } from "@/components/submit-button";
-import { toast } from "@/components/toast";
-import { type LoginActionState, login } from "../actions";
+import { MagicLinkForm } from '@/components/magic-link-form';
+import { Button } from '@/components/ui/button';
 
-export default function Page() {
+import { login, loginWithMagicLink, type LoginActionState } from '../actions';
+import { signIn, useSession } from 'next-auth/react';
+
+
+function LoginContent(): JSX.Element {
   const router = useRouter();
-
-  const [email, setEmail] = useState("");
-  const [isSuccessful, setIsSuccessful] = useState(false);
+  const searchParams = useSearchParams();
 
   const [state, formAction] = useActionState<LoginActionState, FormData>(
     login,
     {
-      status: "idle",
-    }
+      status: 'idle',
+    },
   );
 
-  const { update: updateSession } = useSession();
+  const [magicState, magicFormAction] = useActionState<
+    LoginActionState,
+    FormData
+  >(loginWithMagicLink, {
+    status: 'idle',
+  });
+
+  const { status, update: updateSession } = useSession();
+  const [loginTriggered, setLoginTriggered] = useState(false);
+  const [successHandled, setSuccessHandled] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
-    if (state.status === "failed") {
-      toast({
-        type: "error",
-        description: "Invalid credentials!",
-      });
-    } else if (state.status === "invalid_data") {
-      toast({
-        type: "error",
-        description: "Failed validating your submission!",
-      });
-    } else if (state.status === "success") {
-      setIsSuccessful(true);
-      updateSession();
-      router.refresh();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.status, router.refresh, updateSession]);
+    const rawCookies = document.cookie.split(';');
 
-  const handleSubmit = (formData: FormData) => {
-    setEmail(formData.get("email") as string);
-    formAction(formData);
-  };
+    for (const cookie of rawCookies) {
+      const separatorIndex = cookie.indexOf('=');
+      const name = (
+        separatorIndex > -1 ? cookie.slice(0, separatorIndex) : cookie
+      ).trim();
+
+      if (!name) {
+        continue;
+      }
+
+      document.cookie = `${name}=; Max-Age=0; path=/`;
+    }
+  }, [status]);
+
+
+
+  useEffect(() => {
+    const magicToken = searchParams.get('magic_token');
+    const magicEmail = searchParams.get('magic_email');
+    if (magicToken && magicEmail && !loginTriggered) {
+      setLoginTriggered(true);
+      // Верифицируем magic token через signIn
+      signIn('credentials', {
+        token: magicToken,
+        email: magicEmail,
+        redirect: false,
+      }).then((result) => {
+        if (result?.ok) {
+          updateSession();
+          router.push('/orbits');
+        } else {
+          console.error('Invalid magic token');
+        }
+      }).catch((error) => {
+        console.error('Error verifying magic token:', error);
+      });
+    }
+  }, [searchParams, loginTriggered, updateSession, router]);
+
+
+
+  useEffect(() => {
+    if (state.status === 'success' && !successHandled) {
+      setSuccessHandled(true);
+      updateSession();
+      router.push('/orbits');
+    }
+  }, [state.status, updateSession, router, successHandled]);
+
+  useEffect(() => {
+    if (magicState.status === 'success' && !successHandled) {
+      setSuccessHandled(true);
+      updateSession();
+      router.push('/orbits');
+    }
+  }, [magicState.status, updateSession, router, successHandled]);
 
   return (
-    <div className="flex h-dvh w-screen items-start justify-center bg-background pt-12 md:items-center md:pt-0">
-      <div className="flex w-full max-w-md flex-col gap-12 overflow-hidden rounded-2xl">
-        <div className="flex flex-col items-center justify-center gap-2 px-4 text-center sm:px-16">
-          <h3 className="font-semibold text-xl dark:text-zinc-50">Sign In</h3>
-          <p className="text-gray-500 text-sm dark:text-zinc-400">
-            Use your email and password to sign in
-          </p>
-        </div>
-        <AuthForm action={handleSubmit} defaultEmail={email}>
-          <SubmitButton isSuccessful={isSuccessful}>Sign in</SubmitButton>
-          <p className="mt-4 text-center text-gray-600 text-sm dark:text-zinc-400">
-            {"Don't have an account? "}
-            <Link
-              className="font-semibold text-gray-800 hover:underline dark:text-zinc-200"
-              href="/register"
-            >
-              Sign up
-            </Link>
-            {" for free."}
-          </p>
-        </AuthForm>
-      </div>
+    <div className="relative flex h-dvh w-screen items-start pt-12 md:pt-0 md:items-center justify-center bg-background overflow-hidden">
+      {/* Background animations around login form */}
+      <motion.div
+        className="absolute w-full h-full z-0 flex items-center justify-center"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isFocused ? 1 : 0.3 }}
+        transition={{
+          duration: 0.8,
+        }}
+      >
+        
+      </motion.div>
+
+      <motion.div
+        className="w-full max-w-md overflow-hidden rounded-2xl flex flex-col gap-12 relative z-10"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <motion.div
+          className="relative bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-2xl p-4 z-10 shadow-lg border border-orange-200/50 dark:border-slate-600/50"
+          animate={{
+            borderColor: isFocused ? '#f97316' : '#fed7aa', // Orange-500 : Orange-200
+            boxShadow: isFocused
+              ? '0 20px 25px -5px rgba(249, 115, 22, 0.1), 0 10px 10px -5px rgba(249, 115, 22, 0.04)'
+              : '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+          }}
+          transition={{
+            duration: 0.6,
+            delay: 0.1,
+          }}
+          style={{
+            borderWidth: '1px',
+            borderStyle: 'solid',
+          }}
+        >
+          <MagicLinkForm
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+          />
+          <Button
+            className="mt-4 w-full"
+            variant="outline"
+            onClick={() => signIn('yandex')}
+          >
+            Войти через Яндекс
+          </Button>
+        </motion.div>
+      </motion.div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Загрузка...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
