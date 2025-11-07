@@ -63,24 +63,26 @@ function LoginContent(): JSX.Element {
 
   useEffect(() => {
     const magicToken = searchParams.get('magic_token');
-    const magicEmail = searchParams.get('magic_email');
-    if (magicToken && magicEmail && !loginTriggered) {
+
+    if (magicToken && !loginTriggered) {
       setLoginTriggered(true);
+
       // Верифицируем magic token через signIn
       signIn('credentials', {
         token: magicToken,
-        email: magicEmail,
         redirect: false,
-      }).then((result) => {
-        if (result?.ok) {
-          updateSession();
-          router.push('/orbits');
-        } else {
-          console.error('Invalid magic token');
-        }
-      }).catch((error) => {
-        console.error('Error verifying magic token:', error);
-      });
+      })
+        .then((result) => {
+          if (result?.ok) {
+            updateSession();
+            router.push('/orbits');
+          } else {
+            console.error('Invalid magic token');
+          }
+        })
+        .catch((error) => {
+          console.error('Error verifying magic token:', error);
+        });
     }
   }, [searchParams, loginTriggered, updateSession, router]);
 

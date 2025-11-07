@@ -50,16 +50,19 @@ export const {
   providers: [
     Credentials({
       credentials: {},
-      async authorize({ email, password, token }: any) {
+      async authorize(credentials: any) {
+        const token = credentials?.token as string | undefined;
+        const email = credentials?.email as string | undefined;
+        const password = credentials?.password as string | undefined;
+
         // Если передан token, верифицируем magic token
-        if (token && email) {
+        if (token) {
           const [foundToken] = await db
             .select()
             .from(magicToken)
             .where(
               and(
                 eq(magicToken.token, token),
-                eq(magicToken.email, email),
                 eq(magicToken.used, false),
                 gt(magicToken.expiresAt, new Date())
               )
@@ -70,17 +73,19 @@ export const {
             return null;
           }
 
+          const tokenEmail = foundToken.email;
+
           // Найти или создать пользователя
           let [existingUser] = await db
             .select()
             .from(userTable)
-            .where(eq(userTable.email, email))
+            .where(eq(userTable.email, tokenEmail))
             .limit(1);
 
           if (!existingUser) {
             const [newUser] = await db
               .insert(userTable)
-              .values({ email })
+              .values({ email: tokenEmail })
               .returning();
             existingUser = newUser;
           }
@@ -95,6 +100,10 @@ export const {
         }
 
         // Обычная авторизация по email/password
+        if (!email || !password) {
+          return null;
+        }
+
         const users = await getUser(email);
 
         if (users.length === 0) {
