@@ -4,8 +4,10 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { DataStreamProvider } from "@/components/data-stream-provider";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { auth } from "../(auth)/auth";
+import { redirect } from "next/navigation";
 
 export const experimental_ppr = true;
+
 
 export default async function Layout({
   children,
@@ -14,6 +16,8 @@ export default async function Layout({
 }) {
   const [session, cookieStore] = await Promise.all([auth(), cookies()]);
   const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
+
+    redirect('/sferas');
 
   return (
     <>

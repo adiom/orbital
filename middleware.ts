@@ -22,11 +22,28 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Получаем токен пользователя из заголовков запроса
+  // getToken - это функция из библиотеки next-auth, которая
+  // извлекает токен из HTTP-заголовков запроса
+  // req - это объект запроса, который мы передаем в getToken
+  // secret - это секретный ключ, который используется для
+  // генерации и проверки подписи токена. Этот ключ должен быть
+  // таким же, как и в настройках next-auth в файле next.config.js,
+  // иначе проверка подписи не будет пройдена
+  // secureCookie - это флаг, который указывает, должен ли токен
+  // быть защищен с использованием HTTPS. В данном случае мы
+  // устанавливаем его в true, если это не окружение разработки
+  
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
     secureCookie: !isDevelopmentEnvironment,
   });
+
+  // Разрешить доступ к страницам auth без токена
+  if (pathname === "/login" || pathname === "/register") {
+    return NextResponse.next();
+  }
 
   if (!token) {
     const redirectUrl = encodeURIComponent(request.url);

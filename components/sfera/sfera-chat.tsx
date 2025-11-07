@@ -1,12 +1,23 @@
 "use client";
 
-import { ChevronRight, Loader2, Menu, PenSquare, Settings } from "lucide-react";
+import { ChevronRight, Loader2, Menu, PenSquare, Settings, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { SferaMessage } from "./sfera-message";
 import { SferaMessageInput } from "./sfera-message-input";
 import { SferaSettings } from "./sfera-settings";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 type Message = {
   id: string;
@@ -56,8 +67,10 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [parentSfera, setParentSfera] = useState<ParentSfera | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
   const fetchSfera = useCallback(async () => {
@@ -154,15 +167,28 @@ export function SferaChat({ sferaId, currentUserId }: SferaChatProps) {
 
           <div className="flex items-center gap-1">
             {isOwnerOrAdmin && (
-              <Button
-                className="h-8 w-8 rounded-full"
-                onClick={() => setIsSettingsOpen(true)}
-                size="icon"
-                variant="ghost"
-              >
-                <Settings className="h-5 w-5 text-gray-700" />
-                <span className="sr-only">Settings</span>
-              </Button>
+              <>
+                <Button
+                  className="h-8 w-8 rounded-full"
+                  onClick={() => setIsSettingsOpen(true)}
+                  size="icon"
+                  variant="ghost"
+                >
+                  <Settings className="h-5 w-5 text-gray-700" />
+                  <span className="sr-only">Settings</span>
+                </Button>
+                {sfera?.ownerId === currentUserId && (
+                  <Button
+                    className="h-8 w-8 rounded-full text-red-500 hover:bg-red-50 hover:text-red-600"
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                    size="icon"
+                    variant="ghost"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                    <span className="sr-only">Delete Sfera</span>
+                  </Button>
+                )}
+              </>
             )}
             <Button
               className="h-8 w-8 rounded-full"
