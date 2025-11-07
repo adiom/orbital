@@ -66,7 +66,8 @@ export function SferaMessage({
   const contentRef = useRef<HTMLButtonElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
 
-  const canEdit = canModerate || (!!currentUserId && currentUserId === message.userId);
+  const canEdit =
+    canModerate || (!!currentUserId && currentUserId === message.userId);
   const canDelete = canEdit;
   const deleteDisabled = Boolean(message.isForked || message.forkedSferaId);
 
@@ -205,7 +206,6 @@ export function SferaMessage({
 
         {/* Message Content with highlighted mentions */}
         <button
-          type="button"
           className={cn(
             "whitespace-pre-wrap text-[15px] text-gray-900 leading-relaxed transition-all duration-200",
             isOverflowing &&
@@ -221,6 +221,7 @@ export function SferaMessage({
             }
           }}
           ref={contentRef}
+          type="button"
         >
           {textSegments.map((segment, index) =>
             segment.isMention && segment.mention?.type === "avrora" ? (
@@ -252,7 +253,6 @@ export function SferaMessage({
           <div className="mt-2 flex flex-wrap gap-2">
             {message.attachments.map((attachment, index) => (
               <button
-                type="button"
                 className="relative h-48 w-64 cursor-pointer overflow-hidden rounded-lg border bg-muted transition-opacity hover:opacity-90"
                 key={`attachment-${attachment.url}-${index}`}
                 onClick={() => window.open(attachment.url, "_blank")}
@@ -262,6 +262,7 @@ export function SferaMessage({
                     window.open(attachment.url, "_blank");
                   }
                 }}
+                type="button"
               >
                 <Image
                   alt={attachment.name}
@@ -276,84 +277,84 @@ export function SferaMessage({
         )}
       </div>
 
-    {/* Message Actions */}
-    <div className="mt-1.5 mb-2 flex flex-wrap items-center gap-2 px-4">
-      <button
-        className="text-gray-400 transition-colors hover:text-gray-600"
-        onClick={handleCopy}
-        title="Copy message"
-        type="button"
-      >
-        <Copy className="h-4 w-4" />
-      </button>
+      {/* Message Actions */}
+      <div className="mt-1.5 mb-2 flex flex-wrap items-center gap-2 px-4">
+        <button
+          className="text-gray-400 transition-colors hover:text-gray-600"
+          onClick={handleCopy}
+          title="Copy message"
+          type="button"
+        >
+          <Copy className="h-4 w-4" />
+        </button>
 
-      <button
-        className="text-gray-400 transition-colors hover:text-gray-600"
-        onClick={onReply}
-        title="Reply to this message"
-        type="button"
-      >
-        <Reply className="h-4 w-4" />
-        <span className="sr-only">Reply</span>
-      </button>
+        <button
+          className="text-gray-400 transition-colors hover:text-gray-600"
+          onClick={onReply}
+          title="Reply to this message"
+          type="button"
+        >
+          <Reply className="h-4 w-4" />
+          <span className="sr-only">Reply</span>
+        </button>
 
-      {/* Fork/Enter Fork Button */}
-      {message.isForked ? (
-        message.forkedSferaId ? (
+        {/* Fork/Enter Fork Button */}
+        {message.isForked ? (
+          message.forkedSferaId ? (
+            <button
+              className="flex items-center gap-1.5 text-blue-600 transition-colors hover:text-blue-700"
+              onClick={handleEnterFork}
+              title="Enter forked Sfera"
+              type="button"
+            >
+              <LogIn className="h-4 w-4" />
+              <span className="font-medium text-xs">Enter Fork</span>
+            </button>
+          ) : null
+        ) : (
           <button
-            className="flex items-center gap-1.5 text-blue-600 transition-colors hover:text-blue-700"
-            onClick={handleEnterFork}
-            title="Enter forked Sfera"
+            className="flex items-center gap-1.5 text-gray-400 transition-colors hover:text-blue-600 disabled:opacity-50"
+            disabled={isForking}
+            onClick={handleFork}
+            title="Fork this message into a new Sfera"
             type="button"
           >
-            <LogIn className="h-4 w-4" />
-            <span className="font-medium text-xs">Enter Fork</span>
+            <GitBranch className="h-4 w-4" />
+            <span className="font-medium text-xs">
+              {isForking ? "Forking..." : "Fork"}
+            </span>
           </button>
-        ) : null
-      ) : (
-        <button
-          className="flex items-center gap-1.5 text-gray-400 transition-colors hover:text-blue-600 disabled:opacity-50"
-          disabled={isForking}
-          onClick={handleFork}
-          title="Fork this message into a new Sfera"
-          type="button"
-        >
-          <GitBranch className="h-4 w-4" />
-          <span className="font-medium text-xs">
-            {isForking ? "Forking..." : "Fork"}
-          </span>
-        </button>
-      )}
+        )}
 
-      {canEdit && (
-        <button
-          className="flex items-center gap-1.5 text-gray-400 transition-colors hover:text-gray-600"
-          onClick={onEdit}
-          title="Edit message"
-          type="button"
-        >
-          <PenSquare className="h-4 w-4" />
-          <span className="sr-only">Edit</span>
-        </button>
-      )}
+        {canEdit && (
+          <button
+            className="flex items-center gap-1.5 text-gray-400 transition-colors hover:text-gray-600"
+            onClick={onEdit}
+            title="Edit message"
+            type="button"
+          >
+            <PenSquare className="h-4 w-4" />
+            <span className="sr-only">Edit</span>
+          </button>
+        )}
 
-      {canDelete && (
-        <button
-          className="flex items-center gap-1.5 text-gray-400 transition-colors hover:text-red-600 disabled:opacity-50"
-          disabled={deleteDisabled}
-          onClick={onDelete}
-          title={
-            deleteDisabled
-              ? "Cannot delete a message that has been forked"
-              : "Delete message"
-          }
-          type="button"
-        >
-          <Trash2 className="h-4 w-4" />
-          <span className="sr-only">Delete</span>
-        </button>
-      )}
+        {canDelete && (
+          <button
+            className="flex items-center gap-1.5 text-gray-400 transition-colors hover:text-red-600 disabled:opacity-50"
+            disabled={deleteDisabled}
+            onClick={onDelete}
+            title={
+              deleteDisabled
+                ? "Cannot delete a message that has been forked"
+                : "Delete message"
+            }
+            type="button"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span className="sr-only">Delete</span>
+          </button>
+        )}
+      </div>
     </div>
-  </div>
-);
+  );
 }

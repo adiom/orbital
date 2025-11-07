@@ -22,7 +22,9 @@ async function getMembership(sferaId: string, userId: string) {
       role: sferaMember.role,
     })
     .from(sferaMember)
-    .where(and(eq(sferaMember.sferaId, sferaId), eq(sferaMember.userId, userId)))
+    .where(
+      and(eq(sferaMember.sferaId, sferaId), eq(sferaMember.userId, userId))
+    )
     .limit(1);
 
   return membership;
@@ -51,10 +53,7 @@ export async function PATCH(request: Request, context: RouteContext) {
       .select()
       .from(sferaMessage)
       .where(
-        and(
-          eq(sferaMessage.id, messageId),
-          eq(sferaMessage.sferaId, sferaId)
-        )
+        and(eq(sferaMessage.id, messageId), eq(sferaMessage.sferaId, sferaId))
       )
       .limit(1);
 
@@ -68,17 +67,20 @@ export async function PATCH(request: Request, context: RouteContext) {
     }
 
     const body = await request.json().catch(() => ({}));
-    const contentInput = typeof body.content === "string" ? body.content : undefined;
+    const contentInput =
+      typeof body.content === "string" ? body.content : undefined;
     const attachmentsInput = Array.isArray(body.attachments)
       ? body.attachments
       : undefined;
 
     const nextContent =
-      contentInput !== undefined ? contentInput.trim() : existingMessage.content;
+      contentInput !== undefined
+        ? contentInput.trim()
+        : existingMessage.content;
     const nextAttachments =
       attachmentsInput !== undefined
         ? attachmentsInput
-        : existingMessage.attachments ?? [];
+        : (existingMessage.attachments ?? []);
 
     if (nextContent.trim() === "" && nextAttachments.length === 0) {
       return Response.json(
@@ -105,7 +107,10 @@ export async function PATCH(request: Request, context: RouteContext) {
     return Response.json({ message: updatedMessage });
   } catch (error) {
     console.error("Failed to update message:", error);
-    return Response.json({ error: "Failed to update message" }, { status: 500 });
+    return Response.json(
+      { error: "Failed to update message" },
+      { status: 500 }
+    );
   }
 }
 
@@ -128,10 +133,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
       .select()
       .from(sferaMessage)
       .where(
-        and(
-          eq(sferaMessage.id, messageId),
-          eq(sferaMessage.sferaId, sferaId)
-        )
+        and(eq(sferaMessage.id, messageId), eq(sferaMessage.sferaId, sferaId))
       )
       .limit(1);
 
@@ -157,9 +159,7 @@ export async function DELETE(_request: Request, context: RouteContext) {
       );
     }
 
-    await db
-      .delete(sferaMessage)
-      .where(eq(sferaMessage.id, messageId));
+    await db.delete(sferaMessage).where(eq(sferaMessage.id, messageId));
 
     await db
       .update(sfera)
@@ -169,6 +169,9 @@ export async function DELETE(_request: Request, context: RouteContext) {
     return Response.json({ success: true });
   } catch (error) {
     console.error("Failed to delete message:", error);
-    return Response.json({ error: "Failed to delete message" }, { status: 500 });
+    return Response.json(
+      { error: "Failed to delete message" },
+      { status: 500 }
+    );
   }
 }

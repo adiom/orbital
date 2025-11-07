@@ -43,20 +43,20 @@ export default function SferasPage() {
   const fetchSferas = useCallback(async () => {
     try {
       const response = await fetch("/api/sfera", {
-        credentials: 'include', // This will include cookies with the request
+        credentials: "include", // This will include cookies with the request
       });
-      
+
       if (response.status === 401) {
         // If unauthorized, redirect to login
         window.location.href = `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`;
         return;
       }
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || "Failed to fetch sferas");
       }
-      
+
       const data = await response.json();
       setSferas(data.sferas || []);
       setForkRelationships(data.forkRelationships || []);

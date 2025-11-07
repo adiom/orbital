@@ -4,7 +4,7 @@
 
 ## Обзор проекта
 
-**Avrora** — AI-чат приложение на Next.js 15+ с коллаборативными возможностями. Расширяет базовый Chat SDK шаблон функциями групповых чатов, area-пространств для совместной работы и кастомной интеграцией с MegaLLM API.
+**Avrora** — AI-чат приложение на Next.js 15+ с коллаборативными пространствами обсуждений **Sfera**. Расширяет базовый Chat SDK шаблон функциями древовидных дискуссий (fork-based conversations) и групповых чатов.
 
 ## Ключевые технологии
 
@@ -58,6 +58,7 @@ pnpm test             # Запуск Playwright тестов
   - `gpt-5-mini` — рассуждения, генерация заголовков, артефакты
 - **Изображения**: [lib/ai/megallm-direct.ts](lib/ai/megallm-direct.ts) — кастомная обработка multimodal входов
 - **Стриминг**: [lib/ai/megallm-stream-parser.ts](lib/ai/megallm-stream-parser.ts) — парсер потоков
+- **Sfera AI**: [lib/ai/sfera-avrora.ts](lib/ai/sfera-avrora.ts) — Avrora AI для пространств Sfera
 
 ### Схема БД (Drizzle ORM)
 
@@ -67,22 +68,20 @@ pnpm test             # Запуск Playwright тестов
 - `User` — аутентификация и профили
 - `Chat` — личные и групповые чаты (поле `chatType`)
 - `Message_v2` — сообщения с отслеживанием автора для групп
-- `Area` — пространства для коллаборации с поддержкой форков
-- `Document` — общие документы внутри area
+- `Document` — документы с версионированием
 
-**Таблицы коллаборации**:
-- `AreaMember` — участники area и их роли
-- `ChatMember` — участники групповых чатов
-- `AreaDocument` — документы привязанные к area
-- `AreaMergeProposal` — предложения слияния форков
-- `MessageMention` — отслеживание @упоминаний (включая @avrora)
+**Sfera таблицы** (коллаборативные дискуссии):
+- `Sfera` — пространства обсуждений с fork/merge поддержкой
+- `SferaMember` — участники Sfera с ролями (owner, admin, member, viewer)
+- `SferaMessage` — сообщения в Sfera с поддержкой вложенности (threading) и вложений
+- `SferaForkedSfera` — связи между родительской Sfera и форками
 
 ### Структура роутов
 
-**Area роуты** ([app/(area)/](app/(area)/)):
-- `/areas` — список всех areas
-- `/area/[id]` — страница конкретного area
-- `/area/[id]/chat/[chatId]` — чат внутри area
+**Sfera роуты** ([app/(sfera)/](app/(sfera)/)):
+- `/sferas` — список всех Sfera текущего пользователя
+- `/sferas/new` — создание новой Sfera
+- `/sfera/[id]` — страница дискуссии Sfera
 
 **Chat роуты** ([app/(chat)/](app/(chat)/)):
 - `/chat/[id]` — страница личного чата
@@ -90,18 +89,17 @@ pnpm test             # Запуск Playwright тестов
 
 **API роуты**:
 
-*Area API*:
-- `/api/areas` — управление areas (CRUD)
-- `/api/areas/[id]/fork` — форк area
-- `/api/areas/[id]/tree` — дерево форков
-- `/api/areas/[id]/members` — управление участниками
-- `/api/areas/[id]/chats` — чаты внутри area
+*Sfera API*:
+- `/api/sfera` — список/создание Sfera
+- `/api/sfera/[id]` — получение/обновление/удаление Sfera
+- `/api/sfera/[id]/messages` — сообщения Sfera
+- `/api/sfera/[id]/messages/[messageId]` — редактирование/удаление сообщения
+- `/api/sfera/[id]/members` — управление участниками
+- `/api/sfera/[id]/fork` — fork Sfera или сообщения
 
 *Chat API*:
 - `/api/chat` — главный endpoint чата с логикой групповых чатов
 - `/api/chat/[id]/stream` — стриминг сообщений
-- `/api/area-chats` — список чатов area
-- `/api/chats/[chatId]/members` — участники чата
 
 *Другие API*:
 - `/api/ws` — WebSocket подключение
@@ -109,6 +107,43 @@ pnpm test             # Запуск Playwright тестов
 - `/api/document` — работа с документами
 - `/api/files/upload` — загрузка файлов
 - `/api/docs` — документация API (OpenAPI)
+
+### Sfera — Коллаборативные пространства
+
+**Концепция**: Sfera — это пространства для групповых дискуссий с древовидной структурой, где любое сообщение или целое обсуждение можно "форкнуть" в новую ветку.
+
+**Ключевые возможности**:
+
+1. **Fork-based дискуссии**:
+   - Любое сообщение можно форкнуть в новую Sfera
+   - Связи между родительскими и дочерними Sfera отслеживаются
+   - Возможность вернуться к родительской дискуссии
+
+2. **@Avrora упоминания**:
+   - AI отвечает только при упоминании `@avrora` или `@аврора`
+   - Контекстные ответы на основе последних 20 сообщений
+   - Реализация в [lib/ai/sfera-avrora.ts](lib/ai/sfera-avrora.ts)
+   - Краткие ответы (до 30 слов), участие в дискуссии без менторства
+
+3. **Threading (вложенные ответы)**:
+   - Сообщения могут быть ответами на другие сообщения
+   - Поле `parentMessageId` в таблице `SferaMessage`
+   - UI показывает контекст родительского сообщения
+
+4. **Управление участниками**:
+   - Роли: owner, admin, member, viewer
+   - Owner может удалять Sfera
+   - Admin/Owner могут управлять настройками и участниками
+
+5. **Вложения**:
+   - Поддержка файлов, изображений
+   - Хранение метаданных в JSON (name, url, contentType)
+
+**Компоненты**:
+- [components/sfera/sfera-chat.tsx](components/sfera/sfera-chat.tsx) — основной компонент Sfera
+- [components/sfera/sfera-message.tsx](components/sfera/sfera-message.tsx) — отображение сообщений
+- [components/sfera/sfera-message-input.tsx](components/sfera/sfera-message-input.tsx) — ввод сообщений
+- [components/sfera/sfera-settings.tsx](components/sfera/sfera-settings.tsx) — настройки Sfera
 
 ### Особенности групповых чатов
 
@@ -138,17 +173,24 @@ MEGALLM_API_KEY     # API ключ MegaLLM
 
 ### Поток AI ответов
 
+**В обычных чатах**:
 1. Обработка в [app/(chat)/api/chat/route.ts](app/(chat)/api/chat/route.ts:1)
 2. Для групповых чатов проверка @avrora упоминания перед ответом
 3. Изображения → кастомный MegaLLM обработчик (`callMegaLLMWithImages`)
 4. Только текст → стандартный AI SDK стриминг
 5. Логика групповых чатов в [lib/ai/group-chat-logic.ts](lib/ai/group-chat-logic.ts)
 
+**В Sfera**:
+1. Проверка @avrora упоминания в сообщении
+2. Загрузка контекста последних 20 сообщений
+3. Генерация ответа через [lib/ai/sfera-avrora.ts](lib/ai/sfera-avrora.ts)
+4. Avrora автоматически добавляется как участник при первом ответе
+5. Ответ сохраняется как обычное сообщение с `parentMessageId`
+
 ### WebSocket поддержка
 
 - Реализация: [lib/websocket/server.ts](lib/websocket/server.ts)
 - Запуск: `pnpm dev:ws`
-- API endpoint: [app/(area)/api/ws/route.ts](app/(area)/api/ws/route.ts)
 - Клиентский хук: [lib/websocket/use-websocket.ts](lib/websocket/use-websocket.ts)
 
 ### Миграции БД
@@ -178,13 +220,6 @@ MEGALLM_API_KEY     # API ключ MegaLLM
 - `request-suggestions.ts` — запрос предложений
 - `get-weather.ts` — получение погоды
 
-### Area (Пространства)
-
-- **Резюме area**: [lib/ai/area-summary.ts](lib/ai/area-summary.ts) — генерация саммари
-- **Форки**: Поддержка fork/merge workflow
-- **Члены**: Роли owner/admin/member/viewer
-- **Видимость**: public/private/dao
-
 ## Тестирование
 
 - Playwright тесты в [tests/](tests/)
@@ -197,13 +232,45 @@ MEGALLM_API_KEY     # API ключ MegaLLM
 1. **React 19 RC**: Используется релиз-кандидат — возможны breaking changes
 2. **Миграции БД**: Всегда делать бэкап перед миграциями в продакшне
 3. **AI Gateway**: Разные настройки для Vercel и не-Vercel деплоев
-4. **Контекст групповых чатов**: Ограничен 20 сообщениями для предотвращения переполнения токенов
+4. **Контекст Sfera**: Ограничен 20 сообщениями для предотвращения переполнения токенов
 5. **Обработка изображений**: Кастомная MegaLLM реализация обходит стандартный AI SDK
 6. **Middleware**: [middleware.ts](middleware.ts:1) — гостевая аутентификация, защита роутов, доступ к /docs
 7. **Документация API**: Доступна на `/docs` через Scalar UI ([app/docs/page.tsx](app/docs/page.tsx))
+8. **Avrora AI**: Специальный системный пользователь с ID `00000000-0000-0000-0000-000000000001`
+9. **Fork структура**: Sfera может быть форкнута из сообщения, создавая древовидные дискуссии
+10. **Минималистичный UI**: Дизайн вдохновлён минимализмом с focus на содержание
 
-## Дополнительная документация
+## Работа со Sfera
 
-- [AREA_IMPLEMENTATION_GUIDE_RU.md](AREA_IMPLEMENTATION_GUIDE_RU.md) — детальное руководство по реализации Area
-- [README.md](README.md) — общая информация о проекте
-- [test-avrora.md](test-avrora.md) — тестовые сценарии
+### Создание новой Sfera
+```typescript
+POST /api/sfera
+{
+  "title": "Название дискуссии",
+  "description": "Описание (опционально)",
+  "visibility": "private" | "public" | "dao",
+  "memberEmails": ["user@example.com"]
+}
+```
+
+### Fork сообщения в новую Sfera
+```typescript
+POST /api/sfera/[id]/fork
+{
+  "messageId": "uuid",
+  "title": "Название форка"
+}
+```
+
+### Отправка сообщения
+```typescript
+POST /api/sfera/[id]/messages
+{
+  "content": "Текст сообщения",
+  "parentMessageId": "uuid" | null,  // Для threading
+  "attachments": []
+}
+```
+
+### Вызов Avrora AI
+Просто упомяните `@avrora` или `@аврора` в сообщении, и AI ответит с учётом контекста дискуссии.

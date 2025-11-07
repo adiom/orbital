@@ -33,7 +33,7 @@ export async function middleware(request: NextRequest) {
   // secureCookie - это флаг, который указывает, должен ли токен
   // быть защищен с использованием HTTPS. В данном случае мы
   // устанавливаем его в true, если это не окружение разработки
-  
+
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
