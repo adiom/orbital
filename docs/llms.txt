@@ -4049,7 +4049,7 @@ The [AI SDK](/) is a powerful TypeScript toolkit for building AI applications wi
 
 ## OpenAI GPT-5
 
-OpenAI's GPT-5 represents their latest advancement in language models, offering powerful new features including verbosity control for tailored response lengths, integrated web search capabilities, reasoning summaries for transparency, and native support for text, images, audio, and PDFs. The model is available in three variants: `gpt-5`, `gpt-5-mini` for faster, more cost-effective processing, and `gpt-5-nano` for ultra-efficient operations.
+OpenAI's GPT-5 represents their latest advancement in language models, offering powerful new features including verbosity control for tailored response lengths, integrated web search capabilities, reasoning summaries for transparency, and native support for text, images, audio, and PDFs. The model is available in three variants: `gpt-5`, `gpt-5-nano` for faster, more cost-effective processing, and `gpt-5-nano` for ultra-efficient operations.
 
 ### Prompt Engineering for GPT-5
 
@@ -17785,7 +17785,7 @@ import { generateText, stepCountIs } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
 const result = await generateText({
-  model: 'openai/gpt-5-mini',
+  model: 'openai/gpt-5-nano',
   prompt: 'What is the Vercel AI Gateway?',
   stopWhen: stepCountIs(10),
   tools: {
@@ -18763,7 +18763,7 @@ The following provider options are available:
 - **serviceTier** _'auto' | 'flex' | 'priority' | 'default'_
   Service tier for the request. Set to 'flex' for 50% cheaper processing
   at the cost of increased latency (available for o3, o4-mini, and gpt-5 models).
-  Set to 'priority' for faster processing with Enterprise access (available for gpt-4, gpt-5, gpt-5-mini, o3, o4-mini; gpt-5-nano is not supported).
+  Set to 'priority' for faster processing with Enterprise access (available for gpt-4, gpt-5, gpt-5-nano, o3, o4-mini; gpt-5-nano is not supported).
 
   Defaults to 'auto'.
 
@@ -18866,7 +18866,7 @@ import { openai } from '@ai-sdk/openai';
 import { generateText } from 'ai';
 
 const result = await generateText({
-  model: openai('gpt-5-mini'),
+  model: openai('gpt-5-nano'),
   prompt: 'Write a poem about a boy and his first pet dog.',
   providerOptions: {
     openai: {
@@ -19313,7 +19313,7 @@ The following optional provider options are available for OpenAI chat models:
 
   Service tier for the request. Set to 'flex' for 50% cheaper processing
   at the cost of increased latency (available for o3, o4-mini, and gpt-5 models).
-  Set to 'priority' for faster processing with Enterprise access (available for gpt-4, gpt-5, gpt-5-mini, o3, o4-mini; gpt-5-nano is not supported).
+  Set to 'priority' for faster processing with Enterprise access (available for gpt-4, gpt-5, gpt-5-nano, o3, o4-mini; gpt-5-nano is not supported).
 
   Defaults to 'auto'.
 
@@ -19825,7 +19825,7 @@ The following optional provider options are available for OpenAI completion mode
 | ------------------- | ------------------- | ------------------- | ------------------- | ------------------- |
 | `gpt-5-pro`         | <Check size={18} /> | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> |
 | `gpt-5`             | <Check size={18} /> | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> |
-| `gpt-5-mini`        | <Check size={18} /> | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> |
+| `gpt-5-nano`        | <Check size={18} /> | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> |
 | `gpt-5-nano`        | <Check size={18} /> | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> |
 | `gpt-5-codex`       | <Check size={18} /> | <Cross size={18} /> | <Check size={18} /> | <Check size={18} /> |
 | `gpt-5-chat-latest` | <Check size={18} /> | <Cross size={18} /> | <Cross size={18} /> | <Cross size={18} /> |

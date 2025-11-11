@@ -5,6 +5,7 @@
 
 import { generateText } from "ai";
 import { and, desc, eq } from "drizzle-orm";
+import { buildSferaPrompt } from "@/lib/ai/prompts/index";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { myProvider } from "./providers";
@@ -13,6 +14,105 @@ import { logAiUsage } from "./usage-logger";
 
 // Use a fixed UUID for Avrora AI user
 const AVRORA_USER_ID = "00000000-0000-0000-0000-000000000001"; // Special system user ID for Avrora
+
+/**
+ * Estimate token count for a message (rough estimate: 1 token ≈ 4 characters)
+ */
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
+/**
+ * Smart context selection to keep within ~2000 token budget
+ * Prioritizes:
+ * 1. Most recent 5 messages (always included)
+ * 2. Messages with @avrora mentions
+ * 3. Messages from the trigger user
+ * 4. Fill remaining budget with recent messages
+ */
+function selectSmartContext(
+  messages: Array<{
+    id: string;
+    content: string;
+    userId: string;
+    userEmail: string;
+    createdAt: Date;
+    attachments: unknown;
+  }>,
+  triggerMessageId: string
+): typeof messages {
+  const TARGET_TOKENS = 2000;
+  const RECENT_COUNT = 5; // Always include last 5 messages
+
+  if (messages.length === 0) return [];
+
+  // Priority buckets
+  const recentMessages = messages.slice(-RECENT_COUNT);
+  const avroraMentions = messages.filter(
+    (m) =>
+      m.content.toLowerCase().includes("@avrora") ||
+      m.content.toLowerCase().includes("@аврора")
+  );
+  const triggerUserMessages = messages.filter(
+    (m) =>
+      m.id === triggerMessageId ||
+      m.userId === messages.find((msg) => msg.id === triggerMessageId)?.userId
+  );
+
+  // Deduplicate and collect
+  const selectedIds = new Set<string>();
+  const selected: typeof messages = [];
+
+  // Add recent messages first (highest priority)
+  for (const msg of recentMessages) {
+    if (!selectedIds.has(msg.id)) {
+      selected.push(msg);
+      selectedIds.add(msg.id);
+    }
+  }
+
+  // Add @avrora mentions
+  for (const msg of avroraMentions) {
+    if (!selectedIds.has(msg.id)) {
+      selected.push(msg);
+      selectedIds.add(msg.id);
+    }
+  }
+
+  // Add trigger user's messages
+  for (const msg of triggerUserMessages) {
+    if (!selectedIds.has(msg.id)) {
+      selected.push(msg);
+      selectedIds.add(msg.id);
+    }
+  }
+
+  // Calculate current token count
+  let currentTokens = selected.reduce(
+    (sum, msg) => sum + estimateTokens(`${msg.userEmail}: ${msg.content}`),
+    0
+  );
+
+  // Fill remaining budget with recent messages (working backwards)
+  for (
+    let i = messages.length - 1;
+    i >= 0 && currentTokens < TARGET_TOKENS;
+    i--
+  ) {
+    const msg = messages[i];
+    if (!selectedIds.has(msg.id)) {
+      const msgTokens = estimateTokens(`${msg.userEmail}: ${msg.content}`);
+      if (currentTokens + msgTokens <= TARGET_TOKENS) {
+        selected.push(msg);
+        selectedIds.add(msg.id);
+        currentTokens += msgTokens;
+      }
+    }
+  }
+
+  // Sort by creation time to maintain chronological order
+  return selected.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+}
 
 /**
  * Generate Avrora's response to a message in a Sfera
@@ -47,7 +147,7 @@ export async function generateAvroraResponse(
       id: sferaData.id,
     });
 
-    // Get recent messages for context (last 20)
+    // Get recent messages for context (last 30 for smart selection)
     console.log("💬 Fetching recent messages for context...");
     const messages = await db
       .select({
@@ -62,74 +162,37 @@ export async function generateAvroraResponse(
       .innerJoin(user, eq(sferaMessage.userId, user.id))
       .where(eq(sferaMessage.sferaId, sferaId))
       .orderBy(desc(sferaMessage.createdAt))
-      .limit(20);
+      .limit(30);
 
     // Reverse to get chronological order
-    const contextMessages = messages.reverse();
-    console.log(`✅ Found ${contextMessages.length} messages for context`);
+    const allMessages = messages.reverse();
+    console.log(
+      `✅ Found ${allMessages.length} messages for smart context selection`
+    );
+
+    // Smart context management: reduce from ~7000 to ~2000 tokens
+    const contextMessages = selectSmartContext(allMessages, triggerMessageId);
+    console.log(
+      `🧠 Smart context selected ${contextMessages.length} messages (target: ~2000 tokens)`
+    );
 
     // Build conversation context
     const conversationContext = contextMessages
       .map((msg) => `${msg.userEmail}: ${msg.content}`)
       .join("\n\n");
 
-    // System prompt for Sfera context
-    const systemPrompt = `You are Avrora, an AI assistant helping with collaborative discussions in a Sfera.
+    // Get user name from trigger message for personalization
+    const triggerUser = contextMessages.find((m) => m.id === triggerMessageId);
+    const userName = triggerUser?.userEmail.split("@")[0];
 
-Sfera Context:
-- Title: ${sferaData.title}
-- Description: ${sferaData.description || "No description"}
-- Discussion Type: Collaborative, fork-based conversation
-
-Ваша роль:
-- Поддерживать разговор
-- Имейте в виду, что это пространство для совместной работы с несколькими участниками
-- Будьте в дискуссии, не надо быть ментором
-- Предлагайте что-то свое только если вас попросят
-- В сообщении не больше 30 слов (КРОМЕ случаев когда вас просят про список инструментов - тогда опишите их подробно)
-- Если в контексте есть результат выполнения инструмента - коротко опиши результат пользователю
-
-Доступные инструменты (всего 11):
-
-🎨 ГЕНЕРАТИВНЫЕ ИНСТРУМЕНТЫ:
-1. generateImage - генерация изображений через Gemini (быстро, для простых картинок)
-   Пример: "@Avrora нарисуй космический корабль"
-
-2. generateImageReplicate - генерация через Replicate FLUX (качественно, для сложных сцен)
-   Пример: "@Avrora создай через replicate портрет в стиле ренессанса"
-
-3. generateMusic - генерация музыки через Replicate (30 секунд)
-   Пример: "@Avrora создай музыку: спокойная лаунж мелодия"
-
-4. generateVideo - генерация видео/анимации через Replicate (5 секунд)
-   Пример: "@Avrora сделай видео: волны на океане"
-
-5. speechToText - преобразование аудио в текст (транскрипция)
-   Пример: "@Avrora транскрибируй это аудио"
-
-🔍 АНАЛИТИЧЕСКИЕ ИНСТРУМЕНТЫ:
-6. summarizeDiscussion - резюме обсуждения (краткое/среднее/подробное)
-   Пример: "@Avrora резюмируй обсуждение кратко"
-
-7. webSearch - поиск в интернете через Tavily (актуальная информация, новости)
-   Пример: "@Avrora найди информацию о новинках в AI"
-
-💻 ИНСТРУМЕНТЫ СОЗДАНИЯ MINI-APP:
-8. createMiniApp - создание React приложения (интерактивное)
-   Пример: "@Avrora создай приложение калькулятор"
-
-9. createChart - создание графиков и диаграмм
-   Пример: "@Avrora построй график продаж за год"
-
-10. createGame - создание игр и викторин
-    Пример: "@Avrora создай викторину про историю"
-
-11. editMiniApp - редактирование существующего mini-app
-    Пример: "@Avrora измени приложение: добавь кнопку сброса"
-
-КОГДА ВАС ПРОСЯТ СПИСОК ИНСТРУМЕНТОВ: опишите ВСЕ 11 инструментов с примерами использования, категориями и деталями!
-
-Помните: сообщения в Sfera можно разветвлять на новые ветки обсуждения. Если вы видите возможность для более глубокого изучения, сообщите об этом.`;
+    // Build system prompt using modular system
+    const systemPrompt = buildSferaPrompt(
+      {
+        title: sferaData.title,
+        description: sferaData.description,
+      },
+      userName
+    );
     // Get the trigger message
     const triggerMessage = contextMessages.find(
       (m) => m.id === triggerMessageId
@@ -147,10 +210,10 @@ Sfera Context:
 
     // Get all available tools
     const tools = getSferaTools();
-    console.log(`🔧 Loaded ${tools.length} tools for AI to use`);
-
+    //console.log(`🔧 Loaded ${tools.length} tools for AI to use`);
+    //console.log(`triggerMessage = ${triggerMessage}`);
     // Prepare tools object for AI SDK (convert array to object with tool names as keys)
-    const toolsObject: Record<string, typeof tools[number]> = {};
+    const toolsObject: Record<string, (typeof tools)[number]> = {};
 
     // Map tools by their type/name from the tool function
     tools.forEach((tool, index) => {
@@ -158,27 +221,49 @@ Sfera Context:
       // Extract tool name from description or use index-based naming
       let toolName = `tool_${index}`;
 
-      if (toolConfig.description?.includes("Gemini") && toolConfig.description?.includes("image")) {
+      if (
+        toolConfig.description?.includes("Gemini") &&
+        toolConfig.description?.includes("image")
+      ) {
         toolName = "generateImage";
-      } else if (toolConfig.description?.includes("FLUX") || (toolConfig.description?.includes("Replicate") && toolConfig.description?.includes("image"))) {
+      } else if (
+        toolConfig.description?.includes("FLUX") ||
+        (toolConfig.description?.includes("Replicate") &&
+          toolConfig.description?.includes("image"))
+      ) {
         toolName = "generateImageReplicate";
       } else if (toolConfig.description?.includes("music")) {
         toolName = "generateMusic";
       } else if (toolConfig.description?.includes("video")) {
         toolName = "generateVideo";
-      } else if (toolConfig.description?.includes("speech") || toolConfig.description?.includes("transcribe")) {
+      } else if (
+        toolConfig.description?.includes("speech") ||
+        toolConfig.description?.includes("transcribe")
+      ) {
         toolName = "speechToText";
       } else if (toolConfig.description?.includes("summarize")) {
         toolName = "summarizeDiscussion";
-      } else if (toolConfig.description?.includes("search") || toolConfig.description?.includes("web")) {
+      } else if (
+        toolConfig.description?.includes("search") ||
+        toolConfig.description?.includes("web")
+      ) {
         toolName = "webSearch";
-      } else if (toolConfig.description?.includes("mini-app") || toolConfig.description?.includes("mini app")) {
+      } else if (
+        toolConfig.description?.includes("mini-app") ||
+        toolConfig.description?.includes("mini app")
+      ) {
         toolName = "createMiniApp";
       } else if (toolConfig.description?.includes("chart")) {
         toolName = "createChart";
-      } else if (toolConfig.description?.includes("game") || toolConfig.description?.includes("quiz")) {
+      } else if (
+        toolConfig.description?.includes("game") ||
+        toolConfig.description?.includes("quiz")
+      ) {
         toolName = "createGame";
-      } else if (toolConfig.description?.includes("edit") && toolConfig.description?.includes("mini")) {
+      } else if (
+        toolConfig.description?.includes("edit") &&
+        toolConfig.description?.includes("mini")
+      ) {
         toolName = "editMiniApp";
       }
 
@@ -188,17 +273,26 @@ Sfera Context:
     console.log("🗺️ Tools mapped:", Object.keys(toolsObject));
 
     // Initialize variables for tracking tool execution
-    let toolResults: any[] = [];
-    let executedToolNames: string[] = [];
+    const toolResults: any[] = [];
+    const executedToolNames: string[] = [];
 
-    // Generate AI response with automatic tool calling
+    // Always use full model (chat-model/gpt-5-mini) since we provide tools
+    // The AI SDK will decide whether to use them based on context
+    const selectedModel = "chat-model";
+
     console.log("🧠 Generating AI response with automatic tool calling...");
-    const model = myProvider.languageModel("chat-model");
+    console.log(`🎯 Model: ${selectedModel}`);
+    const model = myProvider.languageModel(selectedModel);
 
     const result = await generateText({
       model,
       system: systemPrompt,
-      prompt: `Context of recent discussion:\n${conversationContext}\n\nRespond to the message from ${triggerMessage.userEmail}.`,
+      prompt: `Context of recent discussion:
+      ${conversationContext}
+      
+      Respond to the message from ${triggerMessage.userEmail}
+      ${triggerMessage.content}
+      `,
       temperature: 0.7,
       tools: toolsObject, // AI will automatically decide which tools to use
       maxSteps: 5, // Allow up to 5 tool calls in sequence
@@ -243,6 +337,7 @@ Sfera Context:
       preview: `${text.substring(0, 100)}...`,
       hadToolExecution: toolResults.length > 0,
       tokens: usage?.totalTokens,
+      model: selectedModel,
     });
 
     // Log AI usage
@@ -250,12 +345,13 @@ Sfera Context:
       userId: requestingUserId,
       sferaId,
       messageId: triggerMessageId,
-      modelUsed: "gpt-5",
+      modelUsed: "gpt-5-mini-2025-08-07",
       provider: "openai",
       inputTokens: usage?.promptTokens || 0,
       outputTokens: usage?.completionTokens || 0,
       toolName: executedToolNames.length > 0 ? executedToolNames[0] : undefined,
-      toolParameters: executedToolNames.length > 0 ? { tools: executedToolNames } : undefined,
+      toolParameters:
+        executedToolNames.length > 0 ? { tools: executedToolNames } : undefined,
       contextSize: contextMessages.length,
       status: "success",
     });
@@ -288,12 +384,12 @@ Sfera Context:
   } catch (error) {
     console.error("❌ Error generating Avrora response:", error);
 
-    // Log error to database
+    // Log error to database (use gpt-5-nano as default for errors)
     await logAiUsage({
       userId: requestingUserId,
       sferaId,
       messageId: triggerMessageId,
-      modelUsed: "gpt-5",
+      modelUsed: "gpt-5-nano-2025-08-07",
       provider: "openai",
       inputTokens: 0,
       outputTokens: 0,

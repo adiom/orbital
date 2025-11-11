@@ -76,9 +76,10 @@ export async function checkRateLimit(
       const oldestRequest = await redis.zRange(key, 0, 0, {
         WITHSCORES: true,
       });
-      const resetAt = oldestRequest.length > 0
-        ? new Date(Number(oldestRequest[0].score) + config.windowMs)
-        : new Date(now + config.windowMs);
+      const resetAt =
+        oldestRequest.length > 0
+          ? new Date(Number(oldestRequest[0].score) + config.windowMs)
+          : new Date(now + config.windowMs);
 
       return {
         allowed: false,
@@ -105,7 +106,7 @@ export async function checkRateLimit(
     return {
       allowed: true,
       remaining: 0,
-      resetAt: new Date(Date.now() + 60000),
+      resetAt: new Date(Date.now() + 60_000),
       error: "Rate limit check unavailable",
     };
   }
@@ -156,7 +157,10 @@ export async function checkToolRateLimit(
   const isExpensive = EXPENSIVE_TOOLS.includes(toolName);
 
   // Check daily tool limit
-  const toolCheck = await checkRateLimit(userId, RATE_LIMITS.USER_TOOLS_PER_DAY);
+  const toolCheck = await checkRateLimit(
+    userId,
+    RATE_LIMITS.USER_TOOLS_PER_DAY
+  );
   if (!toolCheck.allowed) {
     return toolCheck;
   }

@@ -4,20 +4,24 @@ import { aiUsageLog } from "@/lib/db/schema";
 // Model pricing (per 1M tokens) in USD
 const MODEL_PRICING = {
   "gpt-5": {
-    input: 2.5,
+    input: 1.25,
     output: 10.0,
+  },
+  "gpt-5-nano": {
+    input: 0.05,
+    output: 0.4,
   },
   "gpt-5-mini": {
-    input: 0.15,
-    output: 0.6,
+    input: 0.25,
+    output: 2,
   },
-  "gpt-4o": {
-    input: 2.5,
-    output: 10.0,
+  "gpt-5-nano-2025-08-07": {
+    input: 0.05,
+    output: 0.4,
   },
-  "gpt-4o-mini": {
-    input: 0.15,
-    output: 0.6,
+  "gpt-5-mini-2025-08-07": {
+    input: 0.25,
+    output: 2,
   },
 } as const;
 
@@ -26,7 +30,7 @@ const TOOL_COSTS = {
   generateImage: 0.02, // Gemini Imagen
   generateImageReplicate: 0.08, // Replicate FLUX
   generateMusic: 0.15, // Replicate music
-  generateVideo: 0.30, // Replicate video
+  generateVideo: 0.3, // Replicate video
   webSearch: 0.005, // Tavily
   speechToText: 0.01, // Whisper
   summarizeDiscussion: 0.0, // Just LLM tokens
@@ -150,7 +154,10 @@ export async function getUserDailySpending(userId: string): Promise<number> {
         );
       });
 
-    const totalCents = result.reduce((sum, row) => sum + (row.totalCost || 0), 0);
+    const totalCents = result.reduce(
+      (sum, row) => sum + (row.totalCost || 0),
+      0
+    );
     return totalCents / 100; // Convert to dollars
   } catch (error) {
     console.error("Failed to get daily spending:", error);

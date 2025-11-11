@@ -9,7 +9,8 @@ export async function getRedisClient() {
   }
 
   // Use Vercel KV or local Redis
-  const redisUrl = process.env.KV_URL || process.env.REDIS_URL || "redis://localhost:6379";
+  const redisUrl =
+    process.env.KV_URL || process.env.REDIS_URL || "redis://localhost:6379";
 
   redisClient = createClient({
     url: redisUrl,

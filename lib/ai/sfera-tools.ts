@@ -3,6 +3,9 @@
  *
  * This file provides tools specifically designed for use in Sfera collaborative discussions.
  * These tools extend Avrora AI's capabilities beyond simple conversation.
+ *
+ * Tools are automatically invoked by the AI SDK based on user requests.
+ * No manual pattern matching is needed - the AI decides when to use tools.
  */
 
 import type { Tool } from "ai";
@@ -23,213 +26,98 @@ import {
 } from "./tools/mini-apps";
 
 /**
- * Registry of all available Sfera tools
- * Tools are organized by category for easy management
+ * Tool categories for organization
  */
-export type SferaToolsRegistry = {
-  generative: Record<string, Tool<any, any>>;
-  miniApps: Record<string, Tool<any, any>>;
-  analytics: Record<string, Tool<any, any>>;
-  integrations: Record<string, Tool<any, any>>;
-};
+export const TOOL_CATEGORIES = {
+  GENERATIVE: "generative",
+  ANALYTICS: "analytics",
+  INTEGRATIONS: "integrations",
+  MINI_APPS: "mini_apps",
+} as const;
 
 /**
  * Get all tools available for Sfera
- * This function will be extended as we add more tools
+ * Returns an array of tools that the AI can use based on context
  */
 export function getSferaTools(): Tool<any, any>[] {
-  const tools: Tool<any, any>[] = [];
+  return [
+    // 🎨 Generative tools (5)
+    generateImage,
+    generateImageReplicate,
+    generateMusic,
+    generateVideo,
+    speechToText,
 
-  // Generative tools
-  tools.push(generateImage); // Gemini image generation
-  tools.push(generateImageReplicate); // Replicate FLUX image generation
-  tools.push(generateMusic); // Replicate music generation
-  tools.push(generateVideo); // Replicate video generation
-  tools.push(speechToText); // Speech-to-text transcription
-  // Note: TTS is still placeholder (needs ElevenLabs API)
-  // tools.push(textToSpeech);
+    // 🔍 Analytics tools (1)
+    summarizeDiscussion,
 
-  // Analytics tools
-  tools.push(summarizeDiscussion);
-  // TODO: Add more analytics tools (extract-topics, find-connections, sentiment)
+    // 🌐 Integration tools (1)
+    webSearch,
 
-  // Integration tools
-  tools.push(webSearch);
-
-  // Mini-app tools
-  tools.push(createMiniApp);
-  tools.push(createChart);
-  tools.push(createGame);
-  tools.push(editMiniApp); // AI can now edit mini-apps
-
-  return tools;
+    // 💻 Mini-app tools (4)
+    createMiniApp,
+    createChart,
+    createGame,
+    editMiniApp,
+  ];
 }
 
 /**
- * Check if a message content contains a tool invocation request
- * Examples:
- * - "@avrora сгенерируй картинку: космический корабль"
- * - "@avrora создай приложение для подсчета калорий"
- * - "@avrora резюмируй обсуждение"
+ * Get tool metadata for a specific tool by name
+ * Useful for analytics and debugging
  */
-export function detectToolRequest(content: string): {
-  hasToolRequest: boolean;
-  toolName?: string;
-  toolInput?: string;
-} {
-  const lowerContent = content.toLowerCase();
+export function getToolMetadata(toolName: string) {
+  const tools = getSferaTools();
+  const tool = tools.find((t: any) => {
+    // Check various possible tool identifiers
+    return (
+      t.name === toolName ||
+      t.description?.toLowerCase().includes(toolName.toLowerCase())
+    );
+  });
 
-  // Generative tools patterns
-  if (
-    lowerContent.includes("сгенерируй картинку") ||
-    lowerContent.includes("создай картинку") ||
-    lowerContent.includes("нарисуй")
-  ) {
-    return {
-      hasToolRequest: true,
-      toolName: "generate-image",
-      toolInput: content,
-    };
-  }
-
-  // Mini-app patterns
-  if (
-    lowerContent.includes("создай приложение") ||
-    lowerContent.includes("сделай приложение") ||
-    lowerContent.includes("создай react") ||
-    lowerContent.includes("создай web app") ||
-    lowerContent.includes("создай web-app") ||
-    lowerContent.includes("создай мини-приложение") ||
-    lowerContent.includes("создай компонент")
-  ) {
-    return {
-      hasToolRequest: true,
-      toolName: "create-mini-app",
-      toolInput: content,
-    };
-  }
-
-  // Edit mini-app patterns
-  if (
-    lowerContent.includes("измени приложение") ||
-    lowerContent.includes("обнови приложение") ||
-    lowerContent.includes("исправь приложение") ||
-    lowerContent.includes("доработай приложение") ||
-    lowerContent.includes("измени код") ||
-    lowerContent.includes("обнови код") ||
-    lowerContent.includes("исправь код") ||
-    lowerContent.includes("добавь в приложение") ||
-    lowerContent.includes("добавь функцию") ||
-    lowerContent.includes("улучши приложение")
-  ) {
-    return {
-      hasToolRequest: true,
-      toolName: "edit-mini-app",
-      toolInput: content,
-    };
-  }
-
-  if (
-    lowerContent.includes("построй график") ||
-    lowerContent.includes("создай график")
-  ) {
-    return {
-      hasToolRequest: true,
-      toolName: "create-chart",
-      toolInput: content,
-    };
-  }
-
-  if (
-    lowerContent.includes("создай викторину") ||
-    lowerContent.includes("сделай игру")
-  ) {
-    return {
-      hasToolRequest: true,
-      toolName: "create-game",
-      toolInput: content,
-    };
-  }
-
-  // Analytics patterns
-  if (
-    lowerContent.includes("резюмируй") ||
-    lowerContent.includes("подведи итог") ||
-    lowerContent.includes("суммируй")
-  ) {
-    return {
-      hasToolRequest: true,
-      toolName: "summarize-discussion",
-      toolInput: content,
-    };
-  }
-
-  if (
-    lowerContent.includes("какие темы") ||
-    lowerContent.includes("основные темы")
-  ) {
-    return {
-      hasToolRequest: true,
-      toolName: "extract-topics",
-      toolInput: content,
-    };
-  }
-
-  if (
-    lowerContent.includes("тональность") ||
-    lowerContent.includes("настроение")
-  ) {
-    return {
-      hasToolRequest: true,
-      toolName: "analyze-sentiment",
-      toolInput: content,
-    };
-  }
-
-  // Integration patterns
-  if (
-    lowerContent.includes("найди в интернете") ||
-    lowerContent.includes("поищи информацию")
-  ) {
-    return {
-      hasToolRequest: true,
-      toolName: "web-search",
-      toolInput: content,
-    };
-  }
-
-  // Speech-to-text patterns
-  if (
-    lowerContent.includes("преобразуй в текст") ||
-    lowerContent.includes("транскрибируй") ||
-    lowerContent.includes("расшифруй аудио") ||
-    lowerContent.includes("transcribe")
-  ) {
-    return {
-      hasToolRequest: true,
-      toolName: "speech-to-text",
-      toolInput: content,
-    };
-  }
-
-  return {
-    hasToolRequest: false,
-  };
+  return tool
+    ? {
+        name: (tool as any).name || "unknown",
+        description: (tool as any).description || "No description",
+        category: determineToolCategory(toolName),
+      }
+    : null;
 }
 
 /**
- * Placeholder for tool execution tracking
- * Will log tool executions to the ToolExecution table
+ * Determine tool category based on tool name
  */
-export function trackToolExecution(params: {
-  toolName: string;
-  sferaId: string;
-  userId: string;
-  input: unknown;
-  output?: unknown;
-  status: "pending" | "success" | "error";
-  errorMessage?: string;
-}) {
-  // TODO: Implement database logging
-  console.log("Tool execution tracked:", params);
+function determineToolCategory(
+  toolName: string
+): keyof typeof TOOL_CATEGORIES | "unknown" {
+  const name = toolName.toLowerCase();
+
+  if (
+    name.includes("image") ||
+    name.includes("music") ||
+    name.includes("video") ||
+    name.includes("speech")
+  ) {
+    return "GENERATIVE";
+  }
+
+  if (name.includes("summarize") || name.includes("analytics")) {
+    return "ANALYTICS";
+  }
+
+  if (name.includes("search") || name.includes("web")) {
+    return "INTEGRATIONS";
+  }
+
+  if (
+    name.includes("app") ||
+    name.includes("chart") ||
+    name.includes("game") ||
+    name.includes("edit")
+  ) {
+    return "MINI_APPS";
+  }
+
+  return "unknown";
 }

@@ -64,7 +64,7 @@ Avrora can now be summoned in any Sfera discussion by mentioning `@avrora` in yo
 
 ### AI Model
 
-- Uses `gpt-5-mini` model from MegaLLM
+- Uses `gpt-5-nano` model from MegaLLM
 - Temperature: 0.7
 - Max tokens: 1000
 - Context: Last 20 messages
