@@ -8,9 +8,23 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { AppWindow, CheckCircle2, Code2, Copy, Sparkles } from "lucide-react";
-import { useState } from "react";
+import {
+  AppWindow,
+  CheckCircle2,
+  Code2,
+  Copy,
+  Edit3,
+  Eye,
+  RotateCcw,
+  Save,
+  Sparkles,
+  X,
+} from "lucide-react";
+import React, { useState } from "react";
+import { LiveError, LivePreview, LiveProvider } from "react-live";
 import { cn } from "@/lib/utils";
+
+// Regex for transforming render() calls to export default
 
 type LayoutItem = {
   id: string;
@@ -35,6 +49,7 @@ type MiniAppArtifactProps = {
   };
   specVersion?: number;
   className?: string;
+  messageId?: string; // ID of the message containing this mini-app
 };
 
 export function MiniAppArtifact({
@@ -47,17 +62,119 @@ export function MiniAppArtifact({
   componentInfo,
   specVersion = 2,
   className,
+  messageId,
 }: MiniAppArtifactProps) {
-  const [showCode, setShowCode] = useState(false);
+  const [viewMode, setViewMode] = useState<"preview" | "code">("preview");
   const [copied, setCopied] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedCode, setEditedCode] = useState("");
+  // Initialize savedCode from reactCode if it was edited (has editedAt field)
+  const [savedCode, setSavedCode] = useState<string | null>(
+    reactCode && typeof reactCode === "string" && (reactCode as any)?.editedAt
+      ? reactCode
+      : null
+  );
+  const [saved, setSaved] = useState(false);
+
+  // Transform React code for React Live compatibility
+  const transformedReactCode = React.useMemo(() => {
+    if (!reactCode) {
+      return "";
+    }
+
+    let code = reactCode;
+
+    // Remove destructuring assignment if it exists
+    code = code.replace(
+      /const\s*{\s*useState(?:\s*,\s*useEffect)?\s*}\s*=\s*React\s*;\s*/g,
+      ""
+    );
+
+    // Clean up extra whitespace
+    code = code.replace(/\n\s*\n\s*\n/g, "\n\n");
+
+    console.log(
+      "🔧 [MiniAppArtifact] Transformed code:",
+      `${code.substring(0, 200)}...`
+    );
+    return code;
+  }, [reactCode]);
+
+  // Debug logging
+  console.log("🔧 [MiniAppArtifact] Received props:", {
+    id,
+    title,
+    purpose,
+    features,
+    reactCode: `${reactCode?.substring(0, 100)}...`,
+    transformedCode: `${transformedReactCode?.substring(0, 100)}...`,
+    componentInfo,
+    specVersion,
+  });
 
   const handleCopyCode = () => {
-    if (reactCode) {
-      navigator.clipboard.writeText(reactCode);
+    if (transformedReactCode) {
+      navigator.clipboard.writeText(transformedReactCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
   };
+
+  const handleStartEdit = () => {
+    setEditedCode(savedCode || transformedReactCode);
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = async () => {
+    setIsEditing(false);
+
+    // Save locally first
+    setSavedCode(editedCode);
+    setSaved(true);
+    console.log("💾 Code saved locally!");
+
+    // If messageId is provided, save to server
+    if (messageId) {
+      try {
+        const response = await fetch(`/api/sfera/message/${messageId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            miniAppId: id,
+            reactCode: editedCode,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to save to server");
+        }
+
+        console.log("✅ Code saved to server successfully!");
+      } catch (error) {
+        console.error("❌ Failed to save code to server:", error);
+        // Keep the local save even if server save fails
+      }
+    }
+
+    // Show saved notification
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedCode("");
+  };
+
+  const handleResetCode = () => {
+    setSavedCode(null);
+    setEditedCode("");
+    console.log("🔄 Code reset to original");
+  };
+
+  // Use saved code if available, otherwise use transformed code
+  const displayCode = savedCode || transformedReactCode;
 
   return (
     <motion.div
@@ -80,7 +197,7 @@ export function MiniAppArtifact({
               <h3 className="font-semibold text-violet-900">{title}</h3>
               <Sparkles className="h-4 w-4 text-violet-600" />
             </div>
-            <p className="text-violet-700 text-sm">{purpose}</p>
+            <p className="text-sm text-violet-700">{purpose}</p>
           </div>
           <CheckCircle2 className="h-5 w-5 text-violet-600" />
         </div>
@@ -88,12 +205,14 @@ export function MiniAppArtifact({
 
       {/* Features */}
       <div className="border-b bg-white/50 p-4">
-        <p className="mb-2 font-medium text-violet-900 text-sm">Core Features:</p>
+        <p className="mb-2 font-medium text-sm text-violet-900">
+          Core Features:
+        </p>
         <div className="flex flex-wrap gap-2">
-          {features.map((feature, index) => (
+          {features.map((feature) => (
             <div
-              className="rounded-full bg-violet-100 px-3 py-1 text-violet-700 text-xs font-medium"
-              key={`feature-${index}`}
+              className="rounded-full bg-violet-100 px-3 py-1 font-medium text-violet-700 text-xs"
+              key={`feature-${feature}`}
             >
               {feature}
             </div>
@@ -106,28 +225,108 @@ export function MiniAppArtifact({
         <div className="border-b bg-white/50 p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <Code2 className="h-4 w-4 text-violet-600" />
-              <p className="font-medium text-violet-900 text-sm">React Component</p>
-            </div>
-            <button
-              className={cn(
-                "flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs font-medium transition-colors",
-                copied
-                  ? "bg-green-100 text-green-700"
-                  : "bg-violet-100 text-violet-700 hover:bg-violet-200"
+              {viewMode === "preview" ? (
+                <Eye className="h-4 w-4 text-violet-600" />
+              ) : (
+                <Code2 className="h-4 w-4 text-violet-600" />
               )}
-              onClick={handleCopyCode}
-              type="button"
-            >
-              <Copy className="h-3 w-3" />
-              {copied ? "Copied!" : "Copy Code"}
-            </button>
+              <p className="font-medium text-sm text-violet-900">
+                {viewMode === "preview" ? "Live Preview" : "Source Code"}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <div className="flex rounded border border-violet-200 bg-white">
+                <button
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-l px-2.5 py-1.5 font-medium text-xs transition-colors",
+                    viewMode === "preview"
+                      ? "bg-violet-600 text-white"
+                      : "text-violet-700 hover:bg-violet-50"
+                  )}
+                  onClick={() => setViewMode("preview")}
+                  type="button"
+                >
+                  <Eye className="h-3 w-3" />
+                  Preview
+                </button>
+                <button
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-r px-2.5 py-1.5 font-medium text-xs transition-colors",
+                    viewMode === "code"
+                      ? "bg-violet-600 text-white"
+                      : "text-violet-700 hover:bg-violet-50"
+                  )}
+                  onClick={() => setViewMode("code")}
+                  type="button"
+                >
+                  <Code2 className="h-3 w-3" />
+                  Code
+                </button>
+              </div>
+              {viewMode === "code" && !isEditing && (
+                <>
+                  <button
+                    className="flex items-center gap-1.5 rounded bg-blue-100 px-2.5 py-1.5 font-medium text-blue-700 text-xs transition-colors hover:bg-blue-200"
+                    onClick={handleStartEdit}
+                    type="button"
+                  >
+                    <Edit3 className="h-3 w-3" />
+                    Edit
+                  </button>
+                  {savedCode && (
+                    <button
+                      className="flex items-center gap-1.5 rounded bg-orange-100 px-2.5 py-1.5 font-medium text-orange-700 text-xs transition-colors hover:bg-orange-200"
+                      onClick={handleResetCode}
+                      type="button"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Reset
+                    </button>
+                  )}
+                </>
+              )}
+              {viewMode === "code" && isEditing && (
+                <>
+                  <button
+                    className="flex items-center gap-1.5 rounded bg-green-100 px-2.5 py-1.5 font-medium text-green-700 text-xs transition-colors hover:bg-green-200"
+                    onClick={handleSaveEdit}
+                    type="button"
+                  >
+                    <Save className="h-3 w-3" />
+                    Save
+                  </button>
+                  <button
+                    className="flex items-center gap-1.5 rounded bg-red-100 px-2.5 py-1.5 font-medium text-red-700 text-xs transition-colors hover:bg-red-200"
+                    onClick={handleCancelEdit}
+                    type="button"
+                  >
+                    <X className="h-3 w-3" />
+                    Cancel
+                  </button>
+                </>
+              )}
+              <button
+                className={cn(
+                  "flex items-center gap-1.5 rounded px-2.5 py-1.5 font-medium text-xs transition-colors",
+                  copied
+                    ? "bg-green-100 text-green-700"
+                    : "bg-violet-100 text-violet-700 hover:bg-violet-200"
+                )}
+                onClick={handleCopyCode}
+                type="button"
+              >
+                <Copy className="h-3 w-3" />
+                {copied ? "Copied!" : "Copy"}
+              </button>
+            </div>
           </div>
 
-          {componentInfo && (
+          {componentInfo && viewMode === "code" && (
             <div className="mb-3 space-y-2 text-xs">
               <div className="flex gap-2">
-                <span className="font-medium text-violet-700">Dependencies:</span>
+                <span className="font-medium text-violet-700">
+                  Dependencies:
+                </span>
                 <span className="text-violet-600">
                   {Object.entries(componentInfo.dependencies)
                     .map(([pkg, version]) => `${pkg}@${version}`)
@@ -148,25 +347,81 @@ export function MiniAppArtifact({
             </div>
           )}
 
-          <button
-            className="w-full rounded border border-violet-200 bg-white py-2 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-50"
-            onClick={() => setShowCode(!showCode)}
-            type="button"
-          >
-            {showCode ? "Hide" : "Show"} Code
-          </button>
-
-          {showCode && (
+          {viewMode === "preview" ? (
             <motion.div
-              animate={{ opacity: 1, height: "auto" }}
-              className="mt-3 overflow-hidden rounded bg-gray-900"
-              exit={{ opacity: 0, height: 0 }}
-              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 overflow-hidden rounded-lg border border-violet-200 bg-white"
+              initial={{ opacity: 0, y: 10 }}
               transition={{ duration: 0.2 }}
             >
-              <pre className="max-h-96 overflow-auto p-3 text-xs text-gray-100">
-                <code>{reactCode}</code>
-              </pre>
+              <LiveProvider
+                code={displayCode}
+                noInline={true}
+                scope={{
+                  React,
+                  useState: React.useState,
+                  useEffect: React.useEffect,
+                  useCallback: React.useCallback,
+                  useMemo: React.useMemo,
+                  useRef: React.useRef,
+                  useContext: React.useContext,
+                  createContext: React.createContext,
+                }}
+              >
+                <div className="min-h-[200px] p-4">
+                  <div className="mb-2 flex items-center gap-2 text-gray-500 text-xs">
+                    <span>
+                      Component: {componentInfo?.name || title} | State:{" "}
+                      {componentInfo?.hasState ? "✅" : "❌"} | Effects:{" "}
+                      {componentInfo?.hasEffects ? "✅" : "❌"}
+                    </span>
+                    {savedCode && (
+                      <span className="rounded bg-green-100 px-2 py-0.5 text-green-700">
+                        Modified ✏️
+                      </span>
+                    )}
+                  </div>
+                  <div className="[&>*]:pointer-events-auto">
+                    <LivePreview />
+                  </div>
+                </div>
+                <LiveError className="whitespace-pre-wrap border-red-200 border-t bg-red-50 p-3 font-mono text-red-700 text-xs" />
+              </LiveProvider>
+            </motion.div>
+          ) : (
+            <motion.div
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-3 overflow-hidden rounded-lg bg-gray-900"
+              initial={{ opacity: 0, y: 10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {isEditing ? (
+                <div className="relative">
+                  <textarea
+                    className="h-96 w-full resize-none bg-gray-900 p-3 font-mono text-gray-100 text-xs outline-none"
+                    onChange={(e) => setEditedCode(e.target.value)}
+                    placeholder="Edit your React code here..."
+                    spellCheck={false}
+                    value={editedCode}
+                  />
+                  {saved && (
+                    <div className="absolute top-2 right-2 rounded bg-green-500 px-3 py-1 text-white text-xs shadow-lg">
+                      ✓ Saved!
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="relative">
+                  <pre className="max-h-96 overflow-auto p-3 text-gray-100 text-xs">
+                    <code>{displayCode}</code>
+                  </pre>
+                  {savedCode && (
+                    <div className="absolute top-2 right-2 rounded bg-violet-500/80 px-2 py-1 text-white text-xs">
+                      Modified ✏️
+                    </div>
+                  )}
+                </div>
+              )}
             </motion.div>
           )}
         </div>
@@ -175,7 +430,7 @@ export function MiniAppArtifact({
       {/* Legacy Version 1: Layout Structure */}
       {specVersion === 1 && layout && layout.length > 0 && (
         <div className="p-4">
-          <p className="mb-3 font-medium text-violet-900 text-sm">
+          <p className="mb-3 font-medium text-sm text-violet-900">
             Layout Structure:
           </p>
           <div className="space-y-2">
@@ -193,7 +448,7 @@ export function MiniAppArtifact({
                     <p className="font-medium text-violet-900 text-xs uppercase tracking-wide">
                       {item.type}
                     </p>
-                    <p className="mt-0.5 text-violet-700 text-sm">
+                    <p className="mt-0.5 text-sm text-violet-700">
                       {item.text || item.name || "Component"}
                     </p>
                   </div>

@@ -28,7 +28,7 @@ import { MiniAppArtifact } from "./mini-app-artifact";
 
 type ToolResult = {
   toolName: string;
-  success: boolean;
+  success?: boolean;
   error?: string;
   // Image generation results
   imageUrl?: string;
@@ -49,6 +49,24 @@ type ToolResult = {
   chartTitle?: string;
   xKey?: string;
   yKey?: string;
+  // Mini-app generation results
+  id?: string;
+  title?: string;
+  purpose?: string;
+  features?: string[];
+  componentInfo?: {
+    name: string;
+    imports: string[];
+    dependencies: Record<string, string>;
+    hasState: boolean;
+    hasEffects: boolean;
+  };
+  reactCode?: string;
+  instructions?: {
+    setup: string[];
+    customization: string[];
+  };
+  specVersion?: number;
   query?: string;
   answer?: string;
   results?: Array<{
@@ -66,6 +84,7 @@ type ToolResult = {
 type ToolResultDisplayProps = {
   result: ToolResult;
   className?: string;
+  messageId?: string; // ID of the message containing this tool result
 };
 
 /**
@@ -124,6 +143,7 @@ function ImageZoomModal({
 export function ToolResultDisplay({
   result,
   className,
+  messageId,
 }: ToolResultDisplayProps) {
   const [isImageZoomed, setIsImageZoomed] = useState(false);
 
@@ -522,6 +542,10 @@ export function ToolResultDisplay({
     normalizedResult.id &&
     normalizedResult.title
   ) {
+    console.log(
+      "🎯 [ToolResultDisplay] Rendering mini-app:",
+      normalizedResult.title
+    );
     return (
       <MiniAppArtifact
         className={className}
@@ -529,6 +553,7 @@ export function ToolResultDisplay({
         features={normalizedResult.features || []}
         id={normalizedResult.id}
         layout={normalizedResult.layout}
+        messageId={messageId}
         purpose={normalizedResult.purpose || normalizedResult.title}
         reactCode={normalizedResult.reactCode}
         specVersion={normalizedResult.specVersion}
@@ -576,9 +601,14 @@ export function ToolResultDisplay({
 type ToolResultsListProps = {
   results: Record<string, unknown>[];
   className?: string;
+  messageId?: string; // ID of the message containing these tool results
 };
 
-export function ToolResultsList({ results, className }: ToolResultsListProps) {
+export function ToolResultsList({
+  results,
+  className,
+  messageId,
+}: ToolResultsListProps) {
   if (!results || results.length === 0) {
     return null;
   }
@@ -595,6 +625,7 @@ export function ToolResultsList({ results, className }: ToolResultsListProps) {
         return (
           <ToolResultDisplay
             key={String(resultKey)}
+            messageId={messageId}
             result={result as ToolResult}
           />
         );

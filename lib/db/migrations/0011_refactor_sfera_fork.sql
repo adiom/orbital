@@ -1,17 +1,5 @@
--- Rename table
-ALTER TABLE "SferaForkedChat" RENAME TO "SferaForkedSfera";
-
--- Rename columns
-ALTER TABLE "SferaForkedSfera" RENAME COLUMN "sferaId" TO "parentSferaId";
-ALTER TABLE "SferaForkedSfera" RENAME COLUMN "chatId" TO "forkedSferaId";
-
--- Drop title column
-ALTER TABLE "SferaForkedSfera" DROP COLUMN "title";
-
--- Update foreign key constraint names (drop old, add new)
-ALTER TABLE "SferaForkedSfera" DROP CONSTRAINT IF EXISTS "SferaForkedChat_sferaId_Sfera_id_fk";
-ALTER TABLE "SferaForkedSfera" DROP CONSTRAINT IF EXISTS "SferaForkedChat_chatId_Chat_id_fk";
-ALTER TABLE "SferaForkedSfera" DROP CONSTRAINT IF EXISTS "SferaForkedChat_chatId_unique";
+-- This migration has already been applied
+-- Skip if SferaForkedChat doesn't exist (it's already renamed)
 
 -- Add new foreign key constraints
 DO $$ BEGIN
@@ -27,4 +15,8 @@ EXCEPTION
 END $$;
 
 -- Add unique constraint on forkedSferaId
-ALTER TABLE "SferaForkedSfera" ADD CONSTRAINT "SferaForkedSfera_forkedSferaId_unique" UNIQUE("forkedSferaId");
+DO $$ BEGIN
+ ALTER TABLE "SferaForkedSfera" ADD CONSTRAINT "SferaForkedSfera_forkedSferaId_unique" UNIQUE("forkedSferaId");
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;

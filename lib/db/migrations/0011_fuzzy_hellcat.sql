@@ -30,11 +30,19 @@ CREATE TABLE IF NOT EXISTS "ToolExecution" (
 	"executedAt" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-DROP TABLE "SferaForkedChat";--> statement-breakpoint
-DROP TABLE "Vote_v2";--> statement-breakpoint
-DROP TABLE "Vote";--> statement-breakpoint
-ALTER TABLE "SferaMessage" ADD COLUMN "attachments" json DEFAULT '[]'::json NOT NULL;--> statement-breakpoint
-ALTER TABLE "SferaMessage" ADD COLUMN "toolResults" json DEFAULT '[]'::json NOT NULL;--> statement-breakpoint
+DROP TABLE IF EXISTS "SferaForkedChat";--> statement-breakpoint
+DROP TABLE IF EXISTS "Vote_v2";--> statement-breakpoint
+DROP TABLE IF EXISTS "Vote";--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "SferaMessage" ADD COLUMN IF NOT EXISTS "attachments" json DEFAULT '[]'::json NOT NULL;
+EXCEPTION
+ WHEN duplicate_column THEN null;
+END $$;--> statement-breakpoint
+DO $$ BEGIN
+ ALTER TABLE "SferaMessage" ADD COLUMN IF NOT EXISTS "toolResults" json DEFAULT '[]'::json NOT NULL;
+EXCEPTION
+ WHEN duplicate_column THEN null;
+END $$;--> statement-breakpoint
 DO $$ BEGIN
  ALTER TABLE "SferaArtifact" ADD CONSTRAINT "SferaArtifact_sferaId_Sfera_id_fk" FOREIGN KEY ("sferaId") REFERENCES "public"."Sfera"("id") ON DELETE cascade ON UPDATE no action;
 EXCEPTION

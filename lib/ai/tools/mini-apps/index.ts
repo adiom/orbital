@@ -6,7 +6,7 @@
  */
 
 // biome-ignore lint/performance/noBarrelFile: Barrel file for mini-app tools
-export { createMiniApp } from "./tool-create-mini-app";
 export { createChart } from "./tool-create-chart";
 export { createGame } from "./tool-create-game";
-
+export { createMiniApp } from "./tool-create-mini-app";
+export { editMiniApp } from "./tool-edit-mini-app";

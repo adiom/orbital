@@ -15,7 +15,12 @@ import {
   speechToText,
 } from "./tools/generative";
 import { webSearch } from "./tools/integrations";
-import { createMiniApp, createChart, createGame } from "./tools/mini-apps";
+import {
+  createChart,
+  createGame,
+  createMiniApp,
+  editMiniApp,
+} from "./tools/mini-apps";
 
 /**
  * Registry of all available Sfera tools
@@ -55,6 +60,7 @@ export function getSferaTools(): Tool<any, any>[] {
   tools.push(createMiniApp);
   tools.push(createChart);
   tools.push(createGame);
+  tools.push(editMiniApp); // AI can now edit mini-apps
 
   return tools;
 }
@@ -99,6 +105,26 @@ export function detectToolRequest(content: string): {
     return {
       hasToolRequest: true,
       toolName: "create-mini-app",
+      toolInput: content,
+    };
+  }
+
+  // Edit mini-app patterns
+  if (
+    lowerContent.includes("измени приложение") ||
+    lowerContent.includes("обнови приложение") ||
+    lowerContent.includes("исправь приложение") ||
+    lowerContent.includes("доработай приложение") ||
+    lowerContent.includes("измени код") ||
+    lowerContent.includes("обнови код") ||
+    lowerContent.includes("исправь код") ||
+    lowerContent.includes("добавь в приложение") ||
+    lowerContent.includes("добавь функцию") ||
+    lowerContent.includes("улучши приложение")
+  ) {
+    return {
+      hasToolRequest: true,
+      toolName: "edit-mini-app",
       toolInput: content,
     };
   }

@@ -133,10 +133,9 @@ export function OrbitMessage({
     }
   };
 
-  const handleCopy = async () => {
+  const handleCopy = () => {
     try {
-      await navigator.clipboard.writeText(message.id);
-      toast.success("Message UUID copied to clipboard");
+      router.push(`/m/${message.id}`);
       if (typeof navigator !== "undefined" && "vibrate" in navigator) {
         navigator.vibrate(30);
       }
@@ -159,11 +158,9 @@ export function OrbitMessage({
         isSelected && "scale-[1.01]"
       )}
     >
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: Click handler for message selection */}
-      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Click handler for message selection */}
       <div
         className={cn(
-          "relative cursor-pointer overflow-hidden rounded-3xl border-2 p-5 shadow-sm transition-all duration-300",
+          "relative cursor-pointer overflow-hidden rounded-3xl border-2 p-5 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
           isAvroraMessage
             ? "border-blue-200 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 shadow-blue-100"
             : "border-gray-200 bg-white",
@@ -171,6 +168,14 @@ export function OrbitMessage({
           isAvroraMessage && isSelected && "shadow-blue-200"
         )}
         onClick={() => setIsSelected(!isSelected)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsSelected(!isSelected);
+          }
+        }}
+        role="button"
+        tabIndex={0}
       >
         {message.isForked && (
           <div className="absolute top-0 right-0 rounded-tr-2xl rounded-bl-2xl bg-gradient-to-br from-blue-500 to-purple-500 px-3 py-1.5">
@@ -326,16 +331,13 @@ export function OrbitMessage({
         {/* AI Tool Results */}
         {message.toolResults && message.toolResults.length > 0 && (
           <div className="mt-4">
-            <ToolResultsList results={message.toolResults} />
+            <ToolResultsList messageId={message.id} results={message.toolResults} />
           </div>
         )}
       </div>
 
       {isSelected && (
-        <div
-          className="mt-2 flex flex-wrap items-center gap-2 px-2 opacity-100 transition-all duration-200"
-          onClick={(e) => e.stopPropagation()}
-        >
+        <div className="mt-2 flex flex-wrap items-center gap-2 px-2 opacity-100 transition-all duration-200">
           <button
             className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-gray-600 transition-all hover:bg-gray-200 hover:text-gray-800"
             onClick={handleCopy}
