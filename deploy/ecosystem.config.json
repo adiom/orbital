@@ -2,7 +2,6 @@
   "apps": [
     {
       "name": "avrora-nextjs",
-      "cwd": "..",
       "script": "pnpm",
       "args": "start",
       "interpreter": "none",
@@ -11,16 +10,16 @@
       "autorestart": true,
       "watch": false,
       "max_memory_restart": "1G",
-      "env_file": "./deploy/.env.production",
+      "env_file": "./.env.local",
       "env": {
         "NODE_ENV": "production"
       },
       "env_production": {
         "NODE_ENV": "production"
       },
-      "error_file": "./deploy/logs/err.log",
-      "out_file": "./deploy/logs/out.log",
-      "log_file": "./deploy/logs/combined.log",
+      "error_file": "./logs/err.log",
+      "out_file": "./logs/out.log",
+      "log_file": "./logs/combined.log",
       "time": true
     }
   ]

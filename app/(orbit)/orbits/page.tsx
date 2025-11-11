@@ -1,11 +1,14 @@
 "use client";
 
-import { GitBranch, Loader2, Plus, Sparkles } from "lucide-react";
+import { GitBranch, Plus, Sparkles } from "lucide-react";
 import { redirect, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { OrbitContainer } from "@/components/orbit/orbit-container";
+import { OrbitNetwork } from "@/components/orbit/orbit-network";
+import { OrbitListView } from "@/components/orbit/orbit-list-view";
+import { OrbitToolbar } from "@/components/orbit/orbit-toolbar";
+import { OrbitSkeleton } from "@/components/orbit/orbit-skeleton";
 import { OrbitSettings } from "@/components/orbit/orbit-settings";
 import {
   AlertDialog,
@@ -18,29 +21,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-
-type Orbit = {
-  id: string;
-  title: string;
-  description: string | null;
-  visibility: string;
-  role: string;
-  createdAt: Date;
-  updatedAt: Date;
-  ownerId: string;
-};
-
-type ForkRelationship = {
-  parentSferaId: string;
-  forkedSferaId: string;
-  createdAt: Date;
-};
-
-type NodePosition = {
-  x: number;
-  y: number;
-  id: string;
-};
+import { useOrbits } from "@/hooks/use-orbits";
+import { useOrbitFilters } from "@/hooks/use-orbit-filters";
+import { useOrbitViewMode } from "@/hooks/use-orbit-view-mode";
+import { Loader2 } from "lucide-react";
+import type { Orbit } from "@/hooks/use-orbit-layout";
 
 type Member = {
   userId: string;
@@ -56,243 +41,30 @@ export default function OrbitsPage() {
   }
 
   const router = useRouter();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [orbits, setOrbits] = useState<Orbit[]>([]);
-  const [forkRelationships, setForkRelationships] = useState<
-    ForkRelationship[]
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [nodePositions, setNodePositions] = useState<Map<string, NodePosition>>(
-    new Map()
-  );
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-  const [selectedOrbitForSettings, setSelectedOrbitForSettings] =
-    useState<Orbit | null>(null);
+
+  // Custom hooks
+  const { orbits, forkRelationships, isLoading, refetch } = useOrbits();
+  const {
+    searchQuery,
+    setSearchQuery,
+    roleFilter,
+    setRoleFilter,
+    visibilityFilter,
+    setVisibilityFilter,
+    filteredOrbits,
+    resetFilters,
+    hasActiveFilters,
+  } = useOrbitFilters(orbits);
+  const { viewMode, setViewMode } = useOrbitViewMode();
+
+  // Local state for dialogs
+  const [selectedOrbitForSettings, setSelectedOrbitForSettings] = useState<Orbit | null>(null);
   const [orbitMembers, setOrbitMembers] = useState<Member[]>([]);
-  const [_isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [orbitToDelete, setOrbitToDelete] = useState<Orbit | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const fetchOrbits = useCallback(async () => {
-    try {
-      const response = await fetch("/api/sfera", {
-        credentials: "include",
-      });
-
-      if (response.status === 401) {
-        window.location.href = `/login?callbackUrl=${encodeURIComponent(window.location.pathname)}`;
-        return;
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to fetch orbits");
-      }
-
-      const data = await response.json();
-      setOrbits(data.sferas || []);
-      setForkRelationships(data.forkRelationships || []);
-    } catch (error) {
-      console.error("Error fetching orbits:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchOrbits();
-  }, [fetchOrbits]);
-
-  const buildTree = useCallback(() => {
-    const childrenMap = new Map<string, string[]>();
-    const parentMap = new Map<string, string>();
-
-    for (const rel of forkRelationships) {
-      if (!childrenMap.has(rel.parentSferaId)) {
-        childrenMap.set(rel.parentSferaId, []);
-      }
-      childrenMap.get(rel.parentSferaId)?.push(rel.forkedSferaId);
-      parentMap.set(rel.forkedSferaId, rel.parentSferaId);
-    }
-
-    const roots = orbits.filter((o) => !parentMap.has(o.id));
-
-    return { childrenMap, parentMap, roots };
-  }, [forkRelationships, orbits]);
-
-  useEffect(() => {
-    if (orbits.length === 0) {
-      return;
-    }
-
-    const { parentMap, roots } = buildTree();
-    const positions = new Map<string, NodePosition>();
-
-    const containerWidth = window.innerWidth - 64;
-    const containerHeight = window.innerHeight - 200;
-
-    if (roots.length === 0 && orbits.length > 0) {
-      for (let index = 0; index < orbits.length; index++) {
-        const orbit = orbits[index];
-        const angle = (index / orbits.length) * 2 * Math.PI;
-        const radius = Math.min(containerWidth, containerHeight) * 0.35;
-        positions.set(orbit.id, {
-          id: orbit.id,
-          x: containerWidth / 2 + radius * Math.cos(angle),
-          y: containerHeight / 2 + radius * Math.sin(angle),
-        });
-      }
-    } else {
-      const levels = new Map<string, number>();
-      const getLevel = (id: string): number => {
-        const cachedLevel = levels.get(id);
-        if (cachedLevel !== undefined) {
-          return cachedLevel;
-        }
-        const parent = parentMap.get(id);
-        const level = parent ? getLevel(parent) + 1 : 0;
-        levels.set(id, level);
-        return level;
-      };
-
-      for (const o of orbits) {
-        getLevel(o.id);
-      }
-      const maxLevel = Math.max(...Array.from(levels.values()));
-
-      const levelGroups = new Map<number, string[]>();
-      for (const o of orbits) {
-        const level = levels.get(o.id) || 0;
-        if (!levelGroups.has(level)) {
-          levelGroups.set(level, []);
-        }
-        levelGroups.get(level)?.push(o.id);
-      }
-
-      for (const [level, ids] of levelGroups) {
-        const y = (level / (maxLevel || 1)) * (containerHeight - 100) + 50;
-        for (let index = 0; index < ids.length; index++) {
-          const id = ids[index];
-          const x = ((index + 1) / (ids.length + 1)) * containerWidth;
-          positions.set(id, { id, x, y });
-        }
-      }
-    }
-
-    setNodePositions(positions);
-  }, [orbits, buildTree]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || nodePositions.size === 0) {
-      return;
-    }
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      return;
-    }
-
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-
-    ctx.clearRect(0, 0, rect.width, rect.height);
-
-    // Draw connections with gradient
-    for (const rel of forkRelationships) {
-      const parent = nodePositions.get(rel.parentSferaId);
-      const child = nodePositions.get(rel.forkedSferaId);
-      if (parent && child) {
-        const gradient = ctx.createLinearGradient(
-          parent.x,
-          parent.y,
-          child.x,
-          child.y
-        );
-        gradient.addColorStop(0, "#3b82f6");
-        gradient.addColorStop(1, "#a855f7");
-
-        ctx.strokeStyle = gradient;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(parent.x, parent.y);
-
-        const midX = (parent.x + child.x) / 2;
-        const midY = (parent.y + child.y) / 2;
-        const offset = 40;
-        ctx.quadraticCurveTo(midX + offset, midY, child.x, child.y);
-
-        ctx.stroke();
-
-        // Arrow
-        const angle = Math.atan2(child.y - midY, child.x - (midX + offset));
-        ctx.beginPath();
-        ctx.moveTo(child.x, child.y);
-        ctx.lineTo(
-          child.x - 12 * Math.cos(angle - Math.PI / 6),
-          child.y - 12 * Math.sin(angle - Math.PI / 6)
-        );
-        ctx.lineTo(
-          child.x - 12 * Math.cos(angle + Math.PI / 6),
-          child.y - 12 * Math.sin(angle + Math.PI / 6)
-        );
-        ctx.closePath();
-        ctx.fillStyle = "#a855f7";
-        ctx.fill();
-      }
-    }
-  }, [nodePositions, forkRelationships]);
-
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) {
-      return;
-    }
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    for (const [id, pos] of nodePositions) {
-      const distance = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
-      if (distance < 50) {
-        router.push(`/orbit/${id}`);
-        return;
-      }
-    }
-  };
-
-  const handleCanvasMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) {
-      return;
-    }
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    let foundHover: string | null = null;
-    for (const [id, pos] of nodePositions) {
-      const distance = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
-      if (distance < 50) {
-        foundHover = id;
-        break;
-      }
-    }
-
-    setHoveredNode(foundHover);
-    if (foundHover) {
-      canvas.style.cursor = "pointer";
-    } else {
-      canvas.style.cursor = "default";
-    }
-  };
-
+  // Handlers
   const handleOpenSettings = async (orbit: Orbit) => {
     setSelectedOrbitForSettings(orbit);
     setIsLoadingMembers(true);
@@ -315,10 +87,6 @@ export default function OrbitsPage() {
     setOrbitMembers([]);
   };
 
-  const handleSettingsUpdate = () => {
-    fetchOrbits();
-  };
-
   const handleDeleteOrbit = async () => {
     if (!orbitToDelete) {
       return;
@@ -337,7 +105,7 @@ export default function OrbitsPage() {
 
       toast.success("Orbit deleted successfully");
       setOrbitToDelete(null);
-      fetchOrbits();
+      refetch();
     } catch (error) {
       console.error("Error deleting Orbit:", error);
       toast.error(
@@ -349,14 +117,7 @@ export default function OrbitsPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
-        <div className="text-center">
-          <Loader2 className="mx-auto mb-4 h-16 w-16 animate-spin text-blue-500" />
-          <p className="text-gray-600 text-sm">Loading orbits...</p>
-        </div>
-      </div>
-    );
+    return <OrbitSkeleton />;
   }
 
   return (
@@ -394,7 +155,25 @@ export default function OrbitsPage() {
         </div>
       </header>
 
-      {/* Graph View */}
+      {/* Toolbar with search and filters */}
+      {orbits.length > 0 && (
+        <OrbitToolbar
+          hasActiveFilters={hasActiveFilters}
+          onResetFilters={resetFilters}
+          onRoleFilterChange={setRoleFilter}
+          onSearchChange={setSearchQuery}
+          onViewModeChange={setViewMode}
+          onVisibilityFilterChange={setVisibilityFilter}
+          resultCount={filteredOrbits.length}
+          roleFilter={roleFilter}
+          searchQuery={searchQuery}
+          totalCount={orbits.length}
+          viewMode={viewMode}
+          visibilityFilter={visibilityFilter}
+        />
+      )}
+
+      {/* Content */}
       {orbits.length === 0 ? (
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center">
@@ -417,40 +196,40 @@ export default function OrbitsPage() {
             </Button>
           </div>
         </div>
+      ) : filteredOrbits.length === 0 ? (
+        <div className="flex flex-1 items-center justify-center">
+          <div className="text-center">
+            <p className="mb-4 text-gray-600 text-lg">No orbits match your filters</p>
+            <Button onClick={resetFilters} variant="outline">
+              Clear filters
+            </Button>
+          </div>
+        </div>
       ) : (
         <div className="relative flex-1">
-          <canvas
-            className="absolute inset-0 h-full w-full"
-            onClick={handleCanvasClick}
-            onMouseMove={handleCanvasMove}
-            ref={canvasRef}
-          />
+          {viewMode === "graph" && (
+            <OrbitNetwork
+              currentUserId={session?.user?.id}
+              forkRelationships={forkRelationships}
+              onUpdate={refetch}
+              orbits={filteredOrbits}
+            />
+          )}
 
-          {/* Node overlays */}
-          {Array.from(nodePositions.entries()).map(([id, pos]) => {
-            const orbit = orbits.find((o) => o.id === id);
-            if (!orbit) {
-              return null;
-            }
+          {viewMode === "list" && (
+            <OrbitListView
+              currentUserId={session?.user?.id}
+              onDeleteClick={setOrbitToDelete}
+              onSettingsClick={handleOpenSettings}
+              orbits={filteredOrbits}
+            />
+          )}
 
-            const isHovered = hoveredNode === id;
-            const childCount = forkRelationships.filter(
-              (r) => r.parentSferaId === id
-            ).length;
-
-            return (
-              <OrbitContainer
-                childCount={childCount}
-                currentUserId={session?.user?.id}
-                isHovered={isHovered}
-                key={id}
-                onDeleteClick={() => setOrbitToDelete(orbit)}
-                onSettingsClick={() => handleOpenSettings(orbit)}
-                orbit={orbit}
-                position={pos}
-              />
-            );
-          })}
+          {viewMode === "grid" && (
+            <div className="flex h-full items-center justify-center">
+              <p className="text-gray-500">Grid view coming soon...</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -463,7 +242,7 @@ export default function OrbitsPage() {
           isOpen={!!selectedOrbitForSettings}
           isOwner={selectedOrbitForSettings.ownerId === session?.user?.id}
           onClose={handleCloseSettings}
-          onUpdate={handleSettingsUpdate}
+          onUpdate={refetch}
           orbitId={selectedOrbitForSettings.id}
         />
       )}
