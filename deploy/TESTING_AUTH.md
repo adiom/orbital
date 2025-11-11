@@ -141,3 +141,4 @@ ngrok http 3000
 **Важно:** `AUTH_SECRET` и `NEXTAUTH_SECRET` должны быть **одинаковыми**!
 
 
+

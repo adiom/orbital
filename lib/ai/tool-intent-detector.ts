@@ -72,8 +72,6 @@ export type ToolIntent = {
  * Detect tool intent from user message
  */
 export function detectToolIntent(message: string): ToolIntent {
-  const _lowerMessage = message.toLowerCase();
-
   // Web search detection
   const webSearchIntent = detectWebSearchIntent(message);
   if (webSearchIntent.toolName) {
@@ -140,8 +138,6 @@ export function detectToolIntent(message: string): ToolIntent {
  * Detect image generation intent
  */
 function detectImageGenerationIntent(message: string): ToolIntent {
-  const _lowerMessage = message.toLowerCase();
-
   // Replicate-specific patterns
   for (const pattern of REPLICATE_PATTERNS) {
     if (pattern.test(message)) {
@@ -186,8 +182,6 @@ function detectImageGenerationIntent(message: string): ToolIntent {
  * Detect music generation intent
  */
 function detectMusicGenerationIntent(message: string): ToolIntent {
-  const _lowerMessage = message.toLowerCase();
-
   for (const pattern of MUSIC_PATTERNS) {
     const match = message.match(pattern);
     if (match) {
@@ -216,8 +210,6 @@ function detectMusicGenerationIntent(message: string): ToolIntent {
  * Detect video generation intent
  */
 function detectVideoGenerationIntent(message: string): ToolIntent {
-  const _lowerMessage = message.toLowerCase();
-
   for (const pattern of VIDEO_PATTERNS) {
     const match = message.match(pattern);
     if (match) {
@@ -250,6 +242,10 @@ const MINI_APP_PATTERNS = [
   /(?:create|make)\s+(?:mini[‑\-\s]?app|application)\s*:?\s*(.+)/i,
   // Смешанный: "create приложение X" или "создай mini app X"
   /(?:создай|сделай|create|make)\s+(?:мини[‑\-\s]?приложение|mini[‑\-\s]?app|приложение|application)\s*:?\s*(.+)/i,
+  // React приложение: "создай react приложение X"
+  /(?:создай|сделай|create|make)\s+(?:react|reactjs|react\.js)?\s+(?:приложение|application|web[‑\s]?app)\s*:?\s*(.+)/i,
+  // React с компонентом: "создай react компонент X"
+  /(?:создай|сделай|create|make)\s+(?:react|reactjs|react\.js)?\s+(?:компонент|component)\s*:?\s*(.+)/i,
   // CamelCase: "createMiniApp calculator"
   /createMiniApp\s+(.+)/i,
   // Упрощенный: "создай mini app" (берём название из контекста или используем дефолт)
@@ -274,15 +270,15 @@ function detectMiniAppIntent(message: string): ToolIntent {
       let purpose = "Mini App";
 
       // Обработка разных типов паттернов
-      if (i <= 3 && match[1]) {
-        // Стандартные паттерны с захватом названия после команды
+      if (i <= 5 && match[1]) {
+        // Стандартные паттерны с захватом названия после команды (включая React паттерны)
         title = match[1].trim();
         purpose = title;
-      } else if (i === 4) {
+      } else if (i === 6) {
         // Упрощенный паттерн без названия - используем дефолт или контекст
         title = "Calculator"; // или из контекста
         purpose = "Calculator app";
-      } else if (i === 5) {
+      } else if (i === 7) {
         // Паттерн с описанием перед командой: "простой/научный @avrora создай mini app"
         const description = match[1] ? match[1].trim() : "";
         // Извлекаем информацию из описания
@@ -292,7 +288,7 @@ function detectMiniAppIntent(message: string): ToolIntent {
         } else if (description.includes("простой") || description.includes("научный")) {
           // Если указан тип калькулятора
           title = "Calculator";
-          purpose = description + " калькулятор";
+          purpose = `${description} калькулятор`;
         } else if (description) {
           title = description.split(/\s+/)[0] || "Mini App";
           purpose = description;

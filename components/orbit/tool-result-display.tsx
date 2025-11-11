@@ -520,16 +520,17 @@ export function ToolResultDisplay({
     (normalizedResult.toolName === "create-mini-app" ||
       normalizedResult.toolName === "createMiniApp") &&
     normalizedResult.id &&
-    normalizedResult.title &&
-    normalizedResult.layout
+    normalizedResult.title
   ) {
     return (
       <MiniAppArtifact
         className={className}
+        componentInfo={normalizedResult.componentInfo}
         features={normalizedResult.features || []}
         id={normalizedResult.id}
         layout={normalizedResult.layout}
         purpose={normalizedResult.purpose || normalizedResult.title}
+        reactCode={normalizedResult.reactCode}
         specVersion={normalizedResult.specVersion}
         title={normalizedResult.title}
       />

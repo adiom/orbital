@@ -89,7 +89,12 @@ export function detectToolRequest(content: string): {
   // Mini-app patterns
   if (
     lowerContent.includes("создай приложение") ||
-    lowerContent.includes("сделай приложение")
+    lowerContent.includes("сделай приложение") ||
+    lowerContent.includes("создай react") ||
+    lowerContent.includes("создай web app") ||
+    lowerContent.includes("создай web-app") ||
+    lowerContent.includes("создай мини-приложение") ||
+    lowerContent.includes("создай компонент")
   ) {
     return {
       hasToolRequest: true,
