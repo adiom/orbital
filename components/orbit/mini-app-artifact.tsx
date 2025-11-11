@@ -84,13 +84,15 @@ export function MiniAppArtifact({
         <p className="mb-3 font-medium text-violet-900 text-sm">Layout Structure:</p>
         <div className="space-y-2">
           {layout.map((item, index) => {
-            const Icon = getIconForType(item.type);
+            const IconComponent = getIconForType(item.type);
             return (
               <div
                 className="flex items-start gap-3 rounded-lg border border-violet-200 bg-white p-3"
                 key={item.id || `layout-${index}`}
               >
-                <Icon className="h-4 w-4 flex-shrink-0 text-violet-600" />
+                <div className="h-4 w-4 flex-shrink-0 text-violet-600">
+                  <IconComponent />
+                </div>
                 <div className="flex-1">
                   <p className="font-medium text-violet-900 text-xs uppercase tracking-wide">
                     {item.type}
@@ -117,11 +119,13 @@ export function MiniAppArtifact({
 
 // Helper function to get icon for layout item type
 function getIconForType(type: string) {
+  const iconClass = "h-4 w-4";
+
   switch (type) {
     case "header":
       return () => (
         <svg
-          className="h-4 w-4"
+          className={iconClass}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -137,7 +141,7 @@ function getIconForType(type: string) {
     case "text":
       return () => (
         <svg
-          className="h-4 w-4"
+          className={iconClass}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -153,7 +157,7 @@ function getIconForType(type: string) {
     case "module":
       return () => (
         <svg
-          className="h-4 w-4"
+          className={iconClass}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -169,7 +173,7 @@ function getIconForType(type: string) {
     default:
       return () => (
         <svg
-          className="h-4 w-4"
+          className={iconClass}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"

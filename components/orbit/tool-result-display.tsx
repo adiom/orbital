@@ -24,6 +24,7 @@ import Image from "next/image";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ChartArtifact } from "./chart-artifact";
+import { MiniAppArtifact } from "./mini-app-artifact";
 
 type ToolResult = {
   toolName: string;
@@ -511,6 +512,27 @@ export function ToolResultDisplay({
           </p>
         </div>
       </motion.div>
+    );
+  }
+
+  // Mini-app creation result
+  if (
+    (normalizedResult.toolName === "create-mini-app" ||
+      normalizedResult.toolName === "createMiniApp") &&
+    normalizedResult.id &&
+    normalizedResult.title &&
+    normalizedResult.layout
+  ) {
+    return (
+      <MiniAppArtifact
+        className={className}
+        features={normalizedResult.features || []}
+        id={normalizedResult.id}
+        layout={normalizedResult.layout}
+        purpose={normalizedResult.purpose || normalizedResult.title}
+        specVersion={normalizedResult.specVersion}
+        title={normalizedResult.title}
+      />
     );
   }
 
