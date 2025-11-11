@@ -135,14 +135,14 @@ export function OrbitMessage({
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(message.content);
-      toast.success("Message copied to clipboard");
+      await navigator.clipboard.writeText(message.id);
+      toast.success("Message UUID copied to clipboard");
       if (typeof navigator !== "undefined" && "vibrate" in navigator) {
         navigator.vibrate(30);
       }
     } catch (error) {
       console.error("Error copying message:", error);
-      toast.error("Failed to copy message");
+      toast.error("Failed to copy message UUID");
     }
   };
 
@@ -336,79 +336,81 @@ export function OrbitMessage({
           className="mt-2 flex flex-wrap items-center gap-2 px-2 opacity-100 transition-all duration-200"
           onClick={(e) => e.stopPropagation()}
         >
-        <button
-          className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-gray-600 transition-all hover:bg-gray-200 hover:text-gray-800"
-          onClick={handleCopy}
-          title="Copy message"
-          type="button"
-        >
-          <Copy className="h-3.5 w-3.5" />
-          <span className="text-xs">Copy</span>
-        </button>
+          <button
+            className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-gray-600 transition-all hover:bg-gray-200 hover:text-gray-800"
+            onClick={handleCopy}
+            title="Copy message"
+            type="button"
+          >
+            <Copy className="h-3.5 w-3.5" />
+            <span className="text-xs">Copy</span>
+          </button>
 
-        <button
-          className="flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1.5 text-blue-600 transition-all hover:bg-blue-200 hover:text-blue-800"
-          onClick={onReply}
-          title="Reply to this message"
-          type="button"
-        >
-          <Reply className="h-3.5 w-3.5" />
-          <span className="text-xs">Reply</span>
-        </button>
+          <button
+            className="flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1.5 text-blue-600 transition-all hover:bg-blue-200 hover:text-blue-800"
+            onClick={onReply}
+            title="Reply to this message"
+            type="button"
+          >
+            <Reply className="h-3.5 w-3.5" />
+            <span className="text-xs">Reply</span>
+          </button>
 
-        {message.isForked ? (
-          message.forkedSferaId ? (
+          {message.isForked ? (
+            message.forkedSferaId ? (
+              <button
+                className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 px-3 py-1.5 text-white shadow-md transition-all hover:shadow-lg"
+                onClick={handleEnterFork}
+                title="Enter forked Orbit"
+                type="button"
+              >
+                <LogIn className="h-3.5 w-3.5" />
+                <span className="text-xs">Enter Fork</span>
+              </button>
+            ) : null
+          ) : (
             <button
-              className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 px-3 py-1.5 text-white shadow-md transition-all hover:shadow-lg"
-              onClick={handleEnterFork}
-              title="Enter forked Orbit"
+              className="flex items-center gap-1.5 rounded-full bg-purple-100 px-3 py-1.5 text-purple-600 transition-all hover:bg-purple-200 hover:text-purple-800 disabled:opacity-50"
+              disabled={isForking}
+              onClick={handleFork}
+              title="Fork this message into a new Orbit"
               type="button"
             >
-              <LogIn className="h-3.5 w-3.5" />
-              <span className="text-xs">Enter Fork</span>
+              <GitBranch className="h-3.5 w-3.5" />
+              <span className="text-xs">
+                {isForking ? "Forking..." : "Fork"}
+              </span>
             </button>
-          ) : null
-        ) : (
-          <button
-            className="flex items-center gap-1.5 rounded-full bg-purple-100 px-3 py-1.5 text-purple-600 transition-all hover:bg-purple-200 hover:text-purple-800 disabled:opacity-50"
-            disabled={isForking}
-            onClick={handleFork}
-            title="Fork this message into a new Orbit"
-            type="button"
-          >
-            <GitBranch className="h-3.5 w-3.5" />
-            <span className="text-xs">{isForking ? "Forking..." : "Fork"}</span>
-          </button>
-        )}
+          )}
 
-        {canEdit && (
-          <button
-            className="flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-amber-600 transition-all hover:bg-amber-200 hover:text-amber-800"
-            onClick={onEdit}
-            title="Edit message"
-            type="button"
-          >
-            <PenSquare className="h-3.5 w-3.5" />
-            <span className="text-xs">Edit</span>
-          </button>
-        )}
+          {canEdit && (
+            <button
+              className="flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-amber-600 transition-all hover:bg-amber-200 hover:text-amber-800"
+              onClick={onEdit}
+              title="Edit message"
+              type="button"
+            >
+              <PenSquare className="h-3.5 w-3.5" />
+              <span className="text-xs">Edit</span>
+            </button>
+          )}
 
-        {canDelete && (
-          <button
-            className="flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1.5 text-red-600 transition-all hover:bg-red-200 hover:text-red-800 disabled:opacity-50"
-            disabled={deleteDisabled}
-            onClick={onDelete}
-            title={
-              deleteDisabled
-                ? "Cannot delete a message that has been forked"
-                : "Delete message"
-            }
-            type="button"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-            <span className="text-xs">Delete</span>
-          </button>
-        )}
+          {canDelete && (
+            <button
+              className="flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1.5 text-red-600 transition-all hover:bg-red-200 hover:text-red-800 disabled:opacity-50"
+              disabled={deleteDisabled}
+              onClick={onDelete}
+              title={
+                deleteDisabled
+                  ? "Cannot delete a message that has been forked"
+                  : "Delete message"
+              }
+              type="button"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span className="text-xs">Delete</span>
+            </button>
+          )}
         </div>
       )}
     </article>

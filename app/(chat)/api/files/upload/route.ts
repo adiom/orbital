@@ -34,6 +34,8 @@ const FileSchema = z.object({
           "audio/mp4",
           "audio/mp3",
           "audio/wav",
+          "audio/x-aiff",
+          "audio/x-wav",
           "audio/webm",
           "audio/ogg",
           "audio/x-m4a",

@@ -60,6 +60,9 @@ export type ToolIntent = {
     | "speechToText"
     | "summarizeDiscussion"
     | "webSearch"
+    | "createMiniApp"
+    | "createChart"
+    | "createGame"
     | null;
   parameters: Record<string, any>;
   confidence: "high" | "medium" | "low";
@@ -99,6 +102,24 @@ export function detectToolIntent(message: string): ToolIntent {
   const videoIntent = detectVideoGenerationIntent(message);
   if (videoIntent.toolName) {
     return videoIntent;
+  }
+
+  // Mini-app creation detection
+  const miniAppIntent = detectMiniAppIntent(message);
+  if (miniAppIntent.toolName) {
+    return miniAppIntent;
+  }
+
+  // Chart creation detection
+  const chartIntent = detectChartIntent(message);
+  if (chartIntent.toolName) {
+    return chartIntent;
+  }
+
+  // Game creation detection
+  const gameIntent = detectGameIntent(message);
+  if (gameIntent.toolName) {
+    return gameIntent;
   }
 
   // Summary detection
@@ -219,6 +240,137 @@ function detectVideoGenerationIntent(message: string): ToolIntent {
     parameters: {},
     confidence: "low",
   };
+}
+
+// Mini-app / Chart / Game patterns kept lean for performance
+const MINI_APP_PATTERNS = [
+  // Русский: "создай приложение калькулятор"
+  /(?:создай|сделай)\s+(?:приложение|мини[‑\-\s]?приложение)\s*:?\s*(.+)/i,
+  // Английский: "create mini app calculator"
+  /(?:create|make)\s+(?:mini[‑\-\s]?app|application)\s*:?\s*(.+)/i,
+  // Смешанный: "create приложение X" или "создай mini app X"
+  /(?:создай|сделай|create|make)\s+(?:мини[‑\-\s]?приложение|mini[‑\-\s]?app|приложение|application)\s*:?\s*(.+)/i,
+  // CamelCase: "createMiniApp calculator"
+  /createMiniApp\s+(.+)/i,
+  // Упрощенный: "создай mini app" (берём название из контекста или используем дефолт)
+  /(?:создай|сделай|create|make)\s+mini[‑\-\s]?app\s*$/i,
+  // Неполный с описанием: "простой @avrora создай mini app"
+  /(.+?)\s*@?(?:avrora|аврора)?\s*(?:создай|сделай|create|make)\s+mini[‑\-\s]?app\s*$/i,
+];
+const CHART_PATTERNS = [
+  /(?:построй|создай)\s+график\s*:?\s*(.+)/i,
+];
+const GAME_PATTERNS = [
+  /(?:создай)\s+викторину\s*:?\s*(.+)/i,
+  /(?:сделай|создай)\s+игру\s*:?\s*(.+)/i,
+];
+
+function detectMiniAppIntent(message: string): ToolIntent {
+  for (let i = 0; i < MINI_APP_PATTERNS.length; i++) {
+    const pattern = MINI_APP_PATTERNS[i];
+    const match = message.match(pattern);
+    if (match) {
+      let title = "Mini App";
+      let purpose = "Mini App";
+
+      // Обработка разных типов паттернов
+      if (i <= 3 && match[1]) {
+        // Стандартные паттерны с захватом названия после команды
+        title = match[1].trim();
+        purpose = title;
+      } else if (i === 4) {
+        // Упрощенный паттерн без названия - используем дефолт или контекст
+        title = "Calculator"; // или из контекста
+        purpose = "Calculator app";
+      } else if (i === 5) {
+        // Паттерн с описанием перед командой: "простой/научный @avrora создай mini app"
+        const description = match[1] ? match[1].trim() : "";
+        // Извлекаем информацию из описания
+        if (description.includes("калькулятор") || description.includes("calculator")) {
+          title = "Calculator";
+          purpose = description;
+        } else if (description.includes("простой") || description.includes("научный")) {
+          // Если указан тип калькулятора
+          title = "Calculator";
+          purpose = description + " калькулятор";
+        } else if (description) {
+          title = description.split(/\s+/)[0] || "Mini App";
+          purpose = description;
+        } else {
+          title = "Calculator";
+          purpose = "Calculator app";
+        }
+      }
+
+      return {
+        toolName: "createMiniApp",
+        parameters: {
+          title: title || "Mini App",
+          purpose: purpose || title || "Mini App",
+          features: ["input", "result"]
+        },
+        confidence: "high",
+      };
+    }
+  }
+  return { toolName: null, parameters: {}, confidence: "low" };
+}
+
+function detectChartIntent(message: string): ToolIntent {
+  for (const pattern of CHART_PATTERNS) {
+    const match = message.match(pattern);
+    if (match) {
+      const raw = match[1]?.trim();
+      const title = raw && raw.length > 0 ? raw : "Chart";
+      return {
+        toolName: "createChart",
+        parameters: {
+          title,
+          xLabel: "X",
+            yLabel: "Y",
+          type: "line",
+          data: [
+            { label: "Series 1", values: [1, 2, 3] },
+            { label: "Series 2", values: [3, 2, 1] },
+          ],
+        },
+        confidence: "high",
+      };
+    }
+  }
+  return { toolName: null, parameters: {}, confidence: "low" };
+}
+
+function detectGameIntent(message: string): ToolIntent {
+  for (const pattern of GAME_PATTERNS) {
+    const match = message.match(pattern);
+    if (match) {
+      const raw = match[1]?.trim();
+      const title = raw && raw.length > 0 ? raw : "Quiz";
+      return {
+        toolName: "createGame",
+        parameters: {
+          title,
+          genre: "quiz",
+          difficulty: "easy",
+          questions: [
+            {
+              question: "Пример вопроса 1",
+              options: ["Вариант A", "Вариант B"],
+              answerIndex: 0,
+            },
+            {
+              question: "Пример вопроса 2",
+              options: ["Да", "Нет"],
+              answerIndex: 1,
+            },
+          ],
+        },
+        confidence: "high",
+      };
+    }
+  }
+  return { toolName: null, parameters: {}, confidence: "low" };
 }
 
 /**

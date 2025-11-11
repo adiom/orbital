@@ -15,6 +15,7 @@ import {
   speechToText,
 } from "./tools/generative";
 import { webSearch } from "./tools/integrations";
+import { createMiniApp, createChart, createGame } from "./tools/mini-apps";
 
 /**
  * Registry of all available Sfera tools
@@ -50,7 +51,10 @@ export function getSferaTools(): Tool<any, any>[] {
   // Integration tools
   tools.push(webSearch);
 
-  // TODO: Add mini-app tools (create-mini-app, create-chart, create-game)
+  // Mini-app tools
+  tools.push(createMiniApp);
+  tools.push(createChart);
+  tools.push(createGame);
 
   return tools;
 }

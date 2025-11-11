@@ -125,15 +125,44 @@ Sfera Context:
 
       try {
         const tools = getSferaTools();
-        const toolsMap: Record<string, any> = {
-          generateImage: tools[0],
-          generateImageReplicate: tools[1],
-          generateMusic: tools[2],
-          generateVideo: tools[3],
-          speechToText: tools[4],
-          summarizeDiscussion: tools[5],
-          webSearch: tools[6],
-        };
+
+        // Build dynamic tools map by description (tool name)
+        // This is more robust than hardcoded indices
+        const toolsMap: Record<string, any> = {};
+        for (const tool of tools) {
+          // Extract tool name from the tool object
+          // Tools from ai SDK have a `description` property but we need a cleaner way
+          // For now, we'll try to match by checking tool.execute existence
+          // Better approach: tools should expose their name
+          const toolConfig = tool as any;
+
+          // Map by function name or a known pattern
+          if (toolConfig.description?.includes("Gemini")) {
+            toolsMap["generateImage"] = tool;
+          } else if (toolConfig.description?.includes("FLUX") || toolConfig.description?.includes("Replicate")) {
+            if (toolConfig.description?.includes("image")) {
+              toolsMap["generateImageReplicate"] = tool;
+            } else if (toolConfig.description?.includes("music")) {
+              toolsMap["generateMusic"] = tool;
+            } else if (toolConfig.description?.includes("video")) {
+              toolsMap["generateVideo"] = tool;
+            }
+          } else if (toolConfig.description?.includes("speech") || toolConfig.description?.includes("transcribe")) {
+            toolsMap["speechToText"] = tool;
+          } else if (toolConfig.description?.includes("summarize") || toolConfig.description?.includes("discussion")) {
+            toolsMap["summarizeDiscussion"] = tool;
+          } else if (toolConfig.description?.includes("search") || toolConfig.description?.includes("web")) {
+            toolsMap["webSearch"] = tool;
+          } else if (toolConfig.description?.includes("mini-app") || toolConfig.description?.includes("mini app")) {
+            toolsMap["createMiniApp"] = tool;
+          } else if (toolConfig.description?.includes("chart")) {
+            toolsMap["createChart"] = tool;
+          } else if (toolConfig.description?.includes("game") || toolConfig.description?.includes("quiz")) {
+            toolsMap["createGame"] = tool;
+          }
+        }
+
+        console.log("🗺️ Tools map built:", Object.keys(toolsMap));
 
         const tool = toolsMap[toolIntent.toolName];
 
@@ -196,7 +225,8 @@ Sfera Context:
           ];
 
           // Build context for AI response
-          if (result?.success) {
+          if (result?.success !== false) {
+            // Success can be undefined for mini-apps/charts/games
             if (result.imageUrl) {
               toolExecutionContext = `\n\n[Я сгенерировал изображение: ${result.imageUrl}]\nОпиши пользователю что ты создал, коротко упомяни результат.`;
             } else if (result.audioUrl) {
@@ -214,6 +244,9 @@ Sfera Context:
                 )
                 .join("\n");
               toolExecutionContext = `\n\n[Результаты поиска по запросу "${result.query}":\n${resultsPreview}${result.answer ? `\n\nAI ответ: ${result.answer}` : ""}]\nКратко перескажи пользователю что нашёл.`;
+            } else if (result.title && (result.toolName === "create-mini-app" || result.toolName === "create-chart" || result.toolName === "create-game")) {
+              // Mini-apps, charts, games
+              toolExecutionContext = `\n\n[Я создал "${result.title}": ${result.message || result.purpose || "готово"}]\nСкажи пользователю что создано, коротко (до 20 слов).`;
             } else {
               toolExecutionContext = `\n\n[Инструмент выполнен успешно: ${JSON.stringify(result)}]`;
             }
