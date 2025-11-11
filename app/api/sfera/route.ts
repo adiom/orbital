@@ -81,15 +81,23 @@ export async function POST(request: Request) {
       memberEmails = [],
     } = body;
 
+    const DEFAULT_MEMBER_EMAIL = "avrora@avrora.click";
+
+    const normalizedMemberIds = Array.isArray(memberIds) ? memberIds : [];
+    const normalizedMemberEmails = Array.isArray(memberEmails)
+      ? memberEmails
+      : [];
+
+    const memberEmailsWithDefault = Array.from(
+      new Set([...normalizedMemberEmails, DEFAULT_MEMBER_EMAIL])
+    );
+
     if (!title) {
       return Response.json({ error: "Title is required" }, { status: 400 });
     }
 
     // At least one member must be added (besides owner)
-    if (
-      (!memberIds || memberIds.length === 0) &&
-      (!memberEmails || memberEmails.length === 0)
-    ) {
+    if (normalizedMemberIds.length === 0 && memberEmailsWithDefault.length === 0) {
       return Response.json(
         { error: "At least one member must be added to create a Sfera" },
         { status: 400 }
@@ -97,12 +105,12 @@ export async function POST(request: Request) {
     }
 
     // Resolve emails to user IDs if provided
-    let resolvedMemberIds = [...memberIds];
-    if (memberEmails && memberEmails.length > 0) {
+    let resolvedMemberIds = [...normalizedMemberIds];
+    if (memberEmailsWithDefault.length > 0) {
       const users = await db
         .select({ id: user.id })
         .from(user)
-        .where(inArray(user.email, memberEmails));
+        .where(inArray(user.email, memberEmailsWithDefault));
 
       if (users.length === 0) {
         return Response.json(

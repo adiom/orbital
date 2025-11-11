@@ -331,7 +331,10 @@ export function OrbitMessage({
         {/* AI Tool Results */}
         {message.toolResults && message.toolResults.length > 0 && (
           <div className="mt-4">
-            <ToolResultsList messageId={message.id} results={message.toolResults} />
+            <ToolResultsList
+              messageId={message.id}
+              results={message.toolResults}
+            />
           </div>
         )}
       </div>

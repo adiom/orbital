@@ -177,8 +177,9 @@ function generateReactCode(
   purpose: string,
   features: string[]
 ): string {
-  
-const componentName = title.replace(/[^a-zA-Z0-9]/g, '').replace(/^./, (str) => str.toUpperCase());
+  const componentName = title
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .replace(/^./, (str) => str.toUpperCase());
   const featureComponents = features.map((f, i) =>
     generateFeatureComponent(f, i)
   );

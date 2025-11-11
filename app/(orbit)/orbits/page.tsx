@@ -5,6 +5,7 @@ import { redirect, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { OrbitErrorState } from "@/components/orbit/orbit-error-state";
 import { OrbitListView } from "@/components/orbit/orbit-list-view";
 import { OrbitNetwork } from "@/components/orbit/orbit-network";
 import { OrbitSettings } from "@/components/orbit/orbit-settings";
@@ -42,7 +43,7 @@ export default function OrbitsPage() {
   const router = useRouter();
 
   // Custom hooks
-  const { orbits, forkRelationships, isLoading, refetch } = useOrbits();
+  const { orbits, forkRelationships, isLoading, error, refetch } = useOrbits();
   const {
     searchQuery,
     setSearchQuery,
@@ -63,6 +64,7 @@ export default function OrbitsPage() {
   const [_isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [orbitToDelete, setOrbitToDelete] = useState<Orbit | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   // Handlers
   const handleOpenSettings = async (orbit: Orbit) => {
@@ -81,6 +83,31 @@ export default function OrbitsPage() {
       setIsLoadingMembers(false);
     }
   };
+
+  const handleRetryFetch = async () => {
+    setIsRetrying(true);
+    try {
+      await refetch();
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  if (error) {
+    const errorMessage =
+      error.message === "Failed to fetch orbits"
+        ? "Не удалось подключиться к базе данных. Попробуйте обновить страницу или повторите попытку позже."
+        : error.message ||
+          "Произошла непредвиденная ошибка при загрузке орбит.";
+
+    return (
+      <OrbitErrorState
+        isRetrying={isRetrying}
+        message={errorMessage}
+        onRetry={refetch ? handleRetryFetch : undefined}
+      />
+    );
+  }
 
   const handleCloseSettings = () => {
     setSelectedOrbitForSettings(null);

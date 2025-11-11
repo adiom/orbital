@@ -161,7 +161,8 @@ Sfera Context:
       );
 
       // Inject special context for detailed tools list
-      toolExecutionContext = `\n\n[Пользователь просит список инструментов - ОПИШИ ВСЕ 11 инструментов подробно с категориями и примерами!]`;
+      toolExecutionContext =
+        "\n\n[Пользователь просит список инструментов - ОПИШИ ВСЕ 11 инструментов подробно с категориями и примерами!]";
 
       // Skip to AI response generation with special context
     } else if (toolIntent.toolName && toolIntent.confidence === "high") {

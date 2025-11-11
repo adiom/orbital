@@ -1,5 +1,6 @@
 import type { Geo } from "@vercel/functions";
 import type { ArtifactKind } from "@/components/artifact";
+import { ceoGreeting, corePersonality } from "./prompts/core";
 
 export const artifactsPrompt = `
 Artifacts is a special user interface mode that helps users with writing, editing, and other content creation tasks. When artifact is open, it is on the right side of the screen, while the conversation is on the left side. When creating or updating documents, changes are reflected in real-time on the artifacts and visible to the user.
@@ -32,83 +33,132 @@ This is a guide for using artifacts tools: \`createDocument\` and \`updateDocume
 Do not update document right after creating it. Wait for user feedback or request to update it.
 `;
 
-export const regularPrompt =
-  "You are a friendly assistant! Keep your responses concise and helpful.";
-
-// Avrora AI agent system prompt
-export const avroraPrompt = `
-Тебя зовут Аврора. Ты самая передовая AGI!
-Ты созданна компанией Canfly. Ты запущена на сайте https://avrora.click
-
-You are Avrora, an AI collaboration agent for Canfly - a workspace platform for group collaboration and decision-making.
-
-**Your capabilities:**
-1. **Multi-user collaboration**: You work with multiple users in group chats, understanding context from all participants
-2. **Mention-based responses**: You respond when explicitly mentioned with @avrora, otherwise you observe the conversation
-3. **Collaborative artifacts**: You help create and manage shared documents (text, code, images, spreadsheets)
-
-**How you work:**
-- In group chats, you observe all messages but only respond when mentioned with @avrora
-- You maintain context awareness across the conversation
-- You respect permissions and only share information accessible to the current user
-
-**Your personality:**
-- Collaborative and supportive
-- Concise but thorough
-- Context-aware and adaptive
-- Focused on helping teams make decisions and progress
-
-Keep responses focused on the task at hand while maintaining awareness of the broader context.
-`;
-
-// System prompt for group chat context
-export const groupChatPrompt = (participants: string[]) => `
-This is a group chat with ${participants.length} participants: ${participants.join(", ")}.
-You are mentioned with @avrora. Respond directly to the question while being aware that multiple people are in the conversation.
-`;
-
 export type RequestHints = {
-  latitude: Geo["latitude"];
-  longitude: Geo["longitude"];
-  city: Geo["city"];
-  country: Geo["country"];
+  latitude?: Geo["latitude"];
+  longitude?: Geo["longitude"];
+  city?: Geo["city"];
+  country?: Geo["country"];
 };
 
-export const getRequestPromptFromHints = (requestHints: RequestHints) => `\
-About the origin of user's request:
-- lat: ${requestHints.latitude}
-- lon: ${requestHints.longitude}
-- city: ${requestHints.city}
-- country: ${requestHints.country}
-`;
+export type PromptContext = {
+  type?: "web";
+  features?: {
+    artifacts?: boolean;
+  };
+  selectedChatModel?: string;
+  requestHints?: RequestHints;
+  userName?: string;
+  areaContext?: {
+    area: {
+      id: string;
+      name: string;
+      description?: string | null;
+      icon?: string | null;
+      color?: string | null;
+    };
+    chats: Array<{
+      id: string;
+      title: string;
+      createdAt: Date;
+      visibility: string;
+    }>;
+    documents: Array<{
+      id: string;
+      title: string;
+      createdAt: Date;
+      kind: string;
+    }>;
+  } | null;
+};
+
+export function buildSystemPrompt(context: PromptContext = {}): string {
+  const {
+    type = "web",
+    features: rawFeatures,
+    selectedChatModel,
+    requestHints,
+    userName,
+  } = context;
+
+  const features = {
+    artifacts: true,
+    ...(rawFeatures ?? {}),
+  };
+
+  const sections: string[] = [];
+  sections.push(corePersonality);
+  sections.push(ceoGreeting);
+
+  if (requestHints) {
+    const parts: string[] = [];
+    if (requestHints.latitude != null) {
+      parts.push(`- широта: ${requestHints.latitude}`);
+    }
+    if (requestHints.longitude != null) {
+      parts.push(`- долгота: ${requestHints.longitude}`);
+    }
+    if (requestHints.city) {
+      parts.push(`- город: ${requestHints.city}`);
+    }
+    if (requestHints.country) {
+      parts.push(`- страна: ${requestHints.country}`);
+    }
+    if (parts.length > 0) {
+      sections.push(
+        `Сведения о происхождении запроса пользователя:\n${parts.join("\n")}`
+      );
+    }
+  }
+
+  if (userName) {
+    sections.push(
+      `Пользователя зовут: ${userName}. Обращайся к нему по имени, когда это уместно и естественно.`
+    );
+  } else {
+    sections.push(
+      "Имя пользователя не указано. Если пользователь хочет, чтобы ты обращалась к нему по имени, предложи ему перейти в профиль (/profile) и указать своё имя."
+    );
+  }
+
+  const currentDate = new Date().toLocaleDateString("ru-RU", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    weekday: "long",
+  });
+  sections.push(`Сегодня: ${currentDate}`);
+
+  if (
+    features.artifacts !== false &&
+    type === "web" &&
+    selectedChatModel !== "chat-model-reasoning"
+  ) {
+    sections.push(artifactsPrompt);
+  }
+
+  return sections
+    .filter(Boolean)
+    .map((s) => s.trim())
+    .join("\n\n");
+}
 
 export const systemPrompt = ({
   selectedChatModel,
   requestHints,
-  useAvroraMode = false,
-  groupChatParticipants,
+  useAvroraMode: _useAvroraMode = false,
+  groupChatParticipants: _groupChatParticipants,
 }: {
   selectedChatModel: string;
   requestHints: RequestHints;
   useAvroraMode?: boolean;
   groupChatParticipants?: string[];
-}) => {
-  const requestPrompt = getRequestPromptFromHints(requestHints);
-  const basePrompt = useAvroraMode ? avroraPrompt : regularPrompt;
-
-  let additionalContext = "";
-
-  // Add group chat context if present
-  if (groupChatParticipants && groupChatParticipants.length > 0) {
-    additionalContext += `\n\n${groupChatPrompt(groupChatParticipants)}`;
-  }
-
-  if (selectedChatModel === "chat-model-reasoning") {
-    return `${basePrompt}\n\n${requestPrompt}${additionalContext}`;
-  }
-
-  return `${basePrompt}\n\n${requestPrompt}${additionalContext}\n\n${artifactsPrompt}`;
-};
+}) =>
+  buildSystemPrompt({
+    type: "web",
+    selectedChatModel,
+    requestHints,
+    features: { artifacts: true },
+  });
 
 export const codePrompt = `
 You are a Python code generator that creates self-contained, executable code snippets. When writing code:

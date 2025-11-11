@@ -36,8 +36,31 @@ export async function POST(request: Request, context: RouteContext) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { content, parentMessageId, attachments = [] } = body;
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch (error) {
+      if (error instanceof SyntaxError) {
+        return Response.json(
+          { error: "Invalid JSON payload" },
+          { status: 400 }
+        );
+      }
+      throw error;
+    }
+
+    if (!body || typeof body !== "object") {
+      return Response.json(
+        { error: "Request body must be a JSON object" },
+        { status: 400 }
+      );
+    }
+
+    const { content, parentMessageId, attachments = [] } = body as {
+      content?: string;
+      parentMessageId?: string;
+      attachments?: unknown[];
+    };
 
     // Require either content or attachments
     if (

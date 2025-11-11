@@ -2,8 +2,8 @@
 
 import { GitBranch, Lock, Settings, Trash2, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import type { Orbit } from "@/hooks/use-orbit-layout";
 import { cn } from "@/lib/utils";
 
@@ -41,7 +41,7 @@ export function OrbitListView({
           return (
             <div
               className={cn(
-                "group rounded-xl border-2 bg-white p-4 shadow-sm transition-all cursor-pointer",
+                "group cursor-pointer rounded-xl border-2 bg-white p-4 shadow-sm transition-all",
                 "hover:border-blue-300 hover:shadow-md"
               )}
               key={orbit.id}
@@ -49,9 +49,9 @@ export function OrbitListView({
             >
               <div className="flex items-center justify-between gap-4">
                 {/* Left: Title and description */}
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-3">
-                    <h3 className="font-semibold text-gray-900 text-lg truncate">
+                    <h3 className="truncate font-semibold text-gray-900 text-lg">
                       {orbit.title}
                     </h3>
                     {orbit.visibility === "private" && (
@@ -59,7 +59,7 @@ export function OrbitListView({
                     )}
                   </div>
                   {orbit.description && (
-                    <p className="mt-1 text-gray-600 text-sm line-clamp-2">
+                    <p className="mt-1 line-clamp-2 text-gray-600 text-sm">
                       {orbit.description}
                     </p>
                   )}
@@ -74,9 +74,7 @@ export function OrbitListView({
                     >
                       {orbit.role}
                     </Badge>
-                    <Badge variant="outline">
-                      {orbit.visibility}
-                    </Badge>
+                    <Badge variant="outline">{orbit.visibility}</Badge>
                     <span className="text-gray-500">
                       Created {new Date(orbit.createdAt).toLocaleDateString()}
                     </span>
@@ -88,7 +86,7 @@ export function OrbitListView({
                   {isOwner && (
                     <>
                       <Button
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="opacity-0 transition-opacity group-hover:opacity-100"
                         onClick={(e) => {
                           e.stopPropagation();
                           onSettingsClick?.(orbit);
@@ -99,7 +97,7 @@ export function OrbitListView({
                         <Settings className="h-4 w-4" />
                       </Button>
                       <Button
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:bg-red-50 hover:text-red-600"
+                        className="text-red-500 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
                         onClick={(e) => {
                           e.stopPropagation();
                           onDeleteClick?.(orbit);

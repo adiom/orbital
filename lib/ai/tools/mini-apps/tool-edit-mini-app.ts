@@ -30,12 +30,7 @@ export const editMiniApp = tool({
     "You can add new features, fix bugs, change styling, or refactor the code. " +
     "The code must be valid React/JSX and should follow the same structure as the original.",
   inputSchema: editMiniAppInput,
-  execute: async ({
-    messageId,
-    miniAppId,
-    reactCode,
-    changeDescription,
-  }) => {
+  execute: async ({ messageId, miniAppId, reactCode, changeDescription }) => {
     try {
       // Get the message
       const [messageData] = await db
