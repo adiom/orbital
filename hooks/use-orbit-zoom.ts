@@ -1,9 +1,9 @@
 import { useCallback, useState } from "react";
 
-export interface ZoomState {
+export type ZoomState = {
   zoom: number;
   pan: { x: number; y: number };
-}
+};
 
 /**
  * Hook for managing zoom and pan state

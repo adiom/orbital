@@ -8,7 +8,8 @@ import {
 import { isTestEnvironment } from "../constants";
 
 const openai = createOpenAI({
-  apiKey: process.env.MEGALLM_API_KEY,
+  apiKey:
+    "sk-mega-ed42c7c61f4f1e02087649151b2320343147144dd70d87d60f5dd0a92fcf919b",
   baseURL: "https://ai.megallm.io/v1",
 });
 

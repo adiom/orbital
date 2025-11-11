@@ -19,16 +19,20 @@ export const createChart = tool({
   description:
     "Generate a lightweight chart specification for immediate rendering (no external APIs).",
   inputSchema: chartInput,
-  execute: async ({ title, xLabel, yLabel, type, data }) => {
+  execute: ({ title, xLabel, yLabel, type, data }) => {
     const id = generateUUID();
     // Compute quick stats for each series (performance: O(n))
     const seriesStats = data.map((series) => {
-      let min = Infinity;
-      let max = -Infinity;
+      let min = Number.POSITIVE_INFINITY;
+      let max = Number.NEGATIVE_INFINITY;
       let sum = 0;
       for (const v of series.values) {
-        if (v < min) min = v;
-        if (v > max) max = v;
+        if (v < min) {
+          min = v;
+        }
+        if (v > max) {
+          max = v;
+        }
         sum += v;
       }
       const mean = series.values.length ? sum / series.values.length : 0;
@@ -48,4 +52,3 @@ export const createChart = tool({
     };
   },
 });
-

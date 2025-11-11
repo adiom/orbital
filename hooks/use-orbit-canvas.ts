@@ -1,5 +1,5 @@
 import { type RefObject, useEffect } from "react";
-import type { NodePosition, ForkRelationship } from "./use-orbit-layout";
+import type { ForkRelationship, NodePosition } from "./use-orbit-layout";
 
 /**
  * Hook for rendering orbit connections on canvas

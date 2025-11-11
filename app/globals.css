@@ -204,11 +204,6 @@
     max-height: 100vh !important;
     font-size: 16px;
     -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -khtml-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
     pointer-events: auto;
     z-index: 0;
     animation: none !important;

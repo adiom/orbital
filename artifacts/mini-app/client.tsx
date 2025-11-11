@@ -1,3 +1,5 @@
+import React from "react";
+import { LiveEditor, LiveError, LivePreview, LiveProvider } from "react-live";
 import { toast } from "sonner";
 import { Artifact } from "@/components/create-artifact";
 import { CopyIcon, PlayIcon, RedoIcon, UndoIcon } from "@/components/icons";
@@ -32,16 +34,40 @@ export const miniAppArtifact = new Artifact<"mini-app", Metadata>({
   },
   content: ({ content, metadata }) => {
     if (metadata?.isPreview) {
-      // TODO: Implement React live preview using react-live or similar
       return (
-        <div className="flex h-full flex-col items-center justify-center rounded-lg border-2 border-gray-300 border-dashed bg-gray-50 p-8">
-          <PlayIcon size={48} />
-          <p className="mb-2 font-semibold text-gray-700 text-lg">
-            Mini-App Preview
-          </p>
-          <p className="text-center text-gray-500 text-sm">
-            Live preview functionality coming soon
-          </p>
+        <div className="h-full overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <LiveProvider
+            code={content}
+            noInline={true}
+            scope={{
+              React,
+              useState: React.useState,
+              useEffect: React.useEffect,
+              useCallback: React.useCallback,
+              useMemo: React.useMemo,
+              useRef: React.useRef,
+              useContext: React.useContext,
+              createContext: React.createContext,
+            }}
+          >
+            <div className="grid h-full grid-cols-2">
+              <div className="border-gray-200 border-r p-4">
+                <div className="mb-2 font-medium text-gray-700 text-sm">
+                  Code Editor
+                </div>
+                <LiveEditor className="h-[calc(100%-2rem)] rounded font-mono text-sm" />
+              </div>
+              <div className="p-4">
+                <div className="mb-2 font-medium text-gray-700 text-sm">
+                  Live Preview
+                </div>
+                <div className="min-h-[200px] rounded border border-gray-200 bg-white p-4">
+                  <LivePreview />
+                </div>
+              </div>
+            </div>
+            <LiveError className="whitespace-pre-wrap border-red-200 border-t bg-red-50 p-3 font-mono text-red-700 text-xs" />
+          </LiveProvider>
         </div>
       );
     }

@@ -83,7 +83,11 @@ export function OrbitContainer({
 
         {/* Content */}
         <div className="relative z-10">
-          <div className="cursor-pointer" onClick={handleOrbitClick}>
+          <button
+            className="w-full cursor-pointer text-left"
+            onClick={handleOrbitClick}
+            type="button"
+          >
             <h3 className="mb-2 line-clamp-2 font-semibold text-gray-900 text-sm">
               {orbit.title}
             </h3>
@@ -93,7 +97,7 @@ export function OrbitContainer({
                 {orbit.description}
               </p>
             )}
-          </div>
+          </button>
 
           <div className="flex items-center justify-between text-[11px] text-gray-500">
             <div className="flex items-center gap-2">

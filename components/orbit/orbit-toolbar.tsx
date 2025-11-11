@@ -2,20 +2,20 @@
 
 import { Filter, Grid3x3, LayoutList, Network, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
-  DropdownMenuContent,
   DropdownMenuCheckboxItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
+  DropdownMenuContent,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export type ViewMode = "graph" | "list" | "grid";
 
-interface OrbitToolbarProps {
+type OrbitToolbarProps = {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   roleFilter: string | null;
@@ -28,7 +28,7 @@ interface OrbitToolbarProps {
   totalCount: number;
   hasActiveFilters: boolean;
   onResetFilters: () => void;
-}
+};
 
 export function OrbitToolbar({
   searchQuery,
@@ -48,17 +48,17 @@ export function OrbitToolbar({
     <div className="border-gray-200/50 border-b bg-white/60 px-6 py-3 backdrop-blur-sm">
       <div className="flex items-center justify-between gap-4">
         {/* Search */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <div className="relative max-w-md flex-1">
+          <Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-gray-400" />
           <Input
-            className="bg-white pl-10 pr-8"
+            className="bg-white pr-8 pl-10"
+            onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search orbits..."
             value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
           />
           {searchQuery && (
             <Button
-              className="absolute top-1/2 right-1 h-6 w-6 -translate-y-1/2 rounded-full p-0 hover:bg-gray-100"
+              className="-translate-y-1/2 absolute top-1/2 right-1 h-6 w-6 rounded-full p-0 hover:bg-gray-100"
               onClick={() => onSearchChange("")}
               size="sm"
               variant="ghost"
@@ -75,7 +75,8 @@ export function OrbitToolbar({
               <Button
                 className={cn(
                   "gap-2",
-                  (roleFilter || visibilityFilter) && "border-blue-500 bg-blue-50"
+                  (roleFilter || visibilityFilter) &&
+                    "border-blue-500 bg-blue-50"
                 )}
                 size="sm"
                 variant="outline"

@@ -86,14 +86,48 @@ Sfera Context:
 - Имейте в виду, что это пространство для совместной работы с несколькими участниками
 - Будьте в дискуссии, не надо быть ментором
 - Предлагайте что-то свое только если вас попросят
-- В сообщении не больше 30 слов
-- Если в контексте есть результат выполнения инструмента (изображение, музыка, видео, резюме, поиск в интернете) - коротко опиши результат пользователю
+- В сообщении не больше 30 слов (КРОМЕ случаев когда вас просят про список инструментов - тогда опишите их подробно)
+- Если в контексте есть результат выполнения инструмента - коротко опиши результат пользователю
 
-Доступные инструменты:
-- Генерация изображений (Gemini, Replicate FLUX)
-- Генерация музыки и видео (Replicate)
-- Резюмирование дискуссий
-- Поиск в интернете через Tavily (актуальная информация, новости, факты)
+Доступные инструменты (всего 11):
+
+🎨 ГЕНЕРАТИВНЫЕ ИНСТРУМЕНТЫ:
+1. generateImage - генерация изображений через Gemini (быстро, для простых картинок)
+   Пример: "@Avrora нарисуй космический корабль"
+
+2. generateImageReplicate - генерация через Replicate FLUX (качественно, для сложных сцен)
+   Пример: "@Avrora создай через replicate портрет в стиле ренессанса"
+
+3. generateMusic - генерация музыки через Replicate (30 секунд)
+   Пример: "@Avrora создай музыку: спокойная лаунж мелодия"
+
+4. generateVideo - генерация видео/анимации через Replicate (5 секунд)
+   Пример: "@Avrora сделай видео: волны на океане"
+
+5. speechToText - преобразование аудио в текст (транскрипция)
+   Пример: "@Avrora транскрибируй это аудио"
+
+🔍 АНАЛИТИЧЕСКИЕ ИНСТРУМЕНТЫ:
+6. summarizeDiscussion - резюме обсуждения (краткое/среднее/подробное)
+   Пример: "@Avrora резюмируй обсуждение кратко"
+
+7. webSearch - поиск в интернете через Tavily (актуальная информация, новости)
+   Пример: "@Avrora найди информацию о новинках в AI"
+
+💻 ИНСТРУМЕНТЫ СОЗДАНИЯ MINI-APP:
+8. createMiniApp - создание React приложения (интерактивное)
+   Пример: "@Avrora создай приложение калькулятор"
+
+9. createChart - создание графиков и диаграмм
+   Пример: "@Avrora построй график продаж за год"
+
+10. createGame - создание игр и викторин
+    Пример: "@Avrora создай викторину про историю"
+
+11. editMiniApp - редактирование существующего mini-app
+    Пример: "@Avrora измени приложение: добавь кнопку сброса"
+
+КОГДА ВАС ПРОСЯТ СПИСОК ИНСТРУМЕНТОВ: опишите ВСЕ 11 инструментов с примерами использования, категориями и деталями!
 
 Помните: сообщения в Sfera можно разветвлять на новые ветки обсуждения. Если вы видите возможность для более глубокого изучения, сообщите об этом.`;
     // Get the trigger message
@@ -116,11 +150,21 @@ Sfera Context:
     const toolIntent = detectToolIntent(triggerMessage.content);
     console.log("🎯 Tool intent detected:", toolIntent);
 
-    // STEP 2: Execute tool manually if intent detected
+    // Initialize variables for tool execution
     let toolResults: any[] = [];
     let toolExecutionContext = "";
 
-    if (toolIntent.toolName && toolIntent.confidence === "high") {
+    // STEP 2: Handle special case - list tools request
+    if (toolIntent.toolName === "listTools") {
+      console.log(
+        "📋 User requested list of tools, preparing detailed response..."
+      );
+
+      // Inject special context for detailed tools list
+      toolExecutionContext = `\n\n[Пользователь просит список инструментов - ОПИШИ ВСЕ 11 инструментов подробно с категориями и примерами!]`;
+
+      // Skip to AI response generation with special context
+    } else if (toolIntent.toolName && toolIntent.confidence === "high") {
       console.log(`🔧 Executing tool manually: ${toolIntent.toolName}`);
 
       try {
@@ -138,27 +182,45 @@ Sfera Context:
 
           // Map by function name or a known pattern
           if (toolConfig.description?.includes("Gemini")) {
-            toolsMap["generateImage"] = tool;
-          } else if (toolConfig.description?.includes("FLUX") || toolConfig.description?.includes("Replicate")) {
+            toolsMap.generateImage = tool;
+          } else if (
+            toolConfig.description?.includes("FLUX") ||
+            toolConfig.description?.includes("Replicate")
+          ) {
             if (toolConfig.description?.includes("image")) {
-              toolsMap["generateImageReplicate"] = tool;
+              toolsMap.generateImageReplicate = tool;
             } else if (toolConfig.description?.includes("music")) {
-              toolsMap["generateMusic"] = tool;
+              toolsMap.generateMusic = tool;
             } else if (toolConfig.description?.includes("video")) {
-              toolsMap["generateVideo"] = tool;
+              toolsMap.generateVideo = tool;
             }
-          } else if (toolConfig.description?.includes("speech") || toolConfig.description?.includes("transcribe")) {
-            toolsMap["speechToText"] = tool;
-          } else if (toolConfig.description?.includes("summarize") || toolConfig.description?.includes("discussion")) {
-            toolsMap["summarizeDiscussion"] = tool;
-          } else if (toolConfig.description?.includes("search") || toolConfig.description?.includes("web")) {
-            toolsMap["webSearch"] = tool;
-          } else if (toolConfig.description?.includes("mini-app") || toolConfig.description?.includes("mini app")) {
-            toolsMap["createMiniApp"] = tool;
+          } else if (
+            toolConfig.description?.includes("speech") ||
+            toolConfig.description?.includes("transcribe")
+          ) {
+            toolsMap.speechToText = tool;
+          } else if (
+            toolConfig.description?.includes("summarize") ||
+            toolConfig.description?.includes("discussion")
+          ) {
+            toolsMap.summarizeDiscussion = tool;
+          } else if (
+            toolConfig.description?.includes("search") ||
+            toolConfig.description?.includes("web")
+          ) {
+            toolsMap.webSearch = tool;
+          } else if (
+            toolConfig.description?.includes("mini-app") ||
+            toolConfig.description?.includes("mini app")
+          ) {
+            toolsMap.createMiniApp = tool;
           } else if (toolConfig.description?.includes("chart")) {
-            toolsMap["createChart"] = tool;
-          } else if (toolConfig.description?.includes("game") || toolConfig.description?.includes("quiz")) {
-            toolsMap["createGame"] = tool;
+            toolsMap.createChart = tool;
+          } else if (
+            toolConfig.description?.includes("game") ||
+            toolConfig.description?.includes("quiz")
+          ) {
+            toolsMap.createGame = tool;
           }
         }
 
@@ -244,7 +306,12 @@ Sfera Context:
                 )
                 .join("\n");
               toolExecutionContext = `\n\n[Результаты поиска по запросу "${result.query}":\n${resultsPreview}${result.answer ? `\n\nAI ответ: ${result.answer}` : ""}]\nКратко перескажи пользователю что нашёл.`;
-            } else if (result.title && (result.toolName === "create-mini-app" || result.toolName === "create-chart" || result.toolName === "create-game")) {
+            } else if (
+              result.title &&
+              (result.toolName === "create-mini-app" ||
+                result.toolName === "create-chart" ||
+                result.toolName === "create-game")
+            ) {
               // Mini-apps, charts, games
               toolExecutionContext = `\n\n[Я создал "${result.title}": ${result.message || result.purpose || "готово"}]\nСкажи пользователю что создано, коротко (до 20 слов).`;
             } else {

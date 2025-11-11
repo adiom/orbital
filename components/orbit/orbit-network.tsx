@@ -1,11 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { OrbitContainer } from "./orbit-container";
-import { OrbitSettings } from "./orbit-settings";
-import { OrbitZoomControls } from "./orbit-zoom-controls";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,11 +14,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2 } from "lucide-react";
-import { useOrbitLayout, type Orbit, type ForkRelationship } from "@/hooks/use-orbit-layout";
 import { useOrbitCanvas } from "@/hooks/use-orbit-canvas";
 import { useOrbitInteractions } from "@/hooks/use-orbit-interactions";
+import {
+  type ForkRelationship,
+  type Orbit,
+  useOrbitLayout,
+} from "@/hooks/use-orbit-layout";
 import { useOrbitZoom } from "@/hooks/use-orbit-zoom";
+import { OrbitContainer } from "./orbit-container";
+import { OrbitSettings } from "./orbit-settings";
+import { OrbitZoomControls } from "./orbit-zoom-controls";
 
 type Member = {
   userId: string;
@@ -28,12 +32,12 @@ type Member = {
   role: string;
 };
 
-interface OrbitNetworkProps {
+type OrbitNetworkProps = {
   orbits: Orbit[];
   forkRelationships: ForkRelationship[];
   currentUserId?: string;
   onUpdate?: () => void;
-}
+};
 
 export function OrbitNetwork({
   orbits,
@@ -45,9 +49,10 @@ export function OrbitNetwork({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // State
-  const [selectedOrbitForSettings, setSelectedOrbitForSettings] = useState<Orbit | null>(null);
+  const [selectedOrbitForSettings, setSelectedOrbitForSettings] =
+    useState<Orbit | null>(null);
   const [orbitMembers, setOrbitMembers] = useState<Member[]>([]);
-  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [_isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [orbitToDelete, setOrbitToDelete] = useState<Orbit | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -55,11 +60,10 @@ export function OrbitNetwork({
   const { nodePositions } = useOrbitLayout(orbits, forkRelationships);
   const { zoom, zoomIn, zoomOut, resetZoom, fitToView } = useOrbitZoom();
 
-  const { hoveredNode, handleCanvasClick, handleCanvasMove } = useOrbitInteractions(
-    canvasRef,
-    nodePositions,
-    (nodeId) => router.push(`/orbit/${nodeId}`)
-  );
+  const { hoveredNode, handleCanvasClick, handleCanvasMove } =
+    useOrbitInteractions(canvasRef, nodePositions, (nodeId) =>
+      router.push(`/orbit/${nodeId}`)
+    );
 
   // Render canvas connections
   useOrbitCanvas(canvasRef, nodePositions, forkRelationships);

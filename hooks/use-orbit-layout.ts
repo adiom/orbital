@@ -102,9 +102,8 @@ export function useOrbitLayout(
 
     // Position orbits within each level
     for (const [level, ids] of levelGroups) {
-      const y = maxLevel > 0
-        ? (level / maxLevel) * (height - 100) + 50
-        : height / 2;
+      const y =
+        maxLevel > 0 ? (level / maxLevel) * (height - 100) + 50 : height / 2;
 
       for (let index = 0; index < ids.length; index++) {
         const id = ids[index];

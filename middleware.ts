@@ -24,6 +24,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Разрешить доступ к странице просмотра сообщений без авторизации
+  if (pathname.startsWith("/orbit/message/")) {
+    return NextResponse.next();
+  }
+
   // Получаем токен пользователя из заголовков запроса
   // getToken - это функция из библиотеки next-auth, которая
   // извлекает токен из HTTP-заголовков запроса

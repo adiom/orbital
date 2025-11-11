@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Orbit, ForkRelationship } from "./use-orbit-layout";
+import type { ForkRelationship, Orbit } from "./use-orbit-layout";
 
-export interface UseOrbitsReturn {
+export type UseOrbitsReturn = {
   orbits: Orbit[];
   forkRelationships: ForkRelationship[];
   isLoading: boolean;
   error: Error | null;
   refetch: () => Promise<void>;
-}
+};
 
 /**
  * Hook for fetching and managing orbit data
@@ -15,7 +15,9 @@ export interface UseOrbitsReturn {
  */
 export function useOrbits(): UseOrbitsReturn {
   const [orbits, setOrbits] = useState<Orbit[]>([]);
-  const [forkRelationships, setForkRelationships] = useState<ForkRelationship[]>([]);
+  const [forkRelationships, setForkRelationships] = useState<
+    ForkRelationship[]
+  >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
@@ -45,7 +47,9 @@ export function useOrbits(): UseOrbitsReturn {
       setForkRelationships(data.forkRelationships || []);
     } catch (err) {
       console.error("Error fetching orbits:", err);
-      setError(err instanceof Error ? err : new Error("Failed to fetch orbits"));
+      setError(
+        err instanceof Error ? err : new Error("Failed to fetch orbits")
+      );
     } finally {
       setIsLoading(false);
     }

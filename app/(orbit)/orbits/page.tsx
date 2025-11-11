@@ -1,15 +1,15 @@
 "use client";
 
-import { GitBranch, Plus, Sparkles } from "lucide-react";
+import { GitBranch, Loader2, Plus, Sparkles } from "lucide-react";
 import { redirect, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { OrbitNetwork } from "@/components/orbit/orbit-network";
 import { OrbitListView } from "@/components/orbit/orbit-list-view";
-import { OrbitToolbar } from "@/components/orbit/orbit-toolbar";
-import { OrbitSkeleton } from "@/components/orbit/orbit-skeleton";
+import { OrbitNetwork } from "@/components/orbit/orbit-network";
 import { OrbitSettings } from "@/components/orbit/orbit-settings";
+import { OrbitSkeleton } from "@/components/orbit/orbit-skeleton";
+import { OrbitToolbar } from "@/components/orbit/orbit-toolbar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,11 +21,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { useOrbits } from "@/hooks/use-orbits";
 import { useOrbitFilters } from "@/hooks/use-orbit-filters";
-import { useOrbitViewMode } from "@/hooks/use-orbit-view-mode";
-import { Loader2 } from "lucide-react";
 import type { Orbit } from "@/hooks/use-orbit-layout";
+import { useOrbitViewMode } from "@/hooks/use-orbit-view-mode";
+import { useOrbits } from "@/hooks/use-orbits";
 
 type Member = {
   userId: string;
@@ -58,9 +57,10 @@ export default function OrbitsPage() {
   const { viewMode, setViewMode } = useOrbitViewMode();
 
   // Local state for dialogs
-  const [selectedOrbitForSettings, setSelectedOrbitForSettings] = useState<Orbit | null>(null);
+  const [selectedOrbitForSettings, setSelectedOrbitForSettings] =
+    useState<Orbit | null>(null);
   const [orbitMembers, setOrbitMembers] = useState<Member[]>([]);
-  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [_isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [orbitToDelete, setOrbitToDelete] = useState<Orbit | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -199,7 +199,9 @@ export default function OrbitsPage() {
       ) : filteredOrbits.length === 0 ? (
         <div className="flex flex-1 items-center justify-center">
           <div className="text-center">
-            <p className="mb-4 text-gray-600 text-lg">No orbits match your filters</p>
+            <p className="mb-4 text-gray-600 text-lg">
+              No orbits match your filters
+            </p>
             <Button onClick={resetFilters} variant="outline">
               Clear filters
             </Button>

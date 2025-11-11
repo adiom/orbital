@@ -30,6 +30,40 @@ export type ToolResult = {
   chartTitle?: string;
   xKey?: string;
   yKey?: string;
+  // Web search results
+  query?: string;
+  answer?: string;
+  results?: Array<{
+    title: string;
+    url: string;
+    content: string;
+    score?: number;
+  }>;
+  searchDepth?: "basic" | "advanced";
+  // Mini-app generation results
+  id?: string;
+  title?: string;
+  purpose?: string;
+  features?: string[];
+  layout?: Array<{
+    id: string;
+    type: string;
+    text?: string;
+    name?: string;
+  }>;
+  reactCode?: string;
+  componentInfo?: {
+    name: string;
+    imports: string[];
+    dependencies: Record<string, string>;
+    hasState: boolean;
+    hasEffects: boolean;
+  };
+  instructions?: {
+    setup: string[];
+    customization: string[];
+  };
+  specVersion?: number;
   // Generic results
   message?: string;
   [key: string]: unknown;

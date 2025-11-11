@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import type { Orbit } from "./use-orbit-layout";
 
-export interface OrbitFilters {
+export type OrbitFilters = {
   role: string | null;
   visibility: string | null;
-}
+};
 
 /**
  * Hook for managing orbit search and filters
@@ -18,7 +18,10 @@ export function useOrbitFilters(orbits: Orbit[]) {
   const filteredOrbits = useMemo(() => {
     return orbits.filter((orbit) => {
       // Search by title
-      if (searchQuery && !orbit.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+      if (
+        searchQuery &&
+        !orbit.title.toLowerCase().includes(searchQuery.toLowerCase())
+      ) {
         return false;
       }
 

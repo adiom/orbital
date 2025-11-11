@@ -21,10 +21,17 @@ export function OrbitSkeleton() {
       <div className="relative flex-1 p-8">
         {/* Simulated orbit cards */}
         <div className="flex h-full items-center justify-center gap-8">
-          {[...Array(6)].map((_, i) => (
+          {[
+            "skeleton-1",
+            "skeleton-2",
+            "skeleton-3",
+            "skeleton-4",
+            "skeleton-5",
+            "skeleton-6",
+          ].map((key, i) => (
             <div
               className="h-32 w-44 animate-pulse rounded-3xl border-2 border-gray-200 bg-white shadow-lg"
-              key={i}
+              key={key}
               style={{
                 animationDelay: `${i * 100}ms`,
               }}

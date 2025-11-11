@@ -3,13 +3,13 @@
 import { Maximize, Minus, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-interface OrbitZoomControlsProps {
+type OrbitZoomControlsProps = {
   zoom: number;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onReset: () => void;
   onFitToView: () => void;
-}
+};
 
 export function OrbitZoomControls({
   zoom,
@@ -19,7 +19,7 @@ export function OrbitZoomControls({
   onFitToView,
 }: OrbitZoomControlsProps) {
   return (
-    <div className="absolute bottom-6 right-6 z-10 flex flex-col gap-2 rounded-lg border bg-white/90 p-2 shadow-lg backdrop-blur-sm">
+    <div className="absolute right-6 bottom-6 z-10 flex flex-col gap-2 rounded-lg border bg-white/90 p-2 shadow-lg backdrop-blur-sm">
       <Button
         className="h-9 w-9 p-0"
         onClick={onZoomIn}

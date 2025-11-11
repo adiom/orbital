@@ -6,6 +6,7 @@
  */
 
 // Regex patterns for tool intent detection (moved to top level for performance)
+const AVRORA_PATTERN = /(?:аврора|avrora)\s+/i;
 const REPLICATE_PATTERNS = [
   /(?:нарисуй|создай|сгенерируй).*?(?:через\s+)?(?:replicate|flux)/i,
   /(?:replicate|flux).*?(?:нарисуй|создай|сгенерируй)/i,
@@ -51,6 +52,21 @@ const PROMPT_EXTRACTION_PATTERNS = [
   /(?:нарисуй|создай|сгенерируй)\s+(.+)/i,
 ];
 
+// List tools patterns - when user asks about available tools
+const LIST_TOOLS_PATTERNS = [
+  /(?:список|перечень|покажи|скинь|расскажи про)\s+(?:свои\s+)?(?:tool|тул|инструмент|возможност|функци)/i,
+  /(?:какие|что)\s+(?:у тебя есть|ты умеешь|ты можешь|есть)\s+(?:tool|тул|инструмент|возможност|функци)/i,
+  /(?:что\s+)?(?:ты|вы)\s+(?:умеешь|можешь|умеете|можете)/i,
+  /(?:твои|ваши)\s+(?:tool|тул|инструмент|возможност|функци)/i,
+  /помощь|help|справка/i,
+];
+
+// Pattern to match "Аврора/Avrora [tool name]" for explicit tool detection
+// Updated to support both Latin and Cyrillic characters
+// The tool name should be a single word or hyphenated word (e.g., "mini-app")
+const EXPLICIT_TOOL_PATTERN =
+  /(?:аврора|avrora)\s+([\wа-яА-Я]+(?:[-][\wа-яА-Я]+)?)/gi;
+
 export type ToolIntent = {
   toolName:
     | "generateImage"
@@ -63,15 +79,230 @@ export type ToolIntent = {
     | "createMiniApp"
     | "createChart"
     | "createGame"
+    | "listTools"
     | null;
   parameters: Record<string, any>;
   confidence: "high" | "medium" | "low";
 };
 
 /**
+ * Detect explicit tool mention after "Аврора" or "Avrora"
+ * Example: "Аврора generateImage котик" or "Аврора mini app калькулятор"
+ */
+function detectExplicitToolIntent(message: string): ToolIntent {
+  // Use the top-level pattern constant
+  // Need to create a new RegExp instance for each call since global flag is used
+  const pattern = new RegExp(EXPLICIT_TOOL_PATTERN.source, "gi");
+  const match = message.match(pattern);
+
+  if (!match) {
+    return { toolName: null, parameters: {}, confidence: "low" };
+  }
+
+  // Extract the tool name from the match
+  const fullMatch = match[0];
+  const toolPart = fullMatch.replace(AVRORA_PATTERN, "").toLowerCase();
+
+  // Extract the rest of the message as parameters
+  const paramText = message
+    .substring(message.indexOf(fullMatch) + fullMatch.length)
+    .trim();
+
+  // Map common tool names and variations
+  const toolMappings: Record<string, ToolIntent["toolName"]> = {
+    // Image generation
+    generateimage: "generateImage",
+    "generate-image": "generateImage",
+    image: "generateImage",
+    картинка: "generateImage",
+    изображение: "generateImage",
+    рисунок: "generateImage",
+    replicate: "generateImageReplicate",
+    flux: "generateImageReplicate",
+
+    // Music generation
+    generatemusic: "generateMusic",
+    "generate-music": "generateMusic",
+    music: "generateMusic",
+    музыка: "generateMusic",
+    трек: "generateMusic",
+    песня: "generateMusic",
+
+    // Video generation
+    generatevideo: "generateVideo",
+    "generate-video": "generateVideo",
+    video: "generateVideo",
+    видео: "generateVideo",
+    анимация: "generateVideo",
+
+    // Speech to text
+    speechtotext: "speechToText",
+    "speech-to-text": "speechToText",
+    speech: "speechToText",
+    transcribe: "speechToText",
+    транскрипция: "speechToText",
+
+    // Summary
+    summarize: "summarizeDiscussion",
+    summary: "summarizeDiscussion",
+    резюме: "summarizeDiscussion",
+    итог: "summarizeDiscussion",
+
+    // Web search
+    websearch: "webSearch",
+    "web-search": "webSearch",
+    search: "webSearch",
+    поиск: "webSearch",
+    найди: "webSearch",
+
+    // Mini app
+    miniapp: "createMiniApp",
+    "mini-app": "createMiniApp",
+    "mini app": "createMiniApp",
+    createminiapp: "createMiniApp",
+    приложение: "createMiniApp",
+    app: "createMiniApp",
+
+    // Chart
+    chart: "createChart",
+    createchart: "createChart",
+    график: "createChart",
+    диаграмма: "createChart",
+
+    // Game
+    game: "createGame",
+    creategame: "createGame",
+    игра: "createGame",
+    викторина: "createGame",
+    quiz: "createGame",
+  };
+
+  // Normalize the tool part for lookup
+  const normalizedTool = toolPart.replace(/[-_\s]+/g, "").toLowerCase();
+  const detectedToolName =
+    toolMappings[normalizedTool] || toolMappings[toolPart];
+
+  if (!detectedToolName) {
+    return { toolName: null, parameters: {}, confidence: "low" };
+  }
+
+  // Prepare parameters based on the tool type
+  let parameters: Record<string, any> = {};
+
+  switch (detectedToolName) {
+    case "generateImage":
+    case "generateImageReplicate":
+      parameters = { prompt: paramText || "красивая картинка" };
+      break;
+    case "generateMusic":
+      parameters = { prompt: paramText || "спокойная музыка" };
+      break;
+    case "generateVideo":
+      parameters = { prompt: paramText || "красивое видео" };
+      break;
+    case "speechToText":
+      parameters = { language: "auto" };
+      break;
+    case "summarizeDiscussion":
+      parameters = { summaryLength: "medium" };
+      break;
+    case "webSearch":
+      parameters = {
+        query: paramText || "последние новости",
+        maxResults: 5,
+        searchDepth: "basic",
+      };
+      break;
+    case "createMiniApp":
+      parameters = {
+        title: paramText || "Mini App",
+        purpose: paramText || "Mini App",
+        features: ["input", "result"],
+      };
+      break;
+    case "createChart":
+      parameters = {
+        title: paramText || "Chart",
+        xLabel: "X",
+        yLabel: "Y",
+        type: "line",
+        data: [
+          { label: "Series 1", values: [1, 2, 3] },
+          { label: "Series 2", values: [3, 2, 1] },
+        ],
+      };
+      break;
+    case "createGame":
+      parameters = {
+        title: paramText || "Quiz",
+        genre: "quiz",
+        difficulty: "easy",
+        questions: [
+          {
+            question: "Пример вопроса 1",
+            options: ["Вариант A", "Вариант B"],
+            answerIndex: 0,
+          },
+          {
+            question: "Пример вопроса 2",
+            options: ["Да", "Нет"],
+            answerIndex: 1,
+          },
+        ],
+      };
+      break;
+    default:
+      // This should not happen as we checked for detectedToolName existence
+      parameters = {};
+      break;
+  }
+
+  return {
+    toolName: detectedToolName,
+    parameters,
+    confidence: "high",
+  };
+}
+
+/**
+ * Detect when user asks for list of available tools
+ */
+function detectListToolsIntent(message: string): ToolIntent {
+  const lowerMessage = message.toLowerCase();
+
+  for (const pattern of LIST_TOOLS_PATTERNS) {
+    if (pattern.test(message)) {
+      return {
+        toolName: "listTools",
+        parameters: {},
+        confidence: "high",
+      };
+    }
+  }
+
+  return {
+    toolName: null,
+    parameters: {},
+    confidence: "low",
+  };
+}
+
+/**
  * Detect tool intent from user message
  */
 export function detectToolIntent(message: string): ToolIntent {
+  // Check for list tools request first
+  const listToolsIntent = detectListToolsIntent(message);
+  if (listToolsIntent.toolName) {
+    return listToolsIntent;
+  }
+
+  // Check for explicit tool mention after "Аврора"
+  const explicitToolIntent = detectExplicitToolIntent(message);
+  if (explicitToolIntent.toolName) {
+    return explicitToolIntent;
+  }
+
   // Web search detection
   const webSearchIntent = detectWebSearchIntent(message);
   if (webSearchIntent.toolName) {
@@ -242,8 +473,8 @@ const MINI_APP_PATTERNS = [
   /(?:create|make)\s+(?:mini[‑\-\s]?app|application)\s*:?\s*(.+)/i,
   // Смешанный: "create приложение X" или "создай mini app X"
   /(?:создай|сделай|create|make)\s+(?:мини[‑\-\s]?приложение|mini[‑\-\s]?app|приложение|application)\s*:?\s*(.+)/i,
-  // React приложение: "создай react приложение X"
-  /(?:создай|сделай|create|make)\s+(?:react|reactjs|react\.js)?\s+(?:приложение|application|web[‑\s]?app)\s*:?\s*(.+)/i,
+  // React приложение: "создай react приложение X" or "create react app X"
+  /(?:создай|сделай|create|make)\s+(?:react|reactjs|react\.js)?\s+(?:приложение|application|web[‑\s]?app|app)\s*:?\s*(.+)/i,
   // React с компонентом: "создай react компонент X"
   /(?:создай|сделай|create|make)\s+(?:react|reactjs|react\.js)?\s+(?:компонент|component)\s*:?\s*(.+)/i,
   // CamelCase: "createMiniApp calculator"
@@ -253,13 +484,13 @@ const MINI_APP_PATTERNS = [
   // Неполный с описанием: "простой @avrora создай mini app"
   /(.+?)\s*@?(?:avrora|аврора)?\s*(?:создай|сделай|create|make)\s+mini[‑\-\s]?app\s*$/i,
 ];
-const CHART_PATTERNS = [
-  /(?:построй|создай)\s+график\s*:?\s*(.+)/i,
-];
+const CHART_PATTERNS = [/(?:построй|создай)\s+график\s*:?\s*(.+)/i];
 const GAME_PATTERNS = [
   /(?:создай)\s+викторину\s*:?\s*(.+)/i,
   /(?:сделай|создай)\s+игру\s*:?\s*(.+)/i,
 ];
+
+const WHITESPACE_PATTERN = /\s+/;
 
 function detectMiniAppIntent(message: string): ToolIntent {
   for (let i = 0; i < MINI_APP_PATTERNS.length; i++) {
@@ -282,15 +513,21 @@ function detectMiniAppIntent(message: string): ToolIntent {
         // Паттерн с описанием перед командой: "простой/научный @avrora создай mini app"
         const description = match[1] ? match[1].trim() : "";
         // Извлекаем информацию из описания
-        if (description.includes("калькулятор") || description.includes("calculator")) {
+        if (
+          description.includes("калькулятор") ||
+          description.includes("calculator")
+        ) {
           title = "Calculator";
           purpose = description;
-        } else if (description.includes("простой") || description.includes("научный")) {
+        } else if (
+          description.includes("простой") ||
+          description.includes("научный")
+        ) {
           // Если указан тип калькулятора
           title = "Calculator";
           purpose = `${description} калькулятор`;
         } else if (description) {
-          title = description.split(/\s+/)[0] || "Mini App";
+          title = description.split(WHITESPACE_PATTERN)[0] || "Mini App";
           purpose = description;
         } else {
           title = "Calculator";
@@ -303,7 +540,7 @@ function detectMiniAppIntent(message: string): ToolIntent {
         parameters: {
           title: title || "Mini App",
           purpose: purpose || title || "Mini App",
-          features: ["input", "result"]
+          features: ["input", "result"],
         },
         confidence: "high",
       };
@@ -323,7 +560,7 @@ function detectChartIntent(message: string): ToolIntent {
         parameters: {
           title,
           xLabel: "X",
-            yLabel: "Y",
+          yLabel: "Y",
           type: "line",
           data: [
             { label: "Series 1", values: [1, 2, 3] },
