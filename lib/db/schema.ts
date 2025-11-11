@@ -361,3 +361,44 @@ export const sferaArtifact = pgTable(
 );
 
 export type SferaArtifact = InferSelectModel<typeof sferaArtifact>;
+
+// AI Usage Log - Track AI requests for billing and monitoring
+export const aiUsageLog = pgTable("AiUsageLog", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  sferaId: uuid("sferaId").references(() => sfera.id, { onDelete: "cascade" }),
+  messageId: uuid("messageId").references(() => sferaMessage.id, {
+    onDelete: "set null",
+  }),
+
+  // Model information
+  modelUsed: varchar("modelUsed", { length: 100 }).notNull(),
+  provider: varchar("provider", { length: 50 }).notNull().default("openai"),
+
+  // Token usage
+  inputTokens: integer("inputTokens").notNull().default(0),
+  outputTokens: integer("outputTokens").notNull().default(0),
+  totalTokens: integer("totalTokens").notNull().default(0),
+
+  // Tool information
+  toolName: varchar("toolName", { length: 100 }),
+  toolParameters: json("toolParameters"),
+  toolExecutionTimeMs: integer("toolExecutionTimeMs"),
+
+  // Cost tracking (in USD)
+  estimatedCost: integer("estimatedCost").notNull().default(0), // Stored as cents
+
+  // Status
+  status: varchar("status", { enum: ["success", "error", "rate_limited"] })
+    .notNull()
+    .default("success"),
+  errorMessage: text("errorMessage"),
+
+  // Metadata
+  contextSize: integer("contextSize").notNull().default(0), // Number of messages in context
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
+export type AiUsageLog = InferSelectModel<typeof aiUsageLog>;

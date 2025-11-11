@@ -97,7 +97,10 @@ export async function POST(request: Request) {
     }
 
     // At least one member must be added (besides owner)
-    if (normalizedMemberIds.length === 0 && memberEmailsWithDefault.length === 0) {
+    if (
+      normalizedMemberIds.length === 0 &&
+      memberEmailsWithDefault.length === 0
+    ) {
       return Response.json(
         { error: "At least one member must be added to create a Sfera" },
         { status: 400 }

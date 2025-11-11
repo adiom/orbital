@@ -64,7 +64,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     "/",
-    "/chat/:id",
     "/docs", // Добавлено
     "/api/docs", // Добавлено
     "/api/:path*",

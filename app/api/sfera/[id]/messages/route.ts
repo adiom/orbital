@@ -4,6 +4,7 @@ import { generateAvroraResponse } from "@/lib/ai/sfera-avrora";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage } from "@/lib/db/schema";
 import { hasAvroraMention } from "@/lib/mentions/parser";
+import { checkAvroraRateLimit } from "@/lib/redis/rate-limiter";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -56,7 +57,11 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
-    const { content, parentMessageId, attachments = [] } = body as {
+    const {
+      content,
+      parentMessageId,
+      attachments = [],
+    } = body as {
       content?: string;
       parentMessageId?: string;
       attachments?: unknown[];
@@ -105,6 +110,36 @@ export async function POST(request: Request, context: RouteContext) {
         content:
           content.substring(0, 100) + (content.length > 100 ? "..." : ""),
       });
+
+      // Check rate limit before processing
+      const rateLimitResult = await checkAvroraRateLimit(
+        session.user.id,
+        sferaId
+      );
+
+      if (!rateLimitResult.allowed) {
+        console.warn("⚠️ Rate limit exceeded for @avrora mention:", {
+          userId: session.user.id,
+          sferaId,
+          error: rateLimitResult.error,
+          resetAt: rateLimitResult.resetAt,
+        });
+
+        // Post rate limit message to Sfera
+        await db.insert(sferaMessage).values({
+          sferaId,
+          userId: "00000000-0000-0000-0000-000000000001", // Avrora user ID
+          content: `⏱️ Слишком много запросов. ${rateLimitResult.error}\n\nПожалуйста, подождите немного перед следующим обращением.`,
+          parentMessageId: newMessage.id,
+          isForked: false,
+          forkCount: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+
+        // Still return success for user's message
+        return Response.json({ message: newMessage }, { status: 201 });
+      }
 
       // Generate Avrora response asynchronously
       setTimeout(async () => {

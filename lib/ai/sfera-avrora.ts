@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { myProvider } from "./providers";
 import { getSferaTools } from "./sfera-tools";
-import { detectToolIntent } from "./tool-intent-detector";
+import { logAiUsage } from "./usage-logger";
 
 // Use a fixed UUID for Avrora AI user
 const AVRORA_USER_ID = "00000000-0000-0000-0000-000000000001"; // Special system user ID for Avrora
@@ -145,209 +145,119 @@ Sfera Context:
       content: triggerMessage.content.substring(0, 100),
     });
 
-    // STEP 1: Detect tool intent from user message
-    console.log("🔍 Detecting tool intent from message...");
-    const toolIntent = detectToolIntent(triggerMessage.content);
-    console.log("🎯 Tool intent detected:", toolIntent);
+    // Get all available tools
+    const tools = getSferaTools();
+    console.log(`🔧 Loaded ${tools.length} tools for AI to use`);
 
-    // Initialize variables for tool execution
-    let toolResults: any[] = [];
-    let toolExecutionContext = "";
+    // Prepare tools object for AI SDK (convert array to object with tool names as keys)
+    const toolsObject: Record<string, typeof tools[number]> = {};
 
-    // STEP 2: Handle special case - list tools request
-    if (toolIntent.toolName === "listTools") {
-      console.log(
-        "📋 User requested list of tools, preparing detailed response..."
-      );
+    // Map tools by their type/name from the tool function
+    tools.forEach((tool, index) => {
+      const toolConfig = tool as any;
+      // Extract tool name from description or use index-based naming
+      let toolName = `tool_${index}`;
 
-      // Inject special context for detailed tools list
-      toolExecutionContext =
-        "\n\n[Пользователь просит список инструментов - ОПИШИ ВСЕ 11 инструментов подробно с категориями и примерами!]";
-
-      // Skip to AI response generation with special context
-    } else if (toolIntent.toolName && toolIntent.confidence === "high") {
-      console.log(`🔧 Executing tool manually: ${toolIntent.toolName}`);
-
-      try {
-        const tools = getSferaTools();
-
-        // Build dynamic tools map by description (tool name)
-        // This is more robust than hardcoded indices
-        const toolsMap: Record<string, any> = {};
-        for (const tool of tools) {
-          // Extract tool name from the tool object
-          // Tools from ai SDK have a `description` property but we need a cleaner way
-          // For now, we'll try to match by checking tool.execute existence
-          // Better approach: tools should expose their name
-          const toolConfig = tool as any;
-
-          // Map by function name or a known pattern
-          if (toolConfig.description?.includes("Gemini")) {
-            toolsMap.generateImage = tool;
-          } else if (
-            toolConfig.description?.includes("FLUX") ||
-            toolConfig.description?.includes("Replicate")
-          ) {
-            if (toolConfig.description?.includes("image")) {
-              toolsMap.generateImageReplicate = tool;
-            } else if (toolConfig.description?.includes("music")) {
-              toolsMap.generateMusic = tool;
-            } else if (toolConfig.description?.includes("video")) {
-              toolsMap.generateVideo = tool;
-            }
-          } else if (
-            toolConfig.description?.includes("speech") ||
-            toolConfig.description?.includes("transcribe")
-          ) {
-            toolsMap.speechToText = tool;
-          } else if (
-            toolConfig.description?.includes("summarize") ||
-            toolConfig.description?.includes("discussion")
-          ) {
-            toolsMap.summarizeDiscussion = tool;
-          } else if (
-            toolConfig.description?.includes("search") ||
-            toolConfig.description?.includes("web")
-          ) {
-            toolsMap.webSearch = tool;
-          } else if (
-            toolConfig.description?.includes("mini-app") ||
-            toolConfig.description?.includes("mini app")
-          ) {
-            toolsMap.createMiniApp = tool;
-          } else if (toolConfig.description?.includes("chart")) {
-            toolsMap.createChart = tool;
-          } else if (
-            toolConfig.description?.includes("game") ||
-            toolConfig.description?.includes("quiz")
-          ) {
-            toolsMap.createGame = tool;
-          }
-        }
-
-        console.log("🗺️ Tools map built:", Object.keys(toolsMap));
-
-        const tool = toolsMap[toolIntent.toolName];
-
-        if (tool) {
-          // For summarizeDiscussion, add context messages
-          if (toolIntent.toolName === "summarizeDiscussion") {
-            toolIntent.parameters.contextMessages = conversationContext;
-          }
-
-          // For speech-to-text, find audio attachment from recent messages
-          if (toolIntent.toolName === "speechToText") {
-            console.log(
-              "🎧 Looking for audio attachment in recent messages..."
-            );
-
-            // Search through recent messages for audio attachments (last 5 messages)
-            let audioFound = false;
-            for (const msg of contextMessages.slice(-5).reverse()) {
-              if (msg.attachments && Array.isArray(msg.attachments)) {
-                const audioAttachment = msg.attachments.find((att: any) =>
-                  att.contentType?.startsWith("audio/")
-                );
-
-                if (audioAttachment) {
-                  console.log("✅ Found audio attachment:", {
-                    name: audioAttachment.name,
-                    url: `${audioAttachment.url.substring(0, 50)}...`,
-                  });
-
-                  toolIntent.parameters.audioUrl = audioAttachment.url;
-                  toolIntent.parameters.fileName = audioAttachment.name;
-                  audioFound = true;
-                  break;
-                }
-              }
-            }
-
-            if (!audioFound) {
-              console.warn("⚠️ No audio attachment found in recent messages");
-              // Tool will fail gracefully with error message
-            }
-          }
-
-          console.log("📥 Tool input parameters:", toolIntent.parameters);
-
-          // Execute tool
-          const result = await tool.execute(toolIntent.parameters);
-
-          console.log("📊 Tool execution result:", {
-            success: result?.success,
-            hasData: !!result,
-          });
-
-          // Store result for display in UI
-          toolResults = [
-            {
-              toolName: toolIntent.toolName,
-              ...result, // Spread result properties (success, imageUrl, prompt, etc.)
-            },
-          ];
-
-          // Build context for AI response
-          if (result?.success !== false) {
-            // Success can be undefined for mini-apps/charts/games
-            if (result.imageUrl) {
-              toolExecutionContext = `\n\n[Я сгенерировал изображение: ${result.imageUrl}]\nОпиши пользователю что ты создал, коротко упомяни результат.`;
-            } else if (result.audioUrl) {
-              toolExecutionContext = `\n\n[Я создал музыку: ${result.audioUrl}]\nСкажи пользователю что музыка готова.`;
-            } else if (result.videoUrl) {
-              toolExecutionContext = `\n\n[Я создал видео: ${result.videoUrl}]\nСкажи пользователю что видео готово.`;
-            } else if (result.summary) {
-              toolExecutionContext = `\n\n[Вот резюме обсуждения: ${result.summary}]\nПредставь это резюме пользователю.`;
-            } else if (result.results && Array.isArray(result.results)) {
-              // Web search results
-              const resultsPreview = result.results
-                .slice(0, 3)
-                .map(
-                  (r: any) => `- ${r.title}: ${r.content?.substring(0, 100)}...`
-                )
-                .join("\n");
-              toolExecutionContext = `\n\n[Результаты поиска по запросу "${result.query}":\n${resultsPreview}${result.answer ? `\n\nAI ответ: ${result.answer}` : ""}]\nКратко перескажи пользователю что нашёл.`;
-            } else if (
-              result.title &&
-              (result.toolName === "create-mini-app" ||
-                result.toolName === "create-chart" ||
-                result.toolName === "create-game")
-            ) {
-              // Mini-apps, charts, games
-              toolExecutionContext = `\n\n[Я создал "${result.title}": ${result.message || result.purpose || "готово"}]\nСкажи пользователю что создано, коротко (до 20 слов).`;
-            } else {
-              toolExecutionContext = `\n\n[Инструмент выполнен успешно: ${JSON.stringify(result)}]`;
-            }
-          } else {
-            toolExecutionContext = `\n\n[Ошибка выполнения инструмента: ${result?.error || "Unknown error"}]\nСкажи пользователю что не получилось выполнить запрос.`;
-          }
-
-          console.log("✅ Tool executed successfully");
-        } else {
-          console.error("❌ Tool not found:", toolIntent.toolName);
-        }
-      } catch (error) {
-        console.error("❌ Error executing tool:", error);
-        toolExecutionContext = `\n\n[Ошибка: ${error instanceof Error ? error.message : "Unknown error"}]\nСкажи пользователю что произошла ошибка.`;
+      if (toolConfig.description?.includes("Gemini") && toolConfig.description?.includes("image")) {
+        toolName = "generateImage";
+      } else if (toolConfig.description?.includes("FLUX") || (toolConfig.description?.includes("Replicate") && toolConfig.description?.includes("image"))) {
+        toolName = "generateImageReplicate";
+      } else if (toolConfig.description?.includes("music")) {
+        toolName = "generateMusic";
+      } else if (toolConfig.description?.includes("video")) {
+        toolName = "generateVideo";
+      } else if (toolConfig.description?.includes("speech") || toolConfig.description?.includes("transcribe")) {
+        toolName = "speechToText";
+      } else if (toolConfig.description?.includes("summarize")) {
+        toolName = "summarizeDiscussion";
+      } else if (toolConfig.description?.includes("search") || toolConfig.description?.includes("web")) {
+        toolName = "webSearch";
+      } else if (toolConfig.description?.includes("mini-app") || toolConfig.description?.includes("mini app")) {
+        toolName = "createMiniApp";
+      } else if (toolConfig.description?.includes("chart")) {
+        toolName = "createChart";
+      } else if (toolConfig.description?.includes("game") || toolConfig.description?.includes("quiz")) {
+        toolName = "createGame";
+      } else if (toolConfig.description?.includes("edit") && toolConfig.description?.includes("mini")) {
+        toolName = "editMiniApp";
       }
-    }
 
-    // STEP 3: Generate AI response (without automatic tool calling)
-    console.log("🧠 Generating AI response...");
+      toolsObject[toolName] = tool;
+    });
+
+    console.log("🗺️ Tools mapped:", Object.keys(toolsObject));
+
+    // Initialize variables for tracking tool execution
+    let toolResults: any[] = [];
+    let executedToolNames: string[] = [];
+
+    // Generate AI response with automatic tool calling
+    console.log("🧠 Generating AI response with automatic tool calling...");
     const model = myProvider.languageModel("chat-model");
 
-    const { text } = await generateText({
+    const result = await generateText({
       model,
       system: systemPrompt,
-      prompt: `Context of recent discussion:\n${conversationContext}\n\nRespond to the message from ${triggerMessage.userEmail}.${toolExecutionContext}`,
+      prompt: `Context of recent discussion:\n${conversationContext}\n\nRespond to the message from ${triggerMessage.userEmail}.`,
       temperature: 0.7,
-      // No tools parameter - we handle tools manually now
+      tools: toolsObject, // AI will automatically decide which tools to use
+      maxSteps: 5, // Allow up to 5 tool calls in sequence
     });
+
+    const { text, usage, steps } = result;
+
+    // Process tool calls from steps
+    if (steps && steps.length > 0) {
+      console.log(`🔧 AI executed ${steps.length} steps`);
+
+      for (const step of steps) {
+        if (step.toolCalls && step.toolCalls.length > 0) {
+          for (const toolCall of step.toolCalls) {
+            console.log(`✅ Tool called: ${toolCall.toolName}`, {
+              args: toolCall.args,
+            });
+
+            executedToolNames.push(toolCall.toolName);
+
+            // Find the result for this tool call
+            if (step.toolResults) {
+              const toolResult = step.toolResults.find(
+                (r) => r.toolCallId === toolCall.toolCallId
+              );
+              if (toolResult) {
+                toolResults.push({
+                  toolName: toolCall.toolName,
+                  ...toolResult.result,
+                });
+              }
+            }
+          }
+        }
+      }
+
+      console.log(`📊 Total tools executed: ${executedToolNames.join(", ")}`);
+    }
 
     console.log("✅ AI response generated:", {
       length: text.length,
       preview: `${text.substring(0, 100)}...`,
       hadToolExecution: toolResults.length > 0,
+      tokens: usage?.totalTokens,
+    });
+
+    // Log AI usage
+    await logAiUsage({
+      userId: requestingUserId,
+      sferaId,
+      messageId: triggerMessageId,
+      modelUsed: "gpt-5",
+      provider: "openai",
+      inputTokens: usage?.promptTokens || 0,
+      outputTokens: usage?.completionTokens || 0,
+      toolName: executedToolNames.length > 0 ? executedToolNames[0] : undefined,
+      toolParameters: executedToolNames.length > 0 ? { tools: executedToolNames } : undefined,
+      contextSize: contextMessages.length,
+      status: "success",
     });
 
     // Ensure Avrora is a member of the Sfera
@@ -377,6 +287,20 @@ Sfera Context:
     console.log(`✅ Avrora responded in Sfera ${sferaId}`);
   } catch (error) {
     console.error("❌ Error generating Avrora response:", error);
+
+    // Log error to database
+    await logAiUsage({
+      userId: requestingUserId,
+      sferaId,
+      messageId: triggerMessageId,
+      modelUsed: "gpt-5",
+      provider: "openai",
+      inputTokens: 0,
+      outputTokens: 0,
+      status: "error",
+      errorMessage: error instanceof Error ? error.message : "Unknown error",
+    });
+
     throw error;
   }
 }
