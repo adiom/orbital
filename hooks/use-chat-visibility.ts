@@ -44,10 +44,7 @@ export function useChatVisibility({
     setLocalVisibility(updatedVisibilityType);
     mutate(
       unstable_serialize((pageIndex, previousPageData) =>
-        getChatHistoryPaginationKey(
-          pageIndex,
-          previousPageData
-        )
+        getChatHistoryPaginationKey(pageIndex, previousPageData)
       )
     );
 

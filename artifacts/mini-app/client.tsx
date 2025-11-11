@@ -1,11 +1,6 @@
 import { toast } from "sonner";
 import { Artifact } from "@/components/create-artifact";
-import {
-  CopyIcon,
-  PlayIcon,
-  RedoIcon,
-  UndoIcon,
-} from "@/components/icons";
+import { CopyIcon, PlayIcon, RedoIcon, UndoIcon } from "@/components/icons";
 
 type Metadata = {
   isPreview: boolean;
@@ -39,8 +34,8 @@ export const miniAppArtifact = new Artifact<"mini-app", Metadata>({
     if (metadata?.isPreview) {
       // TODO: Implement React live preview using react-live or similar
       return (
-        <div className="flex h-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8">
-          <PlayIcon size={48}  />
+        <div className="flex h-full flex-col items-center justify-center rounded-lg border-2 border-gray-300 border-dashed bg-gray-50 p-8">
+          <PlayIcon size={48} />
           <p className="mb-2 font-semibold text-gray-700 text-lg">
             Mini-App Preview
           </p>

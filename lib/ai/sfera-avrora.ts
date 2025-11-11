@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { myProvider } from "./providers";
 import { getSferaTools } from "./sfera-tools";
-import { detectToolIntent, type ToolIntent } from "./tool-intent-detector";
+import { detectToolIntent } from "./tool-intent-detector";
 
 // Use a fixed UUID for Avrora AI user
 const AVRORA_USER_ID = "00000000-0000-0000-0000-000000000001"; // Special system user ID for Avrora
@@ -56,6 +56,7 @@ export async function generateAvroraResponse(
         userId: sferaMessage.userId,
         userEmail: user.email,
         createdAt: sferaMessage.createdAt,
+        attachments: sferaMessage.attachments,
       })
       .from(sferaMessage)
       .innerJoin(user, eq(sferaMessage.userId, user.id))
@@ -129,8 +130,9 @@ Sfera Context:
           generateImageReplicate: tools[1],
           generateMusic: tools[2],
           generateVideo: tools[3],
-          summarizeDiscussion: tools[4],
-          webSearch: tools[5],
+          speechToText: tools[4],
+          summarizeDiscussion: tools[5],
+          webSearch: tools[6],
         };
 
         const tool = toolsMap[toolIntent.toolName];
@@ -139,6 +141,40 @@ Sfera Context:
           // For summarizeDiscussion, add context messages
           if (toolIntent.toolName === "summarizeDiscussion") {
             toolIntent.parameters.contextMessages = conversationContext;
+          }
+
+          // For speech-to-text, find audio attachment from recent messages
+          if (toolIntent.toolName === "speechToText") {
+            console.log(
+              "🎧 Looking for audio attachment in recent messages..."
+            );
+
+            // Search through recent messages for audio attachments (last 5 messages)
+            let audioFound = false;
+            for (const msg of contextMessages.slice(-5).reverse()) {
+              if (msg.attachments && Array.isArray(msg.attachments)) {
+                const audioAttachment = msg.attachments.find((att: any) =>
+                  att.contentType?.startsWith("audio/")
+                );
+
+                if (audioAttachment) {
+                  console.log("✅ Found audio attachment:", {
+                    name: audioAttachment.name,
+                    url: `${audioAttachment.url.substring(0, 50)}...`,
+                  });
+
+                  toolIntent.parameters.audioUrl = audioAttachment.url;
+                  toolIntent.parameters.fileName = audioAttachment.name;
+                  audioFound = true;
+                  break;
+                }
+              }
+            }
+
+            if (!audioFound) {
+              console.warn("⚠️ No audio attachment found in recent messages");
+              // Tool will fail gracefully with error message
+            }
           }
 
           console.log("📥 Tool input parameters:", toolIntent.parameters);
@@ -173,7 +209,9 @@ Sfera Context:
               // Web search results
               const resultsPreview = result.results
                 .slice(0, 3)
-                .map((r: any) => `- ${r.title}: ${r.content?.substring(0, 100)}...`)
+                .map(
+                  (r: any) => `- ${r.title}: ${r.content?.substring(0, 100)}...`
+                )
                 .join("\n");
               toolExecutionContext = `\n\n[Результаты поиска по запросу "${result.query}":\n${resultsPreview}${result.answer ? `\n\nAI ответ: ${result.answer}` : ""}]\nКратко перескажи пользователю что нашёл.`;
             } else {

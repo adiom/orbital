@@ -8,6 +8,11 @@ export const isTestEnvironment = Boolean(
     process.env.CI_PLAYWRIGHT
 );
 
+// Флаг для тестирования production-авторизации в dev-режиме
+// Установите TEST_PRODUCTION_AUTH=true в .env.local для тестирования secure cookies
+export const shouldUseSecureCookies =
+  isProductionEnvironment || process.env.TEST_PRODUCTION_AUTH === "true";
+
 export const guestRegex = /^guest-\d+$/;
 
 export const DUMMY_PASSWORD = generateDummyPassword();

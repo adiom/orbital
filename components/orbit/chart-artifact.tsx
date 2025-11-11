@@ -8,24 +8,24 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { BarChart3, Download, Sparkles } from "lucide-react";
 import {
-  LineChart,
-  Line,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  AreaChart,
   Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Legend,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  Cell,
 } from "recharts";
-import { BarChart3, Download, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ChartData = {
@@ -82,9 +82,9 @@ export function ChartArtifact({
     switch (chartType) {
       case "line":
         return (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer height={300} width="100%">
             <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
               <XAxis dataKey={xKey} stroke="#6b7280" />
               <YAxis stroke="#6b7280" />
               <Tooltip
@@ -96,12 +96,12 @@ export function ChartArtifact({
               />
               <Legend />
               <Line
-                type="monotone"
+                activeDot={{ r: 6 }}
                 dataKey={yKey}
+                dot={{ fill: colors[0], r: 4 }}
                 stroke={colors[0]}
                 strokeWidth={2}
-                dot={{ fill: colors[0], r: 4 }}
-                activeDot={{ r: 6 }}
+                type="monotone"
               />
             </LineChart>
           </ResponsiveContainer>
@@ -109,9 +109,9 @@ export function ChartArtifact({
 
       case "bar":
         return (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer height={300} width="100%">
             <BarChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
               <XAxis dataKey={xKey} stroke="#6b7280" />
               <YAxis stroke="#6b7280" />
               <Tooltip
@@ -123,9 +123,15 @@ export function ChartArtifact({
               />
               <Legend />
               <Bar dataKey={yKey} radius={[8, 8, 0, 0]}>
-                {data.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                ))}
+                {data.map((item, index) => {
+                  const uniqueKey = item[xKey] ?? `cell-${index}`;
+                  return (
+                    <Cell
+                      fill={colors[index % colors.length]}
+                      key={String(uniqueKey)}
+                    />
+                  );
+                })}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -133,20 +139,26 @@ export function ChartArtifact({
 
       case "pie":
         return (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer height={300} width="100%">
             <PieChart>
               <Pie
-                data={data}
-                dataKey={yKey}
-                nameKey={xKey}
                 cx="50%"
                 cy="50%"
-                outerRadius={100}
+                data={data}
+                dataKey={yKey}
                 label
+                nameKey={xKey}
+                outerRadius={100}
               >
-                {data.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                ))}
+                {data.map((item, index) => {
+                  const uniqueKey = item[xKey] ?? `cell-${index}`;
+                  return (
+                    <Cell
+                      fill={colors[index % colors.length]}
+                      key={String(uniqueKey)}
+                    />
+                  );
+                })}
               </Pie>
               <Tooltip
                 contentStyle={{
@@ -162,9 +174,9 @@ export function ChartArtifact({
 
       case "area":
         return (
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer height={300} width="100%">
             <AreaChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
               <XAxis dataKey={xKey} stroke="#6b7280" />
               <YAxis stroke="#6b7280" />
               <Tooltip
@@ -176,11 +188,11 @@ export function ChartArtifact({
               />
               <Legend />
               <Area
-                type="monotone"
                 dataKey={yKey}
-                stroke={colors[0]}
                 fill={colors[0]}
                 fillOpacity={0.3}
+                stroke={colors[0]}
+                type="monotone"
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -193,12 +205,12 @@ export function ChartArtifact({
 
   return (
     <motion.div
+      animate={{ opacity: 1, y: 0 }}
       className={cn(
         "rounded-lg border bg-gradient-to-br from-emerald-50 to-teal-50 p-4 shadow-sm",
         className
       )}
       initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
       {/* Header */}
@@ -220,8 +232,8 @@ export function ChartArtifact({
           </div>
         </div>
         <button
-          onClick={handleDownload}
           className="rounded-md bg-emerald-600 p-2 text-white transition-colors hover:bg-emerald-700"
+          onClick={handleDownload}
           title="Download data as CSV"
           type="button"
         >

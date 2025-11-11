@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   Download,
   ExternalLink,
+  FileAudio,
   Maximize2,
   Music,
   Search,
@@ -43,7 +44,7 @@ type ToolResult = {
   summaryLength?: string;
   // Chart generation results
   chartType?: "line" | "bar" | "pie" | "area";
-  chartData?: Array<Record<string, string | number>>;
+  chartData?: Record<string, string | number>[];
   chartTitle?: string;
   xKey?: string;
   yKey?: string;
@@ -264,6 +265,7 @@ export function ToolResultDisplay({
             <Download className="h-4 w-4" />
           </a>
         </div>
+        {/* biome-ignore lint/a11y/useMediaCaption: Generated audio without captions */}
         <audio className="mt-3 w-full" controls>
           <source src={normalizedResult.audioUrl} type="audio/mpeg" />
         </audio>
@@ -303,6 +305,7 @@ export function ToolResultDisplay({
             )}
           </div>
         </div>
+        {/* biome-ignore lint/a11y/useMediaCaption: Generated video without captions */}
         <video className="w-full rounded" controls>
           <source src={normalizedResult.videoUrl} type="video/mp4" />
         </video>
@@ -331,6 +334,72 @@ export function ToolResultDisplay({
           </p>
         )}
       </div>
+    );
+  }
+
+  // Speech-to-text transcription result
+  if (
+    (normalizedResult.toolName === "speech-to-text" ||
+      normalizedResult.toolName === "speechToText") &&
+    normalizedResult.text
+  ) {
+    return (
+      <motion.div
+        animate={{ opacity: 1, y: 0 }}
+        className={cn(
+          "rounded-lg border bg-gradient-to-br from-green-50 to-emerald-50 p-4 shadow-sm",
+          className
+        )}
+        initial={{ opacity: 0, y: 20 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="mb-3 flex items-center gap-3">
+          <div className="rounded-full bg-green-100 p-3">
+            <FileAudio className="h-6 w-6 text-green-600" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-green-900">Audio Transcription</p>
+              <Sparkles className="h-4 w-4 text-green-600" />
+            </div>
+            <div className="mt-1 flex items-center gap-2 text-green-700 text-xs">
+              {normalizedResult.fileName && (
+                <span>File: {normalizedResult.fileName}</span>
+              )}
+              {normalizedResult.language && (
+                <span className="rounded-full bg-green-200 px-2 py-0.5">
+                  {normalizedResult.language === "ru"
+                    ? "Russian"
+                    : normalizedResult.language === "en"
+                      ? "English"
+                      : normalizedResult.language}
+                </span>
+              )}
+              {normalizedResult.confidence && (
+                <span>
+                  Confidence: {Math.round(normalizedResult.confidence * 100)}%
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="rounded-md bg-white p-3 shadow-sm">
+          <p className="whitespace-pre-wrap text-gray-900 text-sm leading-relaxed">
+            {normalizedResult.text}
+          </p>
+        </div>
+        {normalizedResult.audioUrl && (
+          <div className="mt-3">
+            <p className="mb-2 font-medium text-green-800 text-xs">
+              Original audio:
+            </p>
+            {/* biome-ignore lint/a11y/useMediaCaption: Generated audio without captions */}
+            <audio className="w-full" controls preload="metadata">
+              <source src={normalizedResult.audioUrl} type="audio/mpeg" />
+            </audio>
+          </div>
+        )}
+      </motion.div>
     );
   }
 
@@ -482,7 +551,7 @@ export function ToolResultDisplay({
  * Display multiple tool results
  */
 type ToolResultsListProps = {
-  results: Array<Record<string, unknown>>;
+  results: Record<string, unknown>[];
   className?: string;
 };
 
@@ -493,9 +562,20 @@ export function ToolResultsList({ results, className }: ToolResultsListProps) {
 
   return (
     <div className={cn("space-y-3", className)}>
-      {results.map((result, index) => (
-        <ToolResultDisplay key={index} result={result as ToolResult} />
-      ))}
+      {results.map((result, index) => {
+        const resultKey =
+          (result as ToolResult).imageUrl ??
+          (result as ToolResult).audioUrl ??
+          (result as ToolResult).videoUrl ??
+          (result as ToolResult).text ??
+          `result-${index}`;
+        return (
+          <ToolResultDisplay
+            key={String(resultKey)}
+            result={result as ToolResult}
+          />
+        );
+      })}
     </div>
   );
 }

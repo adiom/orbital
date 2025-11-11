@@ -31,15 +31,18 @@ const FileSchema = z.object({
           "video/quicktime",
           // Audio
           "audio/mpeg",
+          "audio/mp4",
+          "audio/mp3",
           "audio/wav",
           "audio/webm",
           "audio/ogg",
+          "audio/x-m4a",
         ];
         return allowedTypes.includes(file.type);
       },
       {
         message:
-          "File type not supported. Supported types: images (JPEG, PNG, GIF, WebP, SVG), documents (PDF, TXT, MD, CSV), videos (MP4, WebM, MOV), audio (MP3, WAV, WebM, OGG)",
+          "File type not supported. Supported types: images (JPEG, PNG, GIF, WebP, SVG), documents (PDF, TXT, MD, CSV), videos (MP4, WebM, MOV), audio (MP3, M4A, WAV, WebM, OGG)",
       }
     ),
 });

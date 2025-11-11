@@ -12,6 +12,12 @@ import Replicate from "replicate";
 import { z } from "zod";
 import { saveMusicToBlob } from "@/lib/blob/media-storage";
 
+// Regex patterns for prompt extraction (moved to top level for performance)
+const PROMPT_PATTERNS = [
+  /(?:создай|сгенерируй)\s+(?:музыку|трек|песню|мелодию):\s*(.+)/i,
+  /(?:создай|сгенерируй)\s+(?:музыку|трек|песню|мелодию)\s+(.+)/i,
+];
+
 /**
  * Generate music from a text prompt
  *
@@ -122,14 +128,9 @@ export function parseMusicGenerationRequest(content: string): {
   prompt: string;
   duration?: number;
 } | null {
-  const lowerContent = content.toLowerCase();
+  const _lowerContent = content.toLowerCase();
 
-  const patterns = [
-    /(?:создай|сгенерируй)\s+(?:музыку|трек|песню|мелодию):\s*(.+)/i,
-    /(?:создай|сгенерируй)\s+(?:музыку|трек|песню|мелодию)\s+(.+)/i,
-  ];
-
-  for (const pattern of patterns) {
+  for (const pattern of PROMPT_PATTERNS) {
     const match = content.match(pattern);
     if (match?.[1]) {
       return {

@@ -12,6 +12,9 @@ import Replicate from "replicate";
 import { z } from "zod";
 import { saveVideoToBlob } from "@/lib/blob/media-storage";
 
+// Regex pattern for URL extraction (moved to top level for performance)
+const URL_PATTERN = /https?:\/\/[^\s]+/i;
+
 /**
  * Generate a video from an image URL
  *
@@ -154,8 +157,7 @@ export function parseVideoGenerationRequest(content: string): {
   }
 
   // Try to extract image URL
-  const urlPattern = /https?:\/\/[^\s]+/i;
-  const match = content.match(urlPattern);
+  const match = content.match(URL_PATTERN);
 
   if (match?.[0]) {
     return {

@@ -1,11 +1,6 @@
 import { toast } from "sonner";
 import { Artifact } from "@/components/create-artifact";
-import {
-  CopyIcon,
-  PlayIcon,
-  RedoIcon,
-  UndoIcon,
-} from "@/components/icons";
+import { CopyIcon, PlayIcon, RedoIcon, UndoIcon } from "@/components/icons";
 
 type Metadata = {
   isPlaying: boolean;
@@ -13,8 +8,7 @@ type Metadata = {
 
 export const gameArtifact = new Artifact<"game", Metadata>({
   kind: "game",
-  description:
-    "Useful for creating interactive games and playable experiences",
+  description: "Useful for creating interactive games and playable experiences",
   initialize: ({ setMetadata }) => {
     setMetadata({
       isPlaying: false,
@@ -39,7 +33,7 @@ export const gameArtifact = new Artifact<"game", Metadata>({
     if (metadata?.isPlaying) {
       // TODO: Implement game runtime environment
       return (
-        <div className="flex h-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8">
+        <div className="flex h-full flex-col items-center justify-center rounded-lg border-2 border-gray-300 border-dashed bg-gray-50 p-8">
           <PlayIcon size={48} />
           <p className="mb-2 font-semibold text-gray-700 text-lg">
             Game Runtime

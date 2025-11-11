@@ -70,7 +70,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased">
+      <body className="antialiased" style={{ overflow: "hidden" }}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

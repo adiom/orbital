@@ -16,12 +16,17 @@ export type ToolResult = {
   // Video generation results
   videoUrl?: string;
   fps?: number;
+  // Speech-to-text results
+  text?: string;
+  fileName?: string;
+  language?: string;
+  confidence?: number;
   // Summarize discussion results
   summary?: string;
   summaryLength?: string;
   // Chart generation results
   chartType?: "line" | "bar" | "pie" | "area";
-  chartData?: Array<Record<string, string | number>>;
+  chartData?: Record<string, string | number>[];
   chartTitle?: string;
   xKey?: string;
   yKey?: string;

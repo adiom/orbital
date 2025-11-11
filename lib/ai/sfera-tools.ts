@@ -6,26 +6,26 @@
  */
 
 import type { Tool } from "ai";
+import { summarizeDiscussion } from "./tools/analytics";
 import {
   generateImage,
   generateImageReplicate,
   generateMusic,
   generateVideo,
-  textToSpeech,
+  speechToText,
 } from "./tools/generative";
-import { summarizeDiscussion } from "./tools/analytics";
 import { webSearch } from "./tools/integrations";
 
 /**
  * Registry of all available Sfera tools
  * Tools are organized by category for easy management
  */
-export interface SferaToolsRegistry {
+export type SferaToolsRegistry = {
   generative: Record<string, Tool<any, any>>;
   miniApps: Record<string, Tool<any, any>>;
   analytics: Record<string, Tool<any, any>>;
   integrations: Record<string, Tool<any, any>>;
-}
+};
 
 /**
  * Get all tools available for Sfera
@@ -39,6 +39,7 @@ export function getSferaTools(): Tool<any, any>[] {
   tools.push(generateImageReplicate); // Replicate FLUX image generation
   tools.push(generateMusic); // Replicate music generation
   tools.push(generateVideo); // Replicate video generation
+  tools.push(speechToText); // Speech-to-text transcription
   // Note: TTS is still placeholder (needs ElevenLabs API)
   // tools.push(textToSpeech);
 
@@ -162,6 +163,20 @@ export function detectToolRequest(content: string): {
     };
   }
 
+  // Speech-to-text patterns
+  if (
+    lowerContent.includes("преобразуй в текст") ||
+    lowerContent.includes("транскрибируй") ||
+    lowerContent.includes("расшифруй аудио") ||
+    lowerContent.includes("transcribe")
+  ) {
+    return {
+      hasToolRequest: true,
+      toolName: "speech-to-text",
+      toolInput: content,
+    };
+  }
+
   return {
     hasToolRequest: false,
   };
@@ -171,7 +186,7 @@ export function detectToolRequest(content: string): {
  * Placeholder for tool execution tracking
  * Will log tool executions to the ToolExecution table
  */
-export async function trackToolExecution(params: {
+export function trackToolExecution(params: {
   toolName: string;
   sferaId: string;
   userId: string;

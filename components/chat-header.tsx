@@ -14,7 +14,6 @@ function PureChatHeader({
   chatId,
   selectedVisibilityType,
   isReadonly,
-  chatType,
 }: {
   chatId: string;
   selectedVisibilityType: VisibilityType;

@@ -1,44 +1,44 @@
-'use client';
+"use client";
 
-import { useState, useActionState, startTransition } from 'react';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { startTransition, useActionState, useState } from "react";
 import {
-  createMagicLink,
   type CreateMagicLinkState,
-} from '@/app/(auth)/actions';
-import { Key, Loader2 } from 'lucide-react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+  createMagicLink,
+} from "@/app/(auth)/actions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
-interface MagicLinkFormProps {
+type MagicLinkFormProps = {
   onFocus?: () => void;
   onBlur?: () => void;
-}
+};
 
 export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [showCodeInput, setShowCodeInput] = useState(false);
   const { update: updateSession } = useSession();
   const router = useRouter();
   const [state, formAction] = useActionState<CreateMagicLinkState, FormData>(
     createMagicLink,
     {
-      status: 'idle',
-    },
+      status: "idle",
+    }
   );
 
-  const isSuccess = state.status === 'success';
-  const isLoading = state.status === 'in_progress';
+  const isSuccess = state.status === "success";
+  const isLoading = state.status === "in_progress";
   const magicLink = state.magicLink;
-  const isDev = process.env.NODE_ENV === 'development';
+  const isDev = process.env.NODE_ENV === "development";
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const formData = new FormData();
-    formData.append('email', email);
+    formData.append("email", email);
     startTransition(() => {
       formAction(formData);
     });
@@ -51,10 +51,10 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
     }
 
     try {
-      const response = await fetch('/api/auth/verify-code-direct', {
-        method: 'POST',
+      const response = await fetch("/api/auth/verify-code-direct", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, code }),
       });
@@ -63,34 +63,33 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
 
       if (response.ok) {
         await updateSession();
-        router.push('/');
+        router.push("/");
       } else {
-        console.error(data.error || 'Неверный код');
+        console.error(data.error || "Неверный код");
       }
     } catch (_error) {
-      console.error('Ошибка верификации кода');
+      console.error("Ошибка верификации кода");
     }
   };
 
   // Показываем ввод кода в dev режиме
   if (isSuccess && magicLink && !showCodeInput) {
     return (
-      <div className="space-y-4 text-center px-4 sm:px-16">
-
+      <div className="space-y-4 px-4 text-center sm:px-16">
         <div className="space-y-3">
-          <Button onClick={() => setShowCodeInput(true)} className="w-full">
+          <Button className="w-full" onClick={() => setShowCodeInput(true)}>
             Ввести код вручную
           </Button>
 
           <Button
-            type="button"
-            variant="outline"
+            className="w-full"
             onClick={() => {
-              setEmail('');
+              setEmail("");
               setShowCodeInput(false);
               window.location.reload();
             }}
-            className="w-full"
+            type="button"
+            variant="outline"
           >
             Создать новый код
           </Button>
@@ -103,36 +102,36 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
   if (showCodeInput && isDev) {
     return (
       <div className="space-y-4 px-4 sm:px-16">
-        <form onSubmit={handleCodeSubmit} className="space-y-4">
+        <form className="space-y-4" onSubmit={handleCodeSubmit}>
           <div className="space-y-1">
-            <Label htmlFor="code" className="text-sm font-medium">
+            <Label className="font-medium text-sm" htmlFor="code">
               Код из консоли сервера
             </Label>
             <Input
+              className="text-center text-lg tracking-widest"
               id="code"
-              type="text"
-              value={code}
+              maxLength={8}
               onChange={(e) => setCode(e.target.value)}
               placeholder="12345678"
-              maxLength={8}
               required
-              className="text-center text-lg tracking-widest"
+              type="text"
+              value={code}
             />
           </div>
 
-          <Button type="submit" className="w-full">
+          <Button className="w-full" type="submit">
             <Loader2
-              className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
+              className={`mr-2 h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
             />
             Войти по коду
           </Button>
         </form>
 
         <Button
+          className="w-full"
+          onClick={() => setShowCodeInput(false)}
           type="button"
           variant="outline"
-          onClick={() => setShowCodeInput(false)}
-          className="w-full"
         >
           Назад
         </Button>
@@ -141,34 +140,32 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
   }
 
   if (isSuccess) {
-
-    
     return (
-      <div className="space-y-4 text-center px-4 sm:px-16">
+      <div className="space-y-4 px-4 text-center sm:px-16">
         <div className="rounded-md bg-green-50 p-4 dark:bg-green-900/20">
-          <div className="text-sm text-green-700 dark:text-green-200">
+          <div className="text-green-700 text-sm dark:text-green-200">
             ✅ Magic link создан для {email}
           </div>
         </div>
 
         {magicLink ? (
           <div className="space-y-3">
-            <Button onClick={() => setShowCodeInput(true)} className="w-full">
+            <Button className="w-full" onClick={() => setShowCodeInput(true)}>
               Ввести код вручную
             </Button>
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-gray-600 text-sm dark:text-gray-400">
               Проверьте почту и перейдите по ссылке для входа
             </p>
             <Button
-              type="button"
-              onClick={() => {
-                window.location.href = magicLink || '#';
-              }}
               className="w-full"
               disabled={!magicLink}
+              onClick={() => {
+                window.location.href = magicLink || "#";
+              }}
+              type="button"
             >
               Открыть Magic Link
             </Button>
@@ -176,14 +173,14 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
         )}
 
         <Button
-          type="button"
-          variant="outline"
+          className="w-full"
           onClick={() => {
-            setEmail('');
+            setEmail("");
             setShowCodeInput(false);
             window.location.reload();
           }}
-          className="w-full"
+          type="button"
+          variant="outline"
         >
           Создать новую ссылку
         </Button>
@@ -192,29 +189,29 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 px-4 sm:px-16">
+    <form className="space-y-4 px-4 sm:px-16" onSubmit={handleSubmit}>
       <div className="space-y-1">
-        <Label htmlFor="magic-email" className="text-sm font-medium">
+        <Label className="font-medium text-sm" htmlFor="magic-email">
           Email
         </Label>
         <Input
+          autoComplete="email"
+          className="mt-1 block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-black focus:outline-none focus:ring-black sm:text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50"
+          disabled={isLoading}
           id="magic-email"
           name="email"
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="your@email.com"
-          className="mt-1 block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-black focus:outline-none focus:ring-black dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-50 sm:text-sm"
-          disabled={isLoading}
-          onFocus={onFocus}
           onBlur={onBlur}
+          onChange={(e) => setEmail(e.target.value)}
+          onFocus={onFocus}
+          placeholder="your@email.com"
+          required
+          type="email"
+          value={email}
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? 'Создание ссылки...' : 'Создать Magic Link'}
+      <Button className="w-full" disabled={isLoading} type="submit">
+        {isLoading ? "Создание ссылки..." : "Создать Magic Link"}
       </Button>
     </form>
   );

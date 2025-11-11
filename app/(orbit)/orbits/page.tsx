@@ -1,12 +1,23 @@
 "use client";
 
 import { GitBranch, Loader2, Plus, Sparkles } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { OrbitContainer } from "@/components/orbit/orbit-container";
+import { OrbitSettings } from "@/components/orbit/orbit-settings";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { useSession } from 'next-auth/react';
-import { redirect } from "next/navigation";
 
 type Orbit = {
   id: string;
@@ -16,6 +27,7 @@ type Orbit = {
   role: string;
   createdAt: Date;
   updatedAt: Date;
+  ownerId: string;
 };
 
 type ForkRelationship = {
@@ -30,11 +42,17 @@ type NodePosition = {
   id: string;
 };
 
-export default function OrbitsPage() {
-  const { status } = useSession();
+type Member = {
+  userId: string;
+  email: string;
+  role: string;
+};
 
-  if (status === 'unauthenticated') {
-    redirect('/login');
+export default function OrbitsPage() {
+  const { status, data: session } = useSession();
+
+  if (status === "unauthenticated") {
+    redirect("/login");
   }
 
   const router = useRouter();
@@ -48,6 +66,12 @@ export default function OrbitsPage() {
     new Map()
   );
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const [selectedOrbitForSettings, setSelectedOrbitForSettings] =
+    useState<Orbit | null>(null);
+  const [orbitMembers, setOrbitMembers] = useState<Member[]>([]);
+  const [_isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [orbitToDelete, setOrbitToDelete] = useState<Orbit | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchOrbits = useCallback(async () => {
     try {
@@ -269,6 +293,61 @@ export default function OrbitsPage() {
     }
   };
 
+  const handleOpenSettings = async (orbit: Orbit) => {
+    setSelectedOrbitForSettings(orbit);
+    setIsLoadingMembers(true);
+    try {
+      const response = await fetch(`/api/sfera/${orbit.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setOrbitMembers(data.members || []);
+      }
+    } catch (error) {
+      console.error("Error fetching orbit members:", error);
+      toast.error("Failed to load orbit members");
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  const handleCloseSettings = () => {
+    setSelectedOrbitForSettings(null);
+    setOrbitMembers([]);
+  };
+
+  const handleSettingsUpdate = () => {
+    fetchOrbits();
+  };
+
+  const handleDeleteOrbit = async () => {
+    if (!orbitToDelete) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/sfera/${orbitToDelete.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.error || "Failed to delete Orbit");
+      }
+
+      toast.success("Orbit deleted successfully");
+      setOrbitToDelete(null);
+      fetchOrbits();
+    } catch (error) {
+      console.error("Error deleting Orbit:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete Orbit"
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
@@ -360,67 +439,68 @@ export default function OrbitsPage() {
             ).length;
 
             return (
-              <div
-                className="pointer-events-none absolute"
+              <OrbitContainer
+                childCount={childCount}
+                currentUserId={session?.user?.id}
+                isHovered={isHovered}
                 key={id}
-                style={{
-                  left: `${pos.x}px`,
-                  top: `${pos.y}px`,
-                  transform: "translate(-50%, -50%)",
-                }}
-              >
-                <button
-                  className={cn(
-                    "pointer-events-auto relative cursor-pointer overflow-hidden rounded-3xl border-2 bg-white shadow-lg transition-all duration-300",
-                    isHovered
-                      ? "scale-110 border-blue-400 shadow-2xl shadow-blue-200"
-                      : "border-gray-200 hover:border-blue-300"
-                  )}
-                  onClick={() => router.push(`/orbit/${id}`)}
-                  style={{
-                    width: "180px",
-                    padding: "16px",
-                  }}
-                  type="button"
-                >
-                  {/* Gradient background effect */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-purple-50/30 to-pink-50/20" />
-
-                  {/* Role badge */}
-                  <div className="-top-2 -right-2 absolute z-10 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 px-3 py-1 font-semibold text-[11px] text-white shadow-md">
-                    {orbit.role}
-                  </div>
-
-                  {/* Content */}
-                  <div className="relative z-10">
-                    <h3 className="mb-2 line-clamp-2 font-semibold text-gray-900 text-sm">
-                      {orbit.title}
-                    </h3>
-
-                    {orbit.description && (
-                      <p className="mb-2 line-clamp-1 text-[11px] text-gray-500">
-                        {orbit.description}
-                      </p>
-                    )}
-
-                    <div className="flex items-center justify-between text-[11px] text-gray-500">
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium">
-                        {orbit.visibility}
-                      </span>
-                      {childCount > 0 && (
-                        <div className="flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-purple-600">
-                          <GitBranch className="h-3 w-3" />
-                          <span className="font-medium">{childCount}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </button>
-              </div>
+                onDeleteClick={() => setOrbitToDelete(orbit)}
+                onSettingsClick={() => handleOpenSettings(orbit)}
+                orbit={orbit}
+                position={pos}
+              />
             );
           })}
         </div>
       )}
+
+      {/* Settings Dialog */}
+      {selectedOrbitForSettings && (
+        <OrbitSettings
+          currentDescription={selectedOrbitForSettings.description}
+          currentMembers={orbitMembers}
+          currentTitle={selectedOrbitForSettings.title}
+          isOpen={!!selectedOrbitForSettings}
+          isOwner={selectedOrbitForSettings.ownerId === session?.user?.id}
+          onClose={handleCloseSettings}
+          onUpdate={handleSettingsUpdate}
+          orbitId={selectedOrbitForSettings.id}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        onOpenChange={(open) => !open && setOrbitToDelete(null)}
+        open={!!orbitToDelete}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Orbit</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{orbitToDelete?.title}"? This
+              action cannot be undone. All messages, members, and forks will be
+              removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 text-white hover:bg-red-700"
+              disabled={isDeleting}
+              onClick={handleDeleteOrbit}
+            >
+              {isDeleting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Deleting...
+                </span>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

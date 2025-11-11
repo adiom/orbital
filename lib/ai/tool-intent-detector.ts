@@ -5,29 +5,82 @@
  * Used for manual tool handling when AI SDK's automatic function calling doesn't work properly.
  */
 
-export interface ToolIntent {
+// Regex patterns for tool intent detection (moved to top level for performance)
+const REPLICATE_PATTERNS = [
+  /(?:нарисуй|создай|сгенерируй).*?(?:через\s+)?(?:replicate|flux)/i,
+  /(?:replicate|flux).*?(?:нарисуй|создай|сгенерируй)/i,
+];
+
+const IMAGE_PATTERNS = [
+  /(?:нарисуй|нарисовать)\s+(.+)/i,
+  /(?:создай|создать)\s+(?:картинку|изображение|рисунок)\s*:?\s*(.+)/i,
+  /(?:сгенерируй|сгенерировать)\s+(?:картинку|изображение)\s*:?\s*(.+)/i,
+  /(?:покажи|нужна|хочу)\s+(?:картинку|изображение)\s*:?\s*(.+)/i,
+];
+
+const MUSIC_PATTERNS = [
+  /(?:создай|сгенерируй|сделай)\s+(?:музыку|трек|песню|мелодию)\s*:?\s*(.+)/i,
+  /(?:музыка|трек|песня|мелодия)\s*:?\s*(.+)/i,
+];
+
+const VIDEO_PATTERNS = [
+  /(?:создай|сгенерируй|сделай)\s+(?:видео|анимацию|ролик)\s*:?\s*(.+)/i,
+  /(?:анимируй|заанимируй)\s+(.+)/i,
+];
+
+const SPEECH_TO_TEXT_PATTERNS = [
+  /преобразуй\s+(?:это\s+)?в\s+текст/i,
+  /транскрибируй/i,
+  /расшифруй\s+аудио/i,
+  /что\s+говорится\s+в\s+аудио/i,
+  /переведи\s+в\s+текст/i,
+  /transcribe/i,
+  /speech\s+to\s+text/i,
+];
+
+const CLEANUP_PATTERNS = [
+  /^(?:найди|поищи|погугли)\s+(?:информацию\s+)?(?:о|про)?\s*/i,
+  /^(?:search for|find|look up)\s+/i,
+  /^(?:что нового|какие новости)\s+(?:о|про|в|about)?\s*/i,
+  /^(?:расскажи|tell me)\s+(?:о|про|about)\s+/i,
+];
+
+const PROMPT_EXTRACTION_PATTERNS = [
+  /(?:нарисуй|создай|сгенерируй).*?[:-]\s*(.+)/i,
+  /(?:replicate|flux).*?[:-]\s*(.+)/i,
+  /(?:нарисуй|создай|сгенерируй)\s+(.+)/i,
+];
+
+export type ToolIntent = {
   toolName:
     | "generateImage"
     | "generateImageReplicate"
     | "generateMusic"
     | "generateVideo"
+    | "speechToText"
     | "summarizeDiscussion"
     | "webSearch"
     | null;
   parameters: Record<string, any>;
   confidence: "high" | "medium" | "low";
-}
+};
 
 /**
  * Detect tool intent from user message
  */
 export function detectToolIntent(message: string): ToolIntent {
-  const lowerMessage = message.toLowerCase();
+  const _lowerMessage = message.toLowerCase();
 
   // Web search detection
   const webSearchIntent = detectWebSearchIntent(message);
   if (webSearchIntent.toolName) {
     return webSearchIntent;
+  }
+
+  // Speech-to-text detection
+  const speechToTextIntent = detectSpeechToTextIntent(message);
+  if (speechToTextIntent.toolName) {
+    return speechToTextIntent;
   }
 
   // Image generation detection
@@ -66,15 +119,10 @@ export function detectToolIntent(message: string): ToolIntent {
  * Detect image generation intent
  */
 function detectImageGenerationIntent(message: string): ToolIntent {
-  const lowerMessage = message.toLowerCase();
+  const _lowerMessage = message.toLowerCase();
 
   // Replicate-specific patterns
-  const replicatePatterns = [
-    /(?:нарисуй|создай|сгенерируй).*?(?:через\s+)?(?:replicate|flux)/i,
-    /(?:replicate|flux).*?(?:нарисуй|создай|сгенерируй)/i,
-  ];
-
-  for (const pattern of replicatePatterns) {
+  for (const pattern of REPLICATE_PATTERNS) {
     if (pattern.test(message)) {
       const prompt = extractPromptFromMessage(message);
       if (prompt) {
@@ -88,14 +136,7 @@ function detectImageGenerationIntent(message: string): ToolIntent {
   }
 
   // General image generation patterns
-  const imagePatterns = [
-    /(?:нарисуй|нарисовать)\s+(.+)/i,
-    /(?:создай|создать)\s+(?:картинку|изображение|рисунок)\s*:?\s*(.+)/i,
-    /(?:сгенерируй|сгенерировать)\s+(?:картинку|изображение)\s*:?\s*(.+)/i,
-    /(?:покажи|нужна|хочу)\s+(?:картинку|изображение)\s*:?\s*(.+)/i,
-  ];
-
-  for (const pattern of imagePatterns) {
+  for (const pattern of IMAGE_PATTERNS) {
     const match = message.match(pattern);
     if (match) {
       let prompt = match[1]?.trim();
@@ -124,14 +165,9 @@ function detectImageGenerationIntent(message: string): ToolIntent {
  * Detect music generation intent
  */
 function detectMusicGenerationIntent(message: string): ToolIntent {
-  const lowerMessage = message.toLowerCase();
+  const _lowerMessage = message.toLowerCase();
 
-  const musicPatterns = [
-    /(?:создай|сгенерируй|сделай)\s+(?:музыку|трек|песню|мелодию)\s*:?\s*(.+)/i,
-    /(?:музыка|трек|песня|мелодия)\s*:?\s*(.+)/i,
-  ];
-
-  for (const pattern of musicPatterns) {
+  for (const pattern of MUSIC_PATTERNS) {
     const match = message.match(pattern);
     if (match) {
       let prompt = match[1]?.trim();
@@ -159,14 +195,9 @@ function detectMusicGenerationIntent(message: string): ToolIntent {
  * Detect video generation intent
  */
 function detectVideoGenerationIntent(message: string): ToolIntent {
-  const lowerMessage = message.toLowerCase();
+  const _lowerMessage = message.toLowerCase();
 
-  const videoPatterns = [
-    /(?:создай|сгенерируй|сделай)\s+(?:видео|анимацию|ролик)\s*:?\s*(.+)/i,
-    /(?:анимируй|заанимируй)\s+(.+)/i,
-  ];
-
-  for (const pattern of videoPatterns) {
+  for (const pattern of VIDEO_PATTERNS) {
     const match = message.match(pattern);
     if (match) {
       let prompt = match[1]?.trim();
@@ -180,6 +211,46 @@ function detectVideoGenerationIntent(message: string): ToolIntent {
           };
         }
       }
+    }
+  }
+
+  return {
+    toolName: null,
+    parameters: {},
+    confidence: "low",
+  };
+}
+
+/**
+ * Detect speech-to-text intent
+ */
+function detectSpeechToTextIntent(message: string): ToolIntent {
+  const lowerMessage = message.toLowerCase();
+
+  // Check if message matches speech-to-text patterns
+  for (const pattern of SPEECH_TO_TEXT_PATTERNS) {
+    if (pattern.test(message)) {
+      // Extract language preference if mentioned
+      let language: "ru" | "en" | "auto" = "auto";
+
+      if (
+        lowerMessage.includes("по-русски") ||
+        lowerMessage.includes("на русском")
+      ) {
+        language = "ru";
+      } else if (
+        lowerMessage.includes("по-английски") ||
+        lowerMessage.includes("на английском") ||
+        lowerMessage.includes("in english")
+      ) {
+        language = "en";
+      }
+
+      return {
+        toolName: "speechToText",
+        parameters: { language },
+        confidence: "high",
+      };
     }
   }
 
@@ -275,14 +346,7 @@ function detectWebSearchIntent(message: string): ToolIntent {
     let query = message.replace(/@avrora|@аврора/gi, "").trim();
 
     // Remove search keywords to get cleaner query
-    const cleanupPatterns = [
-      /^(?:найди|поищи|погугли)\s+(?:информацию\s+)?(?:о|про)?\s*/i,
-      /^(?:search for|find|look up)\s+/i,
-      /^(?:что нового|какие новости)\s+(?:о|про|в|about)?\s*/i,
-      /^(?:расскажи|tell me)\s+(?:о|про|about)\s+/i,
-    ];
-
-    for (const pattern of cleanupPatterns) {
+    for (const pattern of CLEANUP_PATTERNS) {
       query = query.replace(pattern, "").trim();
     }
 
@@ -311,13 +375,7 @@ function detectWebSearchIntent(message: string): ToolIntent {
  */
 function extractPromptFromMessage(message: string): string | null {
   // Try to find prompt after common patterns
-  const patterns = [
-    /(?:нарисуй|создай|сгенерируй).*?[:\-]\s*(.+)/i,
-    /(?:replicate|flux).*?[:\-]\s*(.+)/i,
-    /(?:нарисуй|создай|сгенерируй)\s+(.+)/i,
-  ];
-
-  for (const pattern of patterns) {
+  for (const pattern of PROMPT_EXTRACTION_PATTERNS) {
     const match = message.match(pattern);
     if (match?.[1]) {
       let prompt = match[1].trim();

@@ -24,7 +24,6 @@ import { generateUUID } from "../utils";
 import {
   type Chat,
   chat,
-  chatMember,
   type DBMessage,
   document,
   message,

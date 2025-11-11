@@ -1,11 +1,11 @@
-'use server';
+"use server";
 
-import { NextRequest, NextResponse } from 'next/server';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import { magicToken, user } from '@/lib/db/schema';
-import { eq, and, gt } from 'drizzle-orm';
-import { signIn } from '@/app/(auth)/auth';
+import { and, eq, gt } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
+import { type NextRequest, NextResponse } from "next/server";
+import postgres from "postgres";
+import { signIn } from "@/app/(auth)/auth";
+import { magicToken, user } from "@/lib/db/schema";
 
 // biome-ignore lint: Forbidden non-null assertion.
 const client = postgres(process.env.POSTGRES_URL!);
@@ -16,7 +16,10 @@ export async function POST(request: NextRequest) {
     const { token, email } = await request.json();
 
     if (!token || !email) {
-      return NextResponse.json({ success: false, error: 'Missing token or email' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "Missing token or email" },
+        { status: 400 }
+      );
     }
 
     // Найти токен в БД
@@ -34,7 +37,10 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (!foundToken) {
-      return NextResponse.json({ success: false, error: 'Invalid or expired token' }, { status: 401 });
+      return NextResponse.json(
+        { success: false, error: "Invalid or expired token" },
+        { status: 401 }
+      );
     }
 
     // Найти или создать пользователя
@@ -46,10 +52,7 @@ export async function POST(request: NextRequest) {
 
     if (!existingUser) {
       // Создать нового пользователя
-      const [newUser] = await db
-        .insert(user)
-        .values({ email })
-        .returning();
+      const [newUser] = await db.insert(user).values({ email }).returning();
       existingUser = newUser;
     }
 
@@ -60,15 +63,18 @@ export async function POST(request: NextRequest) {
       .where(eq(magicToken.id, foundToken.id));
 
     // Создать сессию через NextAuth
-    await signIn('credentials', {
+    await signIn("credentials", {
       email: existingUser.email,
-      password: process.env.DUMMY_PASSWORD || 'dummy',
+      password: process.env.DUMMY_PASSWORD || "dummy",
       redirect: false,
     });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error verifying magic token:', error);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    console.error("Error verifying magic token:", error);
+    return NextResponse.json(
+      { success: false, error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

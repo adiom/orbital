@@ -95,7 +95,7 @@ export async function saveImageToBlob(
  */
 export async function saveMusicToBlob(audioUrl: string): Promise<string> {
   const filename = generateMediaFilename("music", "mp3");
-  return saveMediaToBlob(audioUrl, filename, "audio/mpeg");
+  return await saveMediaToBlob(audioUrl, filename, "audio/mpeg");
 }
 
 /**
@@ -103,5 +103,5 @@ export async function saveMusicToBlob(audioUrl: string): Promise<string> {
  */
 export async function saveVideoToBlob(videoUrl: string): Promise<string> {
   const filename = generateMediaFilename("video", "mp4");
-  return saveMediaToBlob(videoUrl, filename, "video/mp4");
+  return await saveMediaToBlob(videoUrl, filename, "video/mp4");
 }

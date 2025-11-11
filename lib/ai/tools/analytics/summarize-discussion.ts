@@ -83,7 +83,7 @@ ${contextMessages}
               : 600,
       });
 
-      console.log("✅ Summary generated:", summary.substring(0, 100) + "...");
+      console.log("✅ Summary generated:", `${summary.substring(0, 100)}...`);
 
       return {
         success: true,

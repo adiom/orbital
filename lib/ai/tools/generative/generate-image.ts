@@ -5,12 +5,18 @@
  * This tool is available in Sfera collaborative discussions via @avrora mentions.
  */
 
+import { google } from "@ai-sdk/google";
 import { generateText, tool } from "ai";
 import { z } from "zod";
-import { google } from '@ai-sdk/google';
-import 'dotenv/config';
+import "dotenv/config";
 
 import { saveImageToBlob } from "@/lib/blob/media-storage";
+
+// Regex patterns for prompt extraction (moved to top level for performance)
+const PROMPT_PATTERNS = [
+  /(?:сгенерируй|создай|нарисуй)\s+(?:картинку|иллюстрацию|изображение):\s*(.+)/i,
+  /(?:сгенерируй|создай|нарисуй)\s+(.+)/i,
+];
 
 /**
  * Generate an image from a text prompt using Gemini Imagen
@@ -61,7 +67,7 @@ export const generateImage = tool({
       }
 
       const result = await generateText({
-        model: google('gemini-2.5-flash-image-preview'),
+        model: google("gemini-2.5-flash-image-preview"),
         prompt: enhancedPrompt,
         experimental_telemetry: {
           isEnabled: true,
@@ -114,15 +120,10 @@ export function parseImageGenerationRequest(content: string): {
   prompt: string;
   aspectRatio?: "1:1" | "16:9" | "9:16" | "4:3" | "3:4";
 } | null {
-  const lowerContent = content.toLowerCase();
+  const _lowerContent = content.toLowerCase();
 
   // Pattern matching for Russian prompts
-  const patterns = [
-    /(?:сгенерируй|создай|нарисуй)\s+(?:картинку|иллюстрацию|изображение):\s*(.+)/i,
-    /(?:сгенерируй|создай|нарисуй)\s+(.+)/i,
-  ];
-
-  for (const pattern of patterns) {
+  for (const pattern of PROMPT_PATTERNS) {
     const match = content.match(pattern);
     if (match?.[1]) {
       return {

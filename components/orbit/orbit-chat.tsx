@@ -1,18 +1,9 @@
 "use client";
 
-import {
-  ChevronRight,
-  Loader2,
-  Menu,
-  PenSquare,
-  Settings,
-  Sparkles,
-  Trash2,
-} from "lucide-react";
+import { Loader2, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { OrbitSettings } from "./orbit-settings";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { OrbitInput } from "./orbit-input";
 import { OrbitMessage } from "./orbit-message";
+import { OrbitSettings } from "./orbit-settings";
 
 type Attachment = {
   name: string;
@@ -40,7 +32,7 @@ type Message = {
   userEmail: string;
   parentMessageId: string | null;
   attachments?: Attachment[];
-  toolResults?: Array<Record<string, unknown>>;
+  toolResults?: Record<string, unknown>[];
   isForked: boolean;
   forkedSferaId: string | null;
   createdAt: Date;
@@ -141,7 +133,7 @@ const parseMessage = (value: unknown): Message | null => {
       typeof parentMessageId === "string" ? parentMessageId : null,
     attachments: parseAttachments(record.attachments),
     toolResults: Array.isArray(record.toolResults)
-      ? (record.toolResults as Array<Record<string, unknown>>)
+      ? (record.toolResults as Record<string, unknown>[])
       : undefined,
     isForked,
     forkedSferaId: typeof forkedSferaId === "string" ? forkedSferaId : null,
@@ -236,7 +228,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   const [orbit, setOrbit] = useState<OrbitData | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [parentOrbit, setParentOrbit] = useState<ParentOrbit | null>(null);
+  const [_parentOrbit, setParentOrbit] = useState<ParentOrbit | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -322,7 +314,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     // Small delay to ensure DOM is updated
     const timer = setTimeout(scrollToBottom, 100);
     return () => clearTimeout(timer);
-  }, [messages, isAvroraThinking]);
+  }, []);
 
   const handleMessageSent = () => {
     setReplyingTo(null);
@@ -446,75 +438,6 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
-      {/* Header */}
-      <header className="fixed top-0 right-0 left-0 z-20 border-gray-200/50 border-b bg-white/80 shadow-sm backdrop-blur-xl">
-        <div className="flex h-16 items-center px-6">
-          <div className="flex w-full items-center justify-between">
-            <Button
-              className="h-10 w-10 rounded-full transition-all hover:bg-gray-100"
-              onClick={() => router.push("/orbits")}
-              size="icon"
-              variant="ghost"
-            >
-              <Menu className="h-5 w-5 text-gray-700" />
-              <span className="sr-only">Menu</span>
-            </Button>
-
-            <div className="flex flex-col items-center">
-              {parentOrbit && (
-                <button
-                  className="flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-blue-600 text-xs transition-all hover:bg-blue-100 hover:text-blue-700"
-                  onClick={() => router.push(`/orbit/${parentOrbit.id}`)}
-                  type="button"
-                >
-                  <span className="font-medium">{parentOrbit.title}</span>
-                  <ChevronRight className="h-3 w-3" />
-                </button>
-              )}
-              <h1 className="mt-1 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text font-semibold text-lg text-transparent">
-                {orbit.title}
-              </h1>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {isOwnerOrAdmin && (
-                <>
-                  <Button
-                    className="h-10 w-10 rounded-full transition-all hover:bg-gray-100"
-                    onClick={() => setIsSettingsOpen(true)}
-                    size="icon"
-                    variant="ghost"
-                  >
-                    <Settings className="h-5 w-5 text-gray-700" />
-                    <span className="sr-only">Settings</span>
-                  </Button>
-                  {orbit?.ownerId === currentUserId && (
-                    <Button
-                      className="h-10 w-10 rounded-full text-red-500 transition-all hover:bg-red-50 hover:text-red-600"
-                      onClick={() => setIsDeleteDialogOpen(true)}
-                      size="icon"
-                      variant="ghost"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                      <span className="sr-only">Delete Orbit</span>
-                    </Button>
-                  )}
-                </>
-              )}
-              <Button
-                className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg transition-all hover:shadow-xl"
-                onClick={() => router.push("/orbits/new")}
-                size="icon"
-                variant="ghost"
-              >
-                <PenSquare className="h-5 w-5" />
-                <span className="sr-only">New Orbit</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* Messages */}
       <div className="flex-grow overflow-y-auto px-4 pt-20 pb-40 md:px-8">
         <div className="mx-auto max-w-4xl">
@@ -555,7 +478,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
 
               {/* Avrora thinking indicator */}
               {isAvroraThinking && (
-                <article className="group relative mb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <article className="group fade-in slide-in-from-bottom-2 relative mb-4 animate-in duration-300">
                   <div className="relative overflow-hidden rounded-3xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-5 shadow-sm">
                     <div className="mb-3 flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 text-gray-500 text-xs">
@@ -587,14 +510,31 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
       </div>
 
       {/* Input */}
-      <div className="fixed right-0 bottom-0 left-0 border-gray-200/50 border-t bg-white/80 p-4 backdrop-blur-xl md:p-6">
+      {/* 
+        <div className="fixed right-0 bottom-0 left-0 border-gray-200/50 border-t bg-white/80 p-4 backdrop-blur-xl md:p-6">
+
+        Параметры классов:
+        - fixed — фиксирует элемент относительно окна просмотра.
+        - right-0 — устанавливает правый отступ 0 (прижимает к правому краю экрана).
+        - bottom-0 — прижимает к низу экрана.
+        - left-0 — прижимает к левому краю экрана.
+        - border-gray-200/50 — добавляет полупрозрачную (на 50%) серую (оттенок gray-200) рамку.
+        - border-t — рисует только верхнюю границу у элемента.
+        - bg-white/80 — белый фон с прозрачностью 80%.
+        - p-4 — внутренние отступы (padding) по 1rem (обычно 16px) со всех сторон.
+        - backdrop-blur-xl — добавляет сильное размытие фона под элементом (blur).
+        - md:p-6 — увеличивает паддинг до 1.5rem (24px) на экранах ≥ md (medium breakpoint).
+
+        Комбинация этих классов делает панель ввода фиксированной снизу, с размытием и прозрачным белым фоном, визуально отделяя её от остальной части интерфейса.
+      */}
+      <div className="fixed right-0 bottom-0 left-0 border-gray-200/50 border-t bg-white/80 p-0 backdrop-blur-xl md:p-1">
         <div className="mx-auto max-w-4xl">
           <OrbitInput
             editingMessage={editingMessage}
+            onAvroraThinking={handleAvroraThinking}
             onCancelEdit={() => setEditingMessage(null)}
             onCancelReply={() => setReplyingTo(null)}
             onMessageSent={handleMessageSent}
-            onAvroraThinking={handleAvroraThinking}
             orbitId={orbitId}
             replyingTo={replyingTo}
           />

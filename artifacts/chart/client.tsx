@@ -1,10 +1,6 @@
 import { toast } from "sonner";
 import { Artifact } from "@/components/create-artifact";
-import {
-  CopyIcon,
-  RedoIcon,
-  UndoIcon,
-} from "@/components/icons";
+import { CopyIcon, RedoIcon, UndoIcon } from "@/components/icons";
 
 type Metadata = {
   chartType: "line" | "bar" | "pie" | "area";
@@ -34,10 +30,10 @@ export const chartArtifact = new Artifact<"chart", Metadata>({
       }));
     }
   },
-  content: ({ content, metadata }) => {
+  content: ({ metadata }) => {
     // TODO: Implement chart rendering using Chart.js or Recharts
     return (
-      <div className="flex h-full flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 p-8">
+      <div className="flex h-full flex-col items-center justify-center rounded-lg border-2 border-gray-300 border-dashed bg-gray-50 p-8">
         <svg
           className="mb-4 h-12 w-12 text-gray-400"
           fill="none"
@@ -45,10 +41,10 @@ export const chartArtifact = new Artifact<"chart", Metadata>({
           viewBox="0 0 24 24"
         >
           <path
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={2}
-            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
           />
         </svg>
         <p className="mb-2 font-semibold text-gray-700 text-lg">

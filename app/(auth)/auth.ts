@@ -1,14 +1,14 @@
 import { compare } from "bcrypt-ts";
+import { and, eq, gt } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
 import NextAuth, { type DefaultSession } from "next-auth";
 import type { DefaultJWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
+import postgres from "postgres";
 import { DUMMY_PASSWORD } from "@/lib/constants";
 import { createGuestUser, getUser } from "@/lib/db/queries";
+import { magicToken, user as userTable } from "@/lib/db/schema";
 import { authConfig } from "./auth.config";
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import { magicToken, user as userTable } from '@/lib/db/schema';
-import { eq, and, gt } from 'drizzle-orm';
 
 // biome-ignore lint: Forbidden non-null assertion.
 const client = postgres(process.env.POSTGRES_URL!);

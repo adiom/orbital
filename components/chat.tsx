@@ -106,10 +106,7 @@ export function Chat({
     onFinish: () => {
       mutate(
         unstable_serialize((pageIndex, previousPageData) =>
-          getChatHistoryPaginationKey(
-            pageIndex,
-            previousPageData
-          )
+          getChatHistoryPaginationKey(pageIndex, previousPageData)
         )
       );
     },

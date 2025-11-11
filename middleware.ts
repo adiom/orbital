@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { guestRegex, isDevelopmentEnvironment } from "./lib/constants";
+import { guestRegex, shouldUseSecureCookies } from "./lib/constants";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -19,6 +19,8 @@ export async function middleware(request: NextRequest) {
   }
 
   if (pathname.startsWith("/api/auth")) {
+    // NextResponse.next() создает объект ответа, который пропускает запрос дальше по пайплайну Middleware или к конечной точке обработчика,
+    // то есть не выполняет никаких изменений или редиректов. По сути это "пропуск" запроса дальше без вмешательства.
     return NextResponse.next();
   }
 
@@ -37,20 +39,12 @@ export async function middleware(request: NextRequest) {
   const token = await getToken({
     req: request,
     secret: process.env.AUTH_SECRET,
-    secureCookie: !isDevelopmentEnvironment,
+    secureCookie: shouldUseSecureCookies,
   });
 
   // Разрешить доступ к страницам auth без токена
   if (pathname === "/login" || pathname === "/register") {
     return NextResponse.next();
-  }
-
-  if (!token) {
-    const redirectUrl = encodeURIComponent(request.url);
-
-    return NextResponse.redirect(
-      new URL(`/api/auth/guest?redirectUrl=${redirectUrl}`, request.url)
-    );
   }
 
   const isGuest = guestRegex.test(token?.email ?? "");

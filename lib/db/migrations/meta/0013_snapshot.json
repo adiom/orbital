@@ -60,12 +60,8 @@
           "name": "Chat_userId_User_id_fk",
           "tableFrom": "Chat",
           "tableTo": "User",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -115,12 +111,8 @@
           "name": "ChatMember_chatId_Chat_id_fk",
           "tableFrom": "ChatMember",
           "tableTo": "Chat",
-          "columnsFrom": [
-            "chatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chatId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -128,12 +120,8 @@
           "name": "ChatMember_userId_User_id_fk",
           "tableFrom": "ChatMember",
           "tableTo": "User",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -141,10 +129,7 @@
       "compositePrimaryKeys": {
         "ChatMember_chatId_userId_pk": {
           "name": "ChatMember_chatId_userId_pk",
-          "columns": [
-            "chatId",
-            "userId"
-          ]
+          "columns": ["chatId", "userId"]
         }
       },
       "uniqueConstraints": {}
@@ -198,12 +183,8 @@
           "name": "Document_userId_User_id_fk",
           "tableFrom": "Document",
           "tableTo": "User",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -211,10 +192,7 @@
       "compositePrimaryKeys": {
         "Document_id_createdAt_pk": {
           "name": "Document_id_createdAt_pk",
-          "columns": [
-            "id",
-            "createdAt"
-          ]
+          "columns": ["id", "createdAt"]
         }
       },
       "uniqueConstraints": {}
@@ -270,9 +248,7 @@
         "MagicToken_token_unique": {
           "name": "MagicToken_token_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token"
-          ]
+          "columns": ["token"]
         }
       }
     },
@@ -330,12 +306,8 @@
           "name": "Message_v2_chatId_Chat_id_fk",
           "tableFrom": "Message_v2",
           "tableTo": "Chat",
-          "columnsFrom": [
-            "chatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chatId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -343,12 +315,8 @@
           "name": "Message_v2_userId_User_id_fk",
           "tableFrom": "Message_v2",
           "tableTo": "User",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -398,12 +366,8 @@
           "name": "Message_chatId_Chat_id_fk",
           "tableFrom": "Message",
           "tableTo": "Chat",
-          "columnsFrom": [
-            "chatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chatId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -447,12 +411,8 @@
           "name": "MessageMention_messageId_Message_v2_id_fk",
           "tableFrom": "MessageMention",
           "tableTo": "Message_v2",
-          "columnsFrom": [
-            "messageId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["messageId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -460,12 +420,8 @@
           "name": "MessageMention_mentionedUserId_User_id_fk",
           "tableFrom": "MessageMention",
           "tableTo": "User",
-          "columnsFrom": [
-            "mentionedUserId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["mentionedUserId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -473,10 +429,7 @@
       "compositePrimaryKeys": {
         "MessageMention_messageId_mentionedUserId_pk": {
           "name": "MessageMention_messageId_mentionedUserId_pk",
-          "columns": [
-            "messageId",
-            "mentionedUserId"
-          ]
+          "columns": ["messageId", "mentionedUserId"]
         }
       },
       "uniqueConstraints": {}
@@ -538,12 +491,8 @@
           "name": "Sfera_ownerId_User_id_fk",
           "tableFrom": "Sfera",
           "tableTo": "User",
-          "columnsFrom": [
-            "ownerId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ownerId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -593,12 +542,8 @@
           "name": "SferaArtifact_sferaId_Sfera_id_fk",
           "tableFrom": "SferaArtifact",
           "tableTo": "Sfera",
-          "columnsFrom": [
-            "sferaId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sferaId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -606,12 +551,8 @@
           "name": "SferaArtifact_createdByMessageId_SferaMessage_id_fk",
           "tableFrom": "SferaArtifact",
           "tableTo": "SferaMessage",
-          "columnsFrom": [
-            "createdByMessageId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["createdByMessageId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -619,14 +560,8 @@
           "name": "SferaArtifact_documentId_documentCreatedAt_Document_id_createdAt_fk",
           "tableFrom": "SferaArtifact",
           "tableTo": "Document",
-          "columnsFrom": [
-            "documentId",
-            "documentCreatedAt"
-          ],
-          "columnsTo": [
-            "id",
-            "createdAt"
-          ],
+          "columnsFrom": ["documentId", "documentCreatedAt"],
+          "columnsTo": ["id", "createdAt"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -634,10 +569,7 @@
       "compositePrimaryKeys": {
         "SferaArtifact_sferaId_documentId_pk": {
           "name": "SferaArtifact_sferaId_documentId_pk",
-          "columns": [
-            "sferaId",
-            "documentId"
-          ]
+          "columns": ["sferaId", "documentId"]
         }
       },
       "uniqueConstraints": {}
@@ -691,12 +623,8 @@
           "name": "SferaForkedSfera_parentSferaId_Sfera_id_fk",
           "tableFrom": "SferaForkedSfera",
           "tableTo": "Sfera",
-          "columnsFrom": [
-            "parentSferaId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parentSferaId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -704,12 +632,8 @@
           "name": "SferaForkedSfera_parentMessageId_SferaMessage_id_fk",
           "tableFrom": "SferaForkedSfera",
           "tableTo": "SferaMessage",
-          "columnsFrom": [
-            "parentMessageId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["parentMessageId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -717,12 +641,8 @@
           "name": "SferaForkedSfera_forkedSferaId_Sfera_id_fk",
           "tableFrom": "SferaForkedSfera",
           "tableTo": "Sfera",
-          "columnsFrom": [
-            "forkedSferaId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["forkedSferaId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -730,12 +650,8 @@
           "name": "SferaForkedSfera_createdById_User_id_fk",
           "tableFrom": "SferaForkedSfera",
           "tableTo": "User",
-          "columnsFrom": [
-            "createdById"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["createdById"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -745,9 +661,7 @@
         "SferaForkedSfera_forkedSferaId_unique": {
           "name": "SferaForkedSfera_forkedSferaId_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "forkedSferaId"
-          ]
+          "columns": ["forkedSferaId"]
         }
       }
     },
@@ -788,12 +702,8 @@
           "name": "SferaMember_sferaId_Sfera_id_fk",
           "tableFrom": "SferaMember",
           "tableTo": "Sfera",
-          "columnsFrom": [
-            "sferaId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sferaId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -801,12 +711,8 @@
           "name": "SferaMember_userId_User_id_fk",
           "tableFrom": "SferaMember",
           "tableTo": "User",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -814,10 +720,7 @@
       "compositePrimaryKeys": {
         "SferaMember_sferaId_userId_pk": {
           "name": "SferaMember_sferaId_userId_pk",
-          "columns": [
-            "sferaId",
-            "userId"
-          ]
+          "columns": ["sferaId", "userId"]
         }
       },
       "uniqueConstraints": {}
@@ -906,12 +809,8 @@
           "name": "SferaMessage_sferaId_Sfera_id_fk",
           "tableFrom": "SferaMessage",
           "tableTo": "Sfera",
-          "columnsFrom": [
-            "sferaId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sferaId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -919,12 +818,8 @@
           "name": "SferaMessage_userId_User_id_fk",
           "tableFrom": "SferaMessage",
           "tableTo": "User",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -962,12 +857,8 @@
           "name": "Stream_chatId_Chat_id_fk",
           "tableFrom": "Stream",
           "tableTo": "Chat",
-          "columnsFrom": [
-            "chatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chatId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -975,9 +866,7 @@
       "compositePrimaryKeys": {
         "Stream_id_pk": {
           "name": "Stream_id_pk",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {}
@@ -1049,12 +938,8 @@
           "name": "Suggestion_userId_User_id_fk",
           "tableFrom": "Suggestion",
           "tableTo": "User",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1062,14 +947,8 @@
           "name": "Suggestion_documentId_documentCreatedAt_Document_id_createdAt_fk",
           "tableFrom": "Suggestion",
           "tableTo": "Document",
-          "columnsFrom": [
-            "documentId",
-            "documentCreatedAt"
-          ],
-          "columnsTo": [
-            "id",
-            "createdAt"
-          ],
+          "columnsFrom": ["documentId", "documentCreatedAt"],
+          "columnsTo": ["id", "createdAt"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1077,9 +956,7 @@
       "compositePrimaryKeys": {
         "Suggestion_id_pk": {
           "name": "Suggestion_id_pk",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {}
@@ -1158,12 +1035,8 @@
           "name": "ToolExecution_sferaId_Sfera_id_fk",
           "tableFrom": "ToolExecution",
           "tableTo": "Sfera",
-          "columnsFrom": [
-            "sferaId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sferaId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1171,12 +1044,8 @@
           "name": "ToolExecution_chatId_Chat_id_fk",
           "tableFrom": "ToolExecution",
           "tableTo": "Chat",
-          "columnsFrom": [
-            "chatId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["chatId"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1184,12 +1053,8 @@
           "name": "ToolExecution_userId_User_id_fk",
           "tableFrom": "ToolExecution",
           "tableTo": "User",
-          "columnsFrom": [
-            "userId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["userId"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

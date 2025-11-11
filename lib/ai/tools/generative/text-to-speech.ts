@@ -10,6 +10,12 @@
 import { tool } from "ai";
 import { z } from "zod";
 
+// Regex patterns for text-to-speech detection (moved to top level for performance)
+const TEXT_TO_SPEECH_PATTERNS = [
+  /(?:озвучь|преобразуй в речь|произнеси)\s+(?:текст)?:?\s*(.+)/i,
+  /(?:озвучь|преобразуй в речь|произнеси)\s+(.+?)(?:женским|мужским|нейтральным)?\s*голосом/i,
+];
+
 /**
  * Convert text to speech with natural-sounding AI voices
  *
@@ -62,7 +68,7 @@ export const textToSpeech = tool({
       .describe("Voice similarity boost (0 = low, 1 = high)"),
   }),
 
-  execute: async ({ text, voice, speed, stability, similarity }) => {
+  execute: ({ text, voice, speed, stability, similarity }) => {
     // TODO: Implement ElevenLabs API integration
     // const response = await fetch(
     //   `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
@@ -104,18 +110,17 @@ export function parseTextToSpeechRequest(content: string): {
 } | null {
   const lowerContent = content.toLowerCase();
 
-  const patterns = [
-    /(?:озвучь|преобразуй в речь|произнеси)\s+(?:текст)?:?\s*(.+)/i,
-    /(?:озвучь|преобразуй в речь|произнеси)\s+(.+?)(?:женским|мужским|нейтральным)?\s*голосом/i,
-  ];
-
-  for (const pattern of patterns) {
+  for (const pattern of TEXT_TO_SPEECH_PATTERNS) {
     const match = content.match(pattern);
     if (match?.[1]) {
       // Detect voice preference
       let voice = "female-russian";
-      if (lowerContent.includes("мужским голосом")) voice = "male-russian";
-      if (lowerContent.includes("нейтральным голосом")) voice = "neutral";
+      if (lowerContent.includes("мужским голосом")) {
+        voice = "male-russian";
+      }
+      if (lowerContent.includes("нейтральным голосом")) {
+        voice = "neutral";
+      }
 
       return {
         text: match[1].trim(),

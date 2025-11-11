@@ -196,7 +196,7 @@ export default function ShadcnUpdatePage() {
                           `npx shadcn@latest add ${component} --overwrite`
                         );
                         toast.success("Команда скопирована в буфер обмена");
-                      } catch (error) {
+                      } catch (_error) {
                         toast.error("Не удалось скопировать команду");
                       }
                     }}
@@ -237,7 +237,7 @@ export default function ShadcnUpdatePage() {
                             `npx shadcn@latest add ${component}`
                           );
                           toast.success("Команда скопирована в буфер обмена");
-                        } catch (error) {
+                        } catch (_error) {
                           toast.error("Не удалось скопировать команду");
                         }
                       }}

@@ -4,7 +4,7 @@ const attempts = new Map<string, { count: number; resetTime: number }>();
 export function checkRateLimit(
   key: string,
   maxAttempts = 5,
-  windowMs: number = 15 * 60 * 1000, // 15 минут
+  windowMs: number = 15 * 60 * 1000 // 15 минут
 ): { allowed: boolean; remaining: number; resetTime: number } {
   const now = Date.now();
   const record = attempts.get(key);
@@ -35,16 +35,16 @@ export function checkRateLimit(
 }
 
 export function getClientIP(request: Request): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  const realIP = request.headers.get('x-real-ip');
+  const forwarded = request.headers.get("x-forwarded-for");
+  const realIP = request.headers.get("x-real-ip");
 
   if (forwarded) {
-    return forwarded.split(',')[0].trim();
+    return forwarded.split(",")[0].trim();
   }
 
   if (realIP) {
     return realIP;
   }
 
-  return 'unknown';
+  return "unknown";
 }

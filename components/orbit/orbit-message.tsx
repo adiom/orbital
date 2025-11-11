@@ -5,6 +5,7 @@ import {
   CornerDownRight,
   GitBranch,
   LogIn,
+  Music,
   PenSquare,
   Reply,
   Sparkles,
@@ -14,9 +15,9 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { ToolResultsList } from "./tool-result-display";
 import { segmentTextWithMentions } from "@/lib/mentions/parser";
 import { cn } from "@/lib/utils";
+import { ToolResultsList } from "./tool-result-display";
 
 type OrbitMessageProps = {
   message: {
@@ -69,7 +70,7 @@ export function OrbitMessage({
   const [isExpanded, setIsExpanded] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
+  const [isSelected, setIsSelected] = useState(false);
 
   const canEdit =
     canModerate || (!!currentUserId && currentUserId === message.userId);
@@ -154,21 +155,22 @@ export function OrbitMessage({
   return (
     <article
       className={cn(
-        "group relative mb-4 transition-all duration-300",
-        isHovered && "scale-[1.01]"
+        "group relative mb-2 transition-all duration-300",
+        isSelected && "scale-[1.01]"
       )}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: Click handler for message selection */}
+      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: Click handler for message selection */}
       <div
         className={cn(
-          "relative overflow-hidden rounded-3xl border-2 p-5 shadow-sm transition-all duration-300",
+          "relative cursor-pointer overflow-hidden rounded-3xl border-2 p-5 shadow-sm transition-all duration-300",
           isAvroraMessage
             ? "border-blue-200 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 shadow-blue-100"
             : "border-gray-200 bg-white",
-          isHovered && "shadow-lg",
-          isAvroraMessage && isHovered && "shadow-blue-200"
+          isSelected && "shadow-lg",
+          isAvroraMessage && isSelected && "shadow-blue-200"
         )}
+        onClick={() => setIsSelected(!isSelected)}
       >
         {message.isForked && (
           <div className="absolute top-0 right-0 rounded-tr-2xl rounded-bl-2xl bg-gradient-to-br from-blue-500 to-purple-500 px-3 py-1.5">
@@ -265,23 +267,59 @@ export function OrbitMessage({
         )}
 
         {message.attachments && message.attachments.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-3">
-            {message.attachments.map((attachment, index) => (
-              <button
-                className="relative h-56 w-full max-w-sm cursor-pointer overflow-hidden rounded-2xl border-2 border-gray-200 bg-muted shadow-md transition-all hover:scale-[1.02] hover:shadow-xl"
-                key={`attachment-${attachment.url}-${index}`}
-                onClick={() => window.open(attachment.url, "_blank")}
-                type="button"
-              >
-                <Image
-                  alt={attachment.name}
-                  className="object-cover"
-                  fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  src={attachment.url}
-                />
-              </button>
-            ))}
+          <div className="mt-4 flex flex-col gap-3">
+            {message.attachments.map((attachment, index) => {
+              const isAudio = attachment.contentType.startsWith("audio/");
+
+              if (isAudio) {
+                return (
+                  <div
+                    className="group relative overflow-hidden rounded-2xl border-2 border-gray-200 bg-gradient-to-br from-purple-50 to-blue-50 p-4 shadow-md transition-all hover:shadow-xl"
+                    key={`attachment-${attachment.url}-${index}`}
+                  >
+                    <div className="mb-3 flex items-center gap-3">
+                      <div className="flex size-12 flex-shrink-0 items-center justify-center rounded-xl bg-purple-100">
+                        <Music className="h-6 w-6 text-purple-600" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-semibold text-gray-900 text-sm">
+                          {attachment.name}
+                        </div>
+                        <div className="text-gray-500 text-xs">
+                          Audio attachment
+                        </div>
+                      </div>
+                    </div>
+                    {/* biome-ignore lint/a11y/useMediaCaption: Generated audio without captions */}
+                    <audio
+                      className="w-full"
+                      controls
+                      preload="metadata"
+                      src={attachment.url}
+                    >
+                      Your browser does not support audio playback.
+                    </audio>
+                  </div>
+                );
+              }
+
+              return (
+                <button
+                  className="relative h-56 w-full max-w-sm cursor-pointer overflow-hidden rounded-2xl border-2 border-gray-200 bg-muted shadow-md transition-all hover:scale-[1.02] hover:shadow-xl"
+                  key={`attachment-${attachment.url}-${index}`}
+                  onClick={() => window.open(attachment.url, "_blank")}
+                  type="button"
+                >
+                  <Image
+                    alt={attachment.name}
+                    className="object-cover"
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    src={attachment.url}
+                  />
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -293,12 +331,11 @@ export function OrbitMessage({
         )}
       </div>
 
-      <div
-        className={cn(
-          "mt-2 flex flex-wrap items-center gap-2 px-2 opacity-0 transition-all duration-200 group-hover:opacity-100",
-          isHovered && "opacity-100"
-        )}
-      >
+      {isSelected && (
+        <div
+          className="mt-2 flex flex-wrap items-center gap-2 px-2 opacity-100 transition-all duration-200"
+          onClick={(e) => e.stopPropagation()}
+        >
         <button
           className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-gray-600 transition-all hover:bg-gray-200 hover:text-gray-800"
           onClick={handleCopy}
@@ -372,7 +409,8 @@ export function OrbitMessage({
             <span className="text-xs">Delete</span>
           </button>
         )}
-      </div>
+        </div>
+      )}
     </article>
   );
 }

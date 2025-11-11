@@ -13,6 +13,12 @@ import Replicate from "replicate";
 import { z } from "zod";
 import { saveImageToBlob } from "@/lib/blob/media-storage";
 
+// Regex patterns for prompt extraction (moved to top level for performance)
+const PROMPT_PATTERNS = [
+  /(?:сгенерируй|создай|нарисуй).*?(?:replicate|flux|через replicate).*?:\s*(.+)/i,
+  /(?:replicate|flux).*?(?:сгенерируй|создай|нарисуй).*?:\s*(.+)/i,
+];
+
 /**
  * Generate an image from a text prompt using Replicate FLUX
  *
@@ -189,12 +195,7 @@ export function parseReplicateImageRequest(content: string): {
   }
 
   // Pattern matching for Russian prompts with Replicate/FLUX keywords
-  const patterns = [
-    /(?:сгенерируй|создай|нарисуй).*?(?:replicate|flux|через replicate).*?:\s*(.+)/i,
-    /(?:replicate|flux).*?(?:сгенерируй|создай|нарисуй).*?:\s*(.+)/i,
-  ];
-
-  for (const pattern of patterns) {
+  for (const pattern of PROMPT_PATTERNS) {
     const match = content.match(pattern);
     if (match?.[1]) {
       return {
