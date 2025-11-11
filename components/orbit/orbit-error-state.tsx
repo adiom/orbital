@@ -4,12 +4,12 @@ import { AlertTriangle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-interface OrbitErrorStateProps {
+type OrbitErrorStateProps = {
   message?: string;
   onRetry?: () => void;
   isRetrying?: boolean;
   className?: string;
-}
+};
 
 export function OrbitErrorState({
   message = "Не удалось загрузить орбиты",

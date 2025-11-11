@@ -284,6 +284,9 @@ export const sferaMessage = pgTable("SferaMessage", {
   isForked: boolean("isForked").notNull().default(false),
   forkCount: integer("forkCount").notNull().default(0),
 
+  // AI generation status
+  isGenerating: boolean("isGenerating").notNull().default(false),
+
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });

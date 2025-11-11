@@ -11,6 +11,9 @@
   },
   "linter": {
     "rules": {
+      "correctness": {
+        "useExhaustiveDependencies": "error"
+      },
       "suspicious": {
         /* Needs more work to fix */
         "noExplicitAny": "off",

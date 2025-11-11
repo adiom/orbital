@@ -1,9 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/app/(auth)/auth";
-import { generateAvroraResponse } from "@/lib/ai/sfera-avrora";
+import { streamAgentResponse } from "@/lib/ai/agents/base-streamer";
+import { detectMentionedAgents } from "@/lib/ai/agents/detector";
 import { db } from "@/lib/db";
-import { sfera, sferaMember, sferaMessage } from "@/lib/db/schema";
-import { hasAvroraMention } from "@/lib/mentions/parser";
+import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { checkAvroraRateLimit } from "@/lib/redis/rate-limiter";
 
 type RouteContext = {
@@ -86,7 +86,11 @@ export async function POST(request: Request, context: RouteContext) {
         userId: session.user.id,
         content: content?.trim() || "",
         parentMessageId: parentMessageId || null,
-        attachments,
+        attachments: attachments as Array<{
+          name: string;
+          url: string;
+          contentType: string;
+        }>,
         isForked: false,
         forkCount: 0,
         createdAt: new Date(),
@@ -100,63 +104,150 @@ export async function POST(request: Request, context: RouteContext) {
       .set({ updatedAt: new Date() })
       .where(eq(sfera.id, sferaId));
 
-    // Check if @avrora was mentioned
-    if (hasAvroraMention(content)) {
-      console.log("🔔 @avrora mentioned in Sfera:", {
-        sferaId,
-        messageId: newMessage.id,
-        userId: session.user.id,
-        userEmail: session.user.email,
-        content:
-          content.substring(0, 100) + (content.length > 100 ? "..." : ""),
-      });
+    // Detect all mentioned AI agents
+    const mentionedAgents = detectMentionedAgents(content || "");
 
-      // Check rate limit before processing
-      const rateLimitResult = await checkAvroraRateLimit(
-        session.user.id,
-        sferaId
+    // Track agent messages for response
+    const agentMessages: Array<{ agentId: string; messageId: string }> = [];
+
+    if (mentionedAgents.length > 0) {
+      console.log(
+        `🔔 ${mentionedAgents.length} agent(s) mentioned:`,
+        mentionedAgents.map((a) => a.name)
       );
 
-      if (!rateLimitResult.allowed) {
-        console.warn("⚠️ Rate limit exceeded for @avrora mention:", {
-          userId: session.user.id,
-          sferaId,
-          error: rateLimitResult.error,
-          resetAt: rateLimitResult.resetAt,
+      // Create empty messages for each agent
+      for (const agent of mentionedAgents) {
+        // Check rate limit (only for agents with rate limits)
+        if (agent.rateLimit) {
+          const rateLimitResult = await checkAvroraRateLimit(
+            session.user.id,
+            sferaId
+          );
+
+          if (!rateLimitResult.allowed) {
+            console.warn(`⚠️ Rate limit exceeded for ${agent.name}:`, {
+              userId: session.user.id,
+              sferaId,
+              error: rateLimitResult.error,
+            });
+
+            // Post rate limit message
+            await db.insert(sferaMessage).values({
+              sferaId,
+              userId: agent.userId,
+              content: `⏱️ Слишком много запросов. ${rateLimitResult.error}\n\nПожалуйста, подождите немного перед следующим обращением.`,
+              parentMessageId: newMessage.id,
+              isForked: false,
+              forkCount: 0,
+              isGenerating: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+
+            continue; // Skip this agent
+          }
+        }
+
+        // Ensure agent user exists
+        const [agentUser] = await db
+          .select()
+          .from(user)
+          .where(eq(user.id, agent.userId))
+          .limit(1);
+
+        if (!agentUser) {
+          console.log(`➕ Creating user for ${agent.name}...`);
+          await db.insert(user).values({
+            id: agent.userId,
+            email: agent.email,
+          });
+        }
+
+        // Ensure agent is member of Sfera
+        const [agentMembership] = await db
+          .select()
+          .from(sferaMember)
+          .where(
+            and(
+              eq(sferaMember.sferaId, sferaId),
+              eq(sferaMember.userId, agent.userId)
+            )
+          )
+          .limit(1);
+
+        if (!agentMembership) {
+          console.log(`➕ Adding ${agent.name} to Sfera...`);
+          await db.insert(sferaMember).values({
+            sferaId,
+            userId: agent.userId,
+            role: "member",
+            joinedAt: new Date(),
+          });
+        }
+
+        // Create empty message for agent (will be filled by streaming)
+        const [agentMessage] = await db
+          .insert(sferaMessage)
+          .values({
+            sferaId,
+            userId: agent.userId,
+            content: "", // Empty initially
+            parentMessageId: newMessage.id,
+            isForked: false,
+            forkCount: 0,
+            isGenerating: true, // Mark as generating
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .returning();
+
+        agentMessages.push({
+          agentId: agent.id,
+          messageId: agentMessage.id,
         });
 
-        // Post rate limit message to Sfera
-        await db.insert(sferaMessage).values({
+        console.log(`📝 Created empty message for ${agent.name}:`, {
+          messageId: agentMessage.id,
           sferaId,
-          userId: "00000000-0000-0000-0000-000000000001", // Avrora user ID
-          content: `⏱️ Слишком много запросов. ${rateLimitResult.error}\n\nПожалуйста, подождите немного перед следующим обращением.`,
-          parentMessageId: newMessage.id,
-          isForked: false,
-          forkCount: 0,
-          createdAt: new Date(),
-          updatedAt: new Date(),
         });
-
-        // Still return success for user's message
-        return Response.json({ message: newMessage }, { status: 201 });
       }
 
-      // Generate Avrora response asynchronously
-      setTimeout(async () => {
-        try {
-          console.log("🤖 Starting Avrora response generation...");
-          await generateAvroraResponse(
-            sferaId,
-            newMessage.id,
-            session.user?.id
-          );
-        } catch (error) {
-          console.error("❌ Failed to generate Avrora response:", error);
+      // Start streaming responses for all agents asynchronously
+      for (const { agentId, messageId } of agentMessages) {
+        const agent = mentionedAgents.find((a) => a.id === agentId);
+        if (!agent) {
+          continue;
         }
-      }, 0);
+
+        setTimeout(async () => {
+          try {
+            console.log(`🤖 Starting ${agent.name} response generation...`);
+            await streamAgentResponse({
+              sferaId,
+              triggerMessageId: newMessage.id,
+              targetMessageId: messageId,
+              requestingUserId: session.user.id,
+              agent,
+            });
+            console.log(`✅ ${agent.name} finished streaming`);
+          } catch (error) {
+            console.error(`❌ ${agent.name} streaming failed:`, error);
+          }
+        }, 0);
+      }
     }
 
-    return Response.json({ message: newMessage }, { status: 201 });
+    return Response.json(
+      {
+        message: newMessage,
+        agentMessages: agentMessages.map((am) => ({
+          agentId: am.agentId,
+          messageId: am.messageId,
+        })),
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Failed to create message:", error);
     return Response.json(

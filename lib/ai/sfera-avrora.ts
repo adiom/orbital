@@ -44,7 +44,9 @@ function selectSmartContext(
   const TARGET_TOKENS = 2000;
   const RECENT_COUNT = 5; // Always include last 5 messages
 
-  if (messages.length === 0) return [];
+  if (messages.length === 0) {
+    return [];
+  }
 
   // Priority buckets
   const recentMessages = messages.slice(-RECENT_COUNT);
@@ -295,10 +297,13 @@ export async function generateAvroraResponse(
       `,
       temperature: 0.7,
       tools: toolsObject, // AI will automatically decide which tools to use
-      maxSteps: 5, // Allow up to 5 tool calls in sequence
     });
 
     const { text, usage, steps } = result;
+
+    // Resolve promises for text and usage
+    const resolvedText = await text;
+    const resolvedUsage = await usage;
 
     // Process tool calls from steps
     if (steps && steps.length > 0) {
@@ -307,9 +312,7 @@ export async function generateAvroraResponse(
       for (const step of steps) {
         if (step.toolCalls && step.toolCalls.length > 0) {
           for (const toolCall of step.toolCalls) {
-            console.log(`✅ Tool called: ${toolCall.toolName}`, {
-              args: toolCall.args,
-            });
+            console.log(`✅ Tool called: ${toolCall.toolName}`);
 
             executedToolNames.push(toolCall.toolName);
 
@@ -319,9 +322,19 @@ export async function generateAvroraResponse(
                 (r) => r.toolCallId === toolCall.toolCallId
               );
               if (toolResult) {
+                // toolResult is already the result object in AI SDK 5.0
+                const resultData =
+                  typeof toolResult === "object" && toolResult !== null
+                    ? toolResult
+                    : {};
+                // Remove toolName from resultData if it exists to avoid conflict
+                const { toolName: _, ...restResultData } = resultData as Record<
+                  string,
+                  unknown
+                >;
                 toolResults.push({
                   toolName: toolCall.toolName,
-                  ...toolResult.result,
+                  ...restResultData,
                 });
               }
             }
@@ -333,10 +346,10 @@ export async function generateAvroraResponse(
     }
 
     console.log("✅ AI response generated:", {
-      length: text.length,
-      preview: `${text.substring(0, 100)}...`,
+      length: resolvedText.length,
+      preview: `${resolvedText.substring(0, 100)}...`,
       hadToolExecution: toolResults.length > 0,
-      tokens: usage?.totalTokens,
+      tokens: resolvedUsage?.totalTokens,
       model: selectedModel,
     });
 
@@ -345,10 +358,10 @@ export async function generateAvroraResponse(
       userId: requestingUserId,
       sferaId,
       messageId: triggerMessageId,
-      modelUsed: "gpt-5-mini-2025-08-07",
+      modelUsed: "gpt-5-mini",
       provider: "openai",
-      inputTokens: usage?.promptTokens || 0,
-      outputTokens: usage?.completionTokens || 0,
+      inputTokens: resolvedUsage?.inputTokens || 0,
+      outputTokens: resolvedUsage?.outputTokens || 0,
       toolName: executedToolNames.length > 0 ? executedToolNames[0] : undefined,
       toolParameters:
         executedToolNames.length > 0 ? { tools: executedToolNames } : undefined,
@@ -365,7 +378,7 @@ export async function generateAvroraResponse(
     await db.insert(sferaMessage).values({
       sferaId,
       userId: AVRORA_USER_ID,
-      content: text.trim(),
+      content: resolvedText.trim(),
       parentMessageId: triggerMessageId,
       isForked: false,
       forkCount: 0,
@@ -389,7 +402,7 @@ export async function generateAvroraResponse(
       userId: requestingUserId,
       sferaId,
       messageId: triggerMessageId,
-      modelUsed: "gpt-5-nano-2025-08-07",
+      modelUsed: "gpt-5-nano",
       provider: "openai",
       inputTokens: 0,
       outputTokens: 0,

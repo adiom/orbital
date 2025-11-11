@@ -1,18 +1,18 @@
 "use client";
 
-import { GitBranch, Lock, Settings, Trash2, Users } from "lucide-react";
+import { Lock, Settings, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Orbit } from "@/hooks/use-orbit-layout";
 import { cn } from "@/lib/utils";
 
-interface OrbitListViewProps {
+type OrbitListViewProps = {
   orbits: Orbit[];
   currentUserId?: string;
   onSettingsClick?: (orbit: Orbit) => void;
   onDeleteClick?: (orbit: Orbit) => void;
-}
+};
 
 export function OrbitListView({
   orbits,
@@ -39,13 +39,19 @@ export function OrbitListView({
           const isOwner = orbit.ownerId === currentUserId;
 
           return (
-            <div
+            <button
               className={cn(
                 "group cursor-pointer rounded-xl border-2 bg-white p-4 shadow-sm transition-all",
                 "hover:border-blue-300 hover:shadow-md"
               )}
               key={orbit.id}
               onClick={() => router.push(`/orbit/${orbit.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  router.push(`/orbit/${orbit.id}`);
+                }
+              }}
+              type="button"
             >
               <div className="flex items-center justify-between gap-4">
                 {/* Left: Title and description */}
@@ -111,7 +117,7 @@ export function OrbitListView({
                   )}
                 </div>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

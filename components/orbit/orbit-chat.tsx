@@ -35,6 +35,7 @@ type Message = {
   toolResults?: Record<string, unknown>[];
   isForked: boolean;
   forkedSferaId: string | null;
+  isGenerating?: boolean;
   createdAt: Date;
 };
 
@@ -137,6 +138,8 @@ const parseMessage = (value: unknown): Message | null => {
       : undefined,
     isForked,
     forkedSferaId: typeof forkedSferaId === "string" ? forkedSferaId : null,
+    isGenerating:
+      typeof record.isGenerating === "boolean" ? record.isGenerating : false,
     createdAt:
       createdAt instanceof Date && !Number.isNaN(createdAt.getTime())
         ? createdAt
@@ -235,7 +238,6 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  const [isAvroraThinking, setIsAvroraThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const fetchOrbit = useCallback(
@@ -305,7 +307,27 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     };
   }, [fetchOrbit]);
 
-  // Auto-scroll to bottom when messages change or Avrora is thinking
+  // Poll for message updates when there are generating messages
+  useEffect(() => {
+    const hasGeneratingMessages = messages.some(
+      (m) => (m as any).isGenerating === true
+    );
+
+    if (!hasGeneratingMessages) {
+      return;
+    }
+
+    // Poll every 500ms while messages are generating
+    const pollInterval = setInterval(() => {
+      fetchOrbit();
+    }, 500);
+
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [messages, fetchOrbit]);
+
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     const scrollToBottom = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -314,17 +336,17 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     // Small delay to ensure DOM is updated
     const timer = setTimeout(scrollToBottom, 100);
     return () => clearTimeout(timer);
-  }, []);
+  });
 
   const handleMessageSent = () => {
     setReplyingTo(null);
     setEditingMessage(null);
-    setIsAvroraThinking(false);
     fetchOrbit();
-  };
 
-  const handleAvroraThinking = () => {
-    setIsAvroraThinking(true);
+    // Scroll to bottom immediately after sending
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   };
 
   const handleFork = (_messageId: string) => {
@@ -476,32 +498,6 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
                 );
               })}
 
-              {/* Avrora thinking indicator */}
-              {isAvroraThinking && (
-                <article className="group fade-in slide-in-from-bottom-2 relative mb-4 animate-in duration-300">
-                  <div className="relative overflow-hidden rounded-3xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-5 shadow-sm">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 text-gray-500 text-xs">
-                        <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 px-2.5 py-1">
-                          <Sparkles className="h-3 w-3 text-white" />
-                          <span className="font-semibold text-white">
-                            Avrora AI
-                          </span>
-                        </div>
-                        <span className="font-medium text-blue-700">
-                          avrora@avrora.click
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-blue-700">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span className="text-[15px] italic">думает...</span>
-                    </div>
-                  </div>
-                </article>
-              )}
-
               {/* Invisible anchor for auto-scroll */}
               <div ref={messagesEndRef} />
             </>
@@ -531,7 +527,6 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
         <div className="mx-auto max-w-4xl">
           <OrbitInput
             editingMessage={editingMessage}
-            onAvroraThinking={handleAvroraThinking}
             onCancelEdit={() => setEditingMessage(null)}
             onCancelReply={() => setReplyingTo(null)}
             onMessageSent={handleMessageSent}

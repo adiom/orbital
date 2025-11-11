@@ -35,13 +35,13 @@ export const myProvider = isTestEnvironment
     })()
   : customProvider({
       languageModels: {
-        "chat-model": openai.chat("gpt-5-mini-2025-08-07"), // For tool calling
-        "chat-model-mini": openai.chat("gpt-5-nano-2025-08-07"), // For simple text conversations
+        "chat-model": openai.chat("gpt-5-mini"), // For tool calling
+        "chat-model-mini": openai.chat("gpt-5-nano"), // For simple text conversations
         "chat-model-reasoning": wrapLanguageModel({
-          model: openai.languageModel("gpt-5-nano-2025-08-07"),
+          model: openai.languageModel("gpt-5-nano"),
           middleware: extractReasoningMiddleware({ tagName: "think" }),
         }),
-        "title-model": openai.chat("gpt-5-nano-2025-08-07"),
-        "artifact-model": openai.chat("gpt-5-nano-2025-08-07"),
+        "title-model": openai.chat("gpt-5-nano"),
+        "artifact-model": openai.chat("gpt-5-nano"),
       },
     });

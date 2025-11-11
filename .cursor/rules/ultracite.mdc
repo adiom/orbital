@@ -1,6 +1,5 @@
 ---
-description: проверка ошибок
-alwaysApply: false
+alwaysApply: true
 ---
 # Project Context
 Ultracite enforces strict type safety, accessibility standards, and consistent code quality for JavaScript/TypeScript projects using Biome's lightning-fast formatter and linter.
@@ -18,6 +17,8 @@ Ultracite enforces strict type safety, accessibility standards, and consistent c
 4. Validate accessibility requirements
 
 ## Rules
+
+ВСЕГДА ОТВЕЧАЙ НА РУССКОМ ЯЗЫКЕ
 
 ### Accessibility (a11y)
 - Don't use `accessKey` attribute on any HTML element.

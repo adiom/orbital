@@ -120,7 +120,7 @@ export const codeArtifact = new Artifact<"code", Metadata>({
         const runId = generateUUID();
         const outputContent: ConsoleOutputContent[] = [];
 
-        setMetadata((metadata) => ({
+        setMetadata((metadata: Metadata) => ({
           ...metadata,
           outputs: [
             ...metadata.outputs,
@@ -151,10 +151,12 @@ export const codeArtifact = new Artifact<"code", Metadata>({
 
           await currentPyodideInstance.loadPackagesFromImports(content, {
             messageCallback: (message: string) => {
-              setMetadata((metadata) => ({
+              setMetadata((metadata: Metadata) => ({
                 ...metadata,
                 outputs: [
-                  ...metadata.outputs.filter((output) => output.id !== runId),
+                  ...metadata.outputs.filter(
+                    (output: ConsoleOutput) => output.id !== runId
+                  ),
                   {
                     id: runId,
                     contents: [{ type: "text", value: message }],
@@ -182,10 +184,12 @@ export const codeArtifact = new Artifact<"code", Metadata>({
 
           await currentPyodideInstance.runPythonAsync(content);
 
-          setMetadata((metadata) => ({
+          setMetadata((metadata: Metadata) => ({
             ...metadata,
             outputs: [
-              ...metadata.outputs.filter((output) => output.id !== runId),
+              ...metadata.outputs.filter(
+                (output: ConsoleOutput) => output.id !== runId
+              ),
               {
                 id: runId,
                 contents: outputContent,
@@ -194,10 +198,12 @@ export const codeArtifact = new Artifact<"code", Metadata>({
             ],
           }));
         } catch (error: any) {
-          setMetadata((metadata) => ({
+          setMetadata((metadata: Metadata) => ({
             ...metadata,
             outputs: [
-              ...metadata.outputs.filter((output) => output.id !== runId),
+              ...metadata.outputs.filter(
+                (output: ConsoleOutput) => output.id !== runId
+              ),
               {
                 id: runId,
                 contents: [{ type: "text", value: error.message }],

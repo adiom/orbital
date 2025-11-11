@@ -15,7 +15,7 @@ export type ArtifactActionContext<M = any> = {
   setMetadata: Dispatch<SetStateAction<M>>;
 };
 
-type ArtifactAction<M = any> = {
+export type ArtifactAction<M = any> = {
   icon: ReactNode;
   label?: string;
   description: string;

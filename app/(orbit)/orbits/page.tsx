@@ -76,8 +76,8 @@ export default function OrbitsPage() {
         const data = await response.json();
         setOrbitMembers(data.members || []);
       }
-    } catch (error) {
-      console.error("Error fetching orbit members:", error);
+    } catch (fetchError) {
+      console.error("Error fetching orbit members:", fetchError);
       toast.error("Failed to load orbit members");
     } finally {
       setIsLoadingMembers(false);
@@ -104,7 +104,7 @@ export default function OrbitsPage() {
       <OrbitErrorState
         isRetrying={isRetrying}
         message={errorMessage}
-        onRetry={refetch ? handleRetryFetch : undefined}
+        onRetry={handleRetryFetch}
       />
     );
   }
@@ -133,10 +133,12 @@ export default function OrbitsPage() {
       toast.success("Orbit deleted successfully");
       setOrbitToDelete(null);
       refetch();
-    } catch (error) {
-      console.error("Error deleting Orbit:", error);
+    } catch (deleteError) {
+      console.error("Error deleting Orbit:", deleteError);
       toast.error(
-        error instanceof Error ? error.message : "Failed to delete Orbit"
+        deleteError instanceof Error
+          ? deleteError.message
+          : "Failed to delete Orbit"
       );
     } finally {
       setIsDeleting(false);

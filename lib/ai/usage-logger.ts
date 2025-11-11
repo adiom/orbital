@@ -1,3 +1,4 @@
+import { and, eq, gte } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { aiUsageLog } from "@/lib/db/schema";
 
@@ -12,14 +13,6 @@ const MODEL_PRICING = {
     output: 0.4,
   },
   "gpt-5-mini": {
-    input: 0.25,
-    output: 2,
-  },
-  "gpt-5-nano-2025-08-07": {
-    input: 0.05,
-    output: 0.4,
-  },
-  "gpt-5-mini-2025-08-07": {
     input: 0.25,
     output: 2,
   },
@@ -40,7 +33,7 @@ const TOOL_COSTS = {
   editMiniApp: 0.0, // Just LLM tokens
 } as const;
 
-export interface UsageLogParams {
+export type UsageLogParams = {
   userId: string;
   sferaId?: string;
   messageId?: string;
@@ -54,7 +47,7 @@ export interface UsageLogParams {
   contextSize?: number;
   status?: "success" | "error" | "rate_limited";
   errorMessage?: string;
-}
+};
 
 /**
  * Calculate cost in USD cents based on model and tokens
@@ -146,13 +139,13 @@ export async function getUserDailySpending(userId: string): Promise<number> {
         totalCost: aiUsageLog.estimatedCost,
       })
       .from(aiUsageLog)
-      .where((fields) => {
-        return (
-          fields.userId === userId &&
-          fields.createdAt >= today &&
-          fields.status === "success"
-        );
-      });
+      .where(
+        and(
+          eq(aiUsageLog.userId, userId),
+          gte(aiUsageLog.createdAt, today),
+          eq(aiUsageLog.status, "success")
+        )
+      );
 
     const totalCents = result.reduce(
       (sum, row) => sum + (row.totalCost || 0),

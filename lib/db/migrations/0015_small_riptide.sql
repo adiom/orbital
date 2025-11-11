@@ -1,0 +1,1 @@
+ALTER TABLE "SferaMessage" ADD COLUMN "isGenerating" boolean DEFAULT false NOT NULL;

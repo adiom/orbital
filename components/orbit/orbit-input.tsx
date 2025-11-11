@@ -1,12 +1,19 @@
 "use client";
 
-import { ArrowUp, ImageIcon, Music, Sparkles, X } from "lucide-react";
+import {
+  ArrowUp,
+  ImageIcon,
+  Mic,
+  Music,
+  Sparkles,
+  Square,
+  X,
+} from "lucide-react";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { hasAvroraMention } from "@/lib/mentions/parser";
 import { cn } from "@/lib/utils";
 
 type ReplyingToMessage = {
@@ -34,7 +41,6 @@ type OrbitInputProps = {
   onCancelReply?: () => void;
   onCancelEdit?: () => void;
   onMessageSent?: () => void;
-  onAvroraThinking?: () => void;
 };
 
 export function OrbitInput({
@@ -44,16 +50,20 @@ export function OrbitInput({
   onCancelReply,
   onCancelEdit,
   onMessageSent,
-  onAvroraThinking,
 }: OrbitInputProps) {
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [hasTyped, setHasTyped] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (editingMessage) {
@@ -148,6 +158,138 @@ export function OrbitInput({
     }
   };
 
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported("audio/webm")
+          ? "audio/webm"
+          : "audio/mp4",
+      });
+
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunksRef.current, {
+          type: mediaRecorder.mimeType,
+        });
+        const file = new File(
+          [blob],
+          `voice-${Date.now()}.${mediaRecorder.mimeType.includes("webm") ? "webm" : "mp4"}`,
+          { type: mediaRecorder.mimeType }
+        );
+
+        // Upload the recorded audio
+        setIsUploading(true);
+        try {
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const response = await fetch("/api/files/upload", {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to upload audio");
+          }
+
+          const data = await response.json();
+
+          setAttachments((prev) => [
+            ...prev,
+            {
+              name: file.name,
+              url: data.url,
+              contentType: file.type,
+            },
+          ]);
+
+          if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+            navigator.vibrate(30);
+          }
+
+          toast.success("Voice message recorded");
+        } catch (error) {
+          console.error("Error uploading voice recording:", error);
+          toast.error("Failed to upload voice message");
+        } finally {
+          setIsUploading(false);
+        }
+
+        // Stop all tracks
+        for (const track of stream.getTracks()) {
+          track.stop();
+        }
+      };
+
+      mediaRecorder.start();
+      mediaRecorderRef.current = mediaRecorder;
+      setIsRecording(true);
+      setRecordingTime(0);
+
+      // Start timer
+      timerRef.current = setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
+
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        navigator.vibrate(50);
+      }
+    } catch (error) {
+      console.error("Error accessing microphone:", error);
+      toast.error("Failed to access microphone. Please check permissions.");
+    }
+  }, []);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        navigator.vibrate(50);
+      }
+    }
+  }, [isRecording]);
+
+  const handleVoiceClick = useCallback(() => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }, [isRecording, startRecording, stopRecording]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      if (mediaRecorderRef.current && isRecording) {
+        mediaRecorderRef.current.stop();
+      }
+    };
+  }, [isRecording]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -159,14 +301,9 @@ export function OrbitInput({
       navigator.vibrate(50);
     }
 
-    // Check if message mentions Avrora and trigger thinking indicator
-    const isEditing = Boolean(editingMessage);
-    if (!isEditing && hasAvroraMention(content)) {
-      onAvroraThinking?.();
-    }
-
     setIsSending(true);
     try {
+      const isEditing = Boolean(editingMessage);
       const endpoint = isEditing
         ? `/api/sfera/${orbitId}/messages/${editingMessage?.id}`
         : `/api/sfera/${orbitId}/messages`;
@@ -418,6 +555,39 @@ export function OrbitInput({
                 <ImageIcon className="h-4 w-4 text-gray-600" />
                 <span className="sr-only">Add photo</span>
               </Button>
+
+              <Button
+                className={cn(
+                  "h-9 w-9 rounded-full border-gray-300 bg-white transition-colors hover:border-blue-400 hover:bg-blue-50",
+                  isRecording && "border-red-400 bg-red-50"
+                )}
+                disabled={isSending || isUploading}
+                onClick={handleVoiceClick}
+                size="icon"
+                type="button"
+                variant="outline"
+              >
+                {isRecording ? (
+                  <>
+                    <Square className="h-4 w-4 fill-red-600 text-red-600" />
+                    <span className="sr-only">Stop recording</span>
+                  </>
+                ) : (
+                  <>
+                    <Mic className="h-4 w-4 text-gray-600" />
+                    <span className="sr-only">Record voice</span>
+                  </>
+                )}
+              </Button>
+
+              {isRecording && (
+                <div className="flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2.5 py-1">
+                  <div className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+                  <span className="font-mono text-red-600 text-xs">
+                    {formatTime(recordingTime)}
+                  </span>
+                </div>
+              )}
 
               <Button
                 className="h-9 rounded-full border border-gray-300 bg-white px-3 text-sm transition-colors hover:border-blue-400 hover:bg-blue-50"

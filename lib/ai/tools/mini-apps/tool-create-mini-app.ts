@@ -2,6 +2,8 @@ import { tool } from "ai";
 import { z } from "zod";
 import { generateUUID } from "@/lib/utils";
 
+const FIRST_CHAR_REGEX = /^./;
+
 // Enhanced schema for React app generation
 const miniAppInput = z.object({
   title: z.string().min(2).describe("Human readable title for the mini app"),
@@ -179,7 +181,7 @@ function generateReactCode(
 ): string {
   const componentName = title
     .replace(/[^a-zA-Z0-9]/g, "")
-    .replace(/^./, (str) => str.toUpperCase());
+    .replace(FIRST_CHAR_REGEX, (str) => str.toUpperCase());
   const featureComponents = features.map((f, i) =>
     generateFeatureComponent(f, i)
   );

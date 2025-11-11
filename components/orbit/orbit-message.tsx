@@ -158,7 +158,7 @@ export function OrbitMessage({
         isSelected && "scale-[1.01]"
       )}
     >
-      <div
+      <button
         className={cn(
           "relative cursor-pointer overflow-hidden rounded-3xl border-2 p-5 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
           isAvroraMessage
@@ -174,8 +174,7 @@ export function OrbitMessage({
             setIsSelected(!isSelected);
           }
         }}
-        role="button"
-        tabIndex={0}
+        type="button"
       >
         {message.isForked && (
           <div className="absolute top-0 right-0 rounded-tr-2xl rounded-bl-2xl bg-gradient-to-br from-blue-500 to-purple-500 px-3 py-1.5">
@@ -337,7 +336,7 @@ export function OrbitMessage({
             />
           </div>
         )}
-      </div>
+      </button>
 
       {isSelected && (
         <div className="mt-2 flex flex-wrap items-center gap-2 px-2 opacity-100 transition-all duration-200">

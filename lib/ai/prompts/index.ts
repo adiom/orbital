@@ -35,7 +35,7 @@ export function buildSystemPrompt(context: PromptContext): string {
   sections.push(corePersonality);
 
   // Add CEO greeting if applicable
-  if (context.userName && context.userName.includes("Тимур")) {
+  if (context.userName?.includes("Тимур")) {
     sections.push(ceoGreeting);
   }
 

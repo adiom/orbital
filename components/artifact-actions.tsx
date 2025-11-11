@@ -2,7 +2,7 @@ import { type Dispatch, memo, type SetStateAction, useState } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { artifactDefinitions, type UIArtifact } from "./artifact";
-import type { ArtifactActionContext } from "./create-artifact";
+import type { ArtifactAction } from "./create-artifact";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
@@ -35,7 +35,7 @@ function PureArtifactActions({
     throw new Error("Artifact definition not found!");
   }
 
-  const actionContext: ArtifactActionContext = {
+  const actionContext = {
     content: artifact.content,
     handleVersionChange,
     currentVersionIndex,
@@ -47,7 +47,7 @@ function PureArtifactActions({
 
   return (
     <div className="flex flex-row gap-1">
-      {artifactDefinition.actions.map((action) => (
+      {artifactDefinition.actions.map((action: ArtifactAction) => (
         <Tooltip key={action.description}>
           <TooltipTrigger asChild>
             <Button

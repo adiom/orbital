@@ -1,17 +1,17 @@
 import { getRedisClient } from "./client";
 
-export interface RateLimitConfig {
+export type RateLimitConfig = {
   maxRequests: number;
   windowMs: number; // Time window in milliseconds
   keyPrefix: string;
-}
+};
 
-export interface RateLimitResult {
+export type RateLimitResult = {
   allowed: boolean;
   remaining: number;
   resetAt: Date;
   error?: string;
-}
+};
 
 export const RATE_LIMITS = {
   // User-level limits
@@ -73,9 +73,7 @@ export async function checkRateLimit(
 
     if (requestCount >= config.maxRequests) {
       // Get oldest request timestamp to calculate reset time
-      const oldestRequest = await redis.zRange(key, 0, 0, {
-        WITHSCORES: true,
-      });
+      const oldestRequest = await redis.zRangeWithScores(key, 0, 0);
       const resetAt =
         oldestRequest.length > 0
           ? new Date(Number(oldestRequest[0].score) + config.windowMs)

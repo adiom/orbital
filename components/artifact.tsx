@@ -25,8 +25,6 @@ import type { Attachment, ChatMessage } from "@/lib/types";
 import { fetcher } from "@/lib/utils";
 import { ArtifactActions } from "./artifact-actions";
 import { ArtifactCloseButton } from "./artifact-close-button";
-import { ArtifactMessages } from "./artifact-messages";
-import { MultimodalInput } from "./multimodal-input";
 import { Toolbar } from "./toolbar";
 import { useSidebar } from "./ui/sidebar";
 import { VersionFooter } from "./version-footer";
@@ -59,20 +57,11 @@ export type UIArtifact = {
 };
 
 function PureArtifact({
-  chatId,
-  input,
-  setInput,
   status,
   stop,
-  attachments,
-  setAttachments,
   sendMessage,
-  messages,
+
   setMessages,
-  regenerate,
-  isReadonly,
-  selectedVisibilityType,
-  selectedModelId,
 }: {
   chatId: string;
   input: string;
@@ -321,36 +310,6 @@ function PureArtifact({
                   />
                 )}
               </AnimatePresence>
-
-              <div className="flex h-full flex-col items-center justify-between">
-                <ArtifactMessages
-                  artifactStatus={artifact.status}
-                  chatId={chatId}
-                  isReadonly={isReadonly}
-                  messages={messages}
-                  regenerate={regenerate}
-                  setMessages={setMessages}
-                  status={status}
-                />
-
-                <div className="relative flex w-full flex-row items-end gap-2 px-4 pb-4">
-                  <MultimodalInput
-                    attachments={attachments}
-                    chatId={chatId}
-                    className="bg-background dark:bg-muted"
-                    input={input}
-                    messages={messages}
-                    selectedModelId={selectedModelId}
-                    selectedVisibilityType={selectedVisibilityType}
-                    sendMessage={sendMessage}
-                    setAttachments={setAttachments}
-                    setInput={setInput}
-                    setMessages={setMessages}
-                    status={status}
-                    stop={stop}
-                  />
-                </div>
-              </div>
             </motion.div>
           )}
 

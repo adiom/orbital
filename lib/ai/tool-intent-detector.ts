@@ -268,7 +268,7 @@ function detectExplicitToolIntent(message: string): ToolIntent {
  * Detect when user asks for list of available tools
  */
 function detectListToolsIntent(message: string): ToolIntent {
-  const lowerMessage = message.toLowerCase();
+  const _lowerMessage = message.toLowerCase();
 
   for (const pattern of LIST_TOOLS_PATTERNS) {
     if (pattern.test(message)) {
