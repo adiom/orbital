@@ -1,20 +1,32 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
+import { type Message, useChat } from "@ai-sdk/react";
 import { ArrowUp, Loader2, Mic, Paperclip, Square, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ToolResultRenderer } from "./tool-result-renderer";
 
+const AVRORA_USER_ID = "00000000-0000-0000-0000-000000000001";
+
 type ChatbotInterfaceProps = {
   initialSferaId: string;
 };
 
+type SferaMessage = {
+  id: string;
+  content: string;
+  userId: string;
+  userEmail?: string;
+  attachments?: Array<{ name: string; url: string; contentType: string }>;
+  toolResults?: Array<{ toolName: string; [key: string]: any }>;
+  createdAt: string;
+};
+
 export function ChatbotInterface({ initialSferaId }: ChatbotInterfaceProps) {
-  const [sferaId, setSferaId] = useState<string>(initialSferaId);
+  const [sferaId] = useState<string>(initialSferaId);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [uploadedFiles, setUploadedFiles] = useState<
@@ -28,48 +40,130 @@ export function ChatbotInterface({ initialSferaId }: ChatbotInterfaceProps) {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const [initialMessages, setInitialMessages] = useState<Message[]>([]);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(true);
+  const [optimisticMessages, setOptimisticMessages] = useState<Message[]>([]);
 
-  const {
-    messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    isLoading,
-    error,
-    data,
-  } = useChat({
-    api: "/api/chatbot",
-    body: {
-      sferaId,
-    },
-    experimental_prepareRequestBody: ({ messages }) => {
-      return {
-        messages,
+  // Fetch existing messages from Sfera
+  const fetchMessages = useCallback(async () => {
+    try {
+      setIsLoadingMessages(true);
+      const response = await fetch(`/api/sfera/${sferaId}`);
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch messages");
+      }
+
+      const sferaData = await response.json();
+      const rawMessages: SferaMessage[] = sferaData.messages || [];
+
+      // Transform Sfera messages to AI SDK format
+      const transformedMessages: Message[] = rawMessages
+        .map((msg) => ({
+          id: msg.id,
+          role:
+            msg.userId === AVRORA_USER_ID
+              ? ("assistant" as const)
+              : ("user" as const),
+          content: msg.content,
+          // Convert toolResults to toolInvocations format
+          toolInvocations: msg.toolResults?.map((tool, index) => ({
+            toolCallId: `${msg.id}-${index}`,
+            toolName: tool.toolName,
+            state: "result" as const,
+            result: tool,
+          })),
+        }))
+        .reverse(); // Messages come in reverse order from API
+
+      setInitialMessages(transformedMessages);
+    } catch (err) {
+      console.error("Error fetching messages:", err);
+      toast.error("Failed to load message history");
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  }, [sferaId]);
+
+  // Load messages on mount
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchMessages();
+    return () => controller.abort();
+  }, [fetchMessages]);
+
+  const { messages, input, handleInputChange, handleSubmit, isLoading, error } =
+    useChat({
+      api: "/api/chatbot",
+      body: {
         sferaId,
-        data: {
-          attachments: uploadedFiles,
-        },
-      };
-    },
-    onResponse: (response) => {
-      console.log("Response received:", response);
-    },
-    onFinish: (message, { finishReason, usage }) => {
-      console.log("Finished:", { message, finishReason, usage });
+      },
+      initialMessages,
+      experimental_prepareRequestBody: ({ messages: chatMessages }) => {
+        return {
+          messages: chatMessages,
+          sferaId,
+          data: {
+            attachments: uploadedFiles,
+          },
+        };
+      },
+      onResponse: (response) => {
+        console.log("Response received:", response);
+      },
+      onFinish: (message, { finishReason, usage }) => {
+        console.log("Finished:", { message, finishReason, usage });
 
-      // Clear uploaded files after successful send
-      setUploadedFiles([]);
-    },
-    onError: (err) => {
-      console.error("Chat error:", err);
-      toast.error(err.message || "Failed to send message");
-    },
-  });
+        // Clear uploaded files after successful send
+        setUploadedFiles([]);
+        
+        // Удаляем оптимистичные сообщения, когда реальное сообщение пришло
+        setOptimisticMessages((prev) => {
+          // Удаляем самое старое оптимистичное сообщение
+          return prev.slice(1);
+        });
+      },
+      onError: (err) => {
+        console.error("Chat error:", err);
+        toast.error(err.message || "Failed to send message");
+        
+        // Удаляем оптимистичное сообщение при ошибке
+        setOptimisticMessages((prev) => {
+          // Удаляем самое старое оптимистичное сообщение
+          return prev.slice(1);
+        });
+      },
+    });
+
+  // Удаляем оптимистичные сообщения, когда реальные сообщения пользователя появляются
+  useEffect(() => {
+    if (optimisticMessages.length > 0 && messages.length > 0) {
+      // Проверяем, есть ли новое сообщение пользователя в messages
+      const lastUserMessage = messages
+        .filter((m) => m.role === "user")
+        .slice(-1)[0];
+      
+      if (lastUserMessage) {
+        // Удаляем самое старое оптимистичное сообщение
+        setOptimisticMessages((prev) => {
+          // Проверяем, не является ли последнее сообщение пользователя тем же, что и оптимистичное
+          const optimisticContent = prev[0]?.content || "";
+          const realContent = lastUserMessage.content || "";
+          
+          // Если содержимое совпадает или реальное сообщение появилось, удаляем оптимистичное
+          if (optimisticContent === realContent || realContent) {
+            return prev.slice(1);
+          }
+          return prev;
+        });
+      }
+    }
+  }, [messages, optimisticMessages]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  });
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -105,8 +199,8 @@ export function ChatbotInterface({ initialSferaId }: ChatbotInterfaceProps) {
       ]);
 
       toast.success("File uploaded");
-    } catch (error) {
-      console.error("Upload error:", error);
+    } catch (uploadError) {
+      console.error("Upload error:", uploadError);
       toast.error("Failed to upload file");
     } finally {
       setIsUploading(false);
@@ -162,8 +256,8 @@ export function ChatbotInterface({ initialSferaId }: ChatbotInterfaceProps) {
           ]);
 
           toast.success("Voice recording uploaded");
-        } catch (error) {
-          console.error("Upload error:", error);
+        } catch (recordingError) {
+          console.error("Upload error:", recordingError);
           toast.error("Failed to upload recording");
         } finally {
           setIsUploading(false);
@@ -178,8 +272,8 @@ export function ChatbotInterface({ initialSferaId }: ChatbotInterfaceProps) {
       mediaRecorder.start();
       setIsRecording(true);
       toast.success("Recording started");
-    } catch (error) {
-      console.error("Recording error:", error);
+    } catch (recordError) {
+      console.error("Recording error:", recordError);
       toast.error("Failed to start recording");
     }
   };
@@ -198,6 +292,15 @@ export function ChatbotInterface({ initialSferaId }: ChatbotInterfaceProps) {
       return;
     }
 
+    // Добавляем оптимистичное сообщение пользователя
+    const optimisticMessage: Message = {
+      id: `optimistic-${Date.now()}`,
+      role: "user",
+      content: input || "",
+    };
+
+    setOptimisticMessages((prev) => [...prev, optimisticMessage]);
+
     handleSubmit(e);
   };
 
@@ -213,7 +316,16 @@ export function ChatbotInterface({ initialSferaId }: ChatbotInterfaceProps) {
 
       {/* Messages */}
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
-        {messages.length === 0 && (
+        {isLoadingMessages && (
+          <div className="flex h-full items-center justify-center">
+            <div className="space-y-2 text-center">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="text-muted-foreground">Loading messages...</p>
+            </div>
+          </div>
+        )}
+
+        {!isLoadingMessages && messages.length === 0 && optimisticMessages.length === 0 && (
           <div className="flex h-full items-center justify-center">
             <div className="space-y-2 text-center">
               <h2 className="font-semibold text-2xl">
@@ -226,7 +338,7 @@ export function ChatbotInterface({ initialSferaId }: ChatbotInterfaceProps) {
           </div>
         )}
 
-        {messages.map((message) => (
+        {[...messages, ...optimisticMessages].map((message) => (
           <div
             className={`flex gap-3 ${
               message.role === "user" ? "justify-end" : "justify-start"
@@ -307,17 +419,17 @@ export function ChatbotInterface({ initialSferaId }: ChatbotInterfaceProps) {
       <form className="border-t p-4" onSubmit={onSubmit}>
         {uploadedFiles.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-2">
-            {uploadedFiles.map((file, index) => (
+            {uploadedFiles.map((file) => (
               <div
                 className="flex items-center gap-2 rounded-lg border bg-muted px-3 py-2"
-                key={index}
+                key={file.url}
               >
                 <span className="text-sm">{file.name}</span>
                 <button
                   className="text-muted-foreground hover:text-foreground"
                   onClick={() =>
                     setUploadedFiles((prev) =>
-                      prev.filter((_, i) => i !== index)
+                      prev.filter((f) => f.url !== file.url)
                     )
                   }
                   type="button"

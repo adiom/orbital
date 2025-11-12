@@ -4,16 +4,17 @@
 node_modules
 .pnp
 .pnp.js
-app/(area)/
+app/(chat)/
 # testing
 coverage
+
+app/(newchatbot)/
 
 # next.js
 .next/
 out/
 build
 
-app/(chat)/*
 
 # misc
 .DS_Store
