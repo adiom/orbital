@@ -4,11 +4,9 @@
 node_modules
 .pnp
 .pnp.js
-app/(chat)/
+
 # testing
 coverage
-
-app/(newchatbot)/
 
 # next.js
 .next/

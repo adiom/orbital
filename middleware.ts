@@ -67,7 +67,6 @@ export const config = {
     "/docs", // Добавлено
     "/api/docs", // Добавлено
     "/api/:path*",
-    "/newchatbot",
     "/login",
     "/register",
 
