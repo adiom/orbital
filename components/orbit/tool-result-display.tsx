@@ -196,6 +196,13 @@ export function ToolResultDisplay({
             className
           )}
           initial={{ opacity: 0, y: 20 }}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.stopPropagation();
+            }
+          }}
+          role="presentation"
           transition={{ duration: 0.3 }}
         >
           <div className="relative aspect-square w-full max-w-md">
@@ -209,7 +216,10 @@ export function ToolResultDisplay({
             {/* Zoom button overlay */}
             <button
               className="absolute top-2 right-2 rounded-full bg-black/50 p-2 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100"
-              onClick={() => setIsImageZoomed(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsImageZoomed(true);
+              }}
               title="Zoom image"
               type="button"
             >

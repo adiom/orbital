@@ -253,7 +253,7 @@ ${triggerMessage.content}`,
     await db
       .update(sferaMessage)
       .set({
-        content: resolvedText.trim(),
+        content: resolvedText?.trim() || "",
         toolResults: toolResults.length > 0 ? (toolResults as any) : undefined,
         isGenerating: false,
       })

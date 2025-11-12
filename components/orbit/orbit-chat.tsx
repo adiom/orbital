@@ -36,6 +36,7 @@ type Message = {
   isForked: boolean;
   forkedSferaId: string | null;
   isGenerating?: boolean;
+  isPending?: boolean;
   createdAt: Date;
 };
 
@@ -338,9 +339,24 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     return () => clearTimeout(timer);
   });
 
-  const handleMessageSent = () => {
+  const handleMessageSent = (
+    userMessage?: Message,
+    agentMessages?: Message[]
+  ) => {
+    // Add user message optimistically if provided
+    if (userMessage) {
+      setMessages((prev) => [...prev, userMessage]);
+    }
+
+    // Add agent messages optimistically if provided
+    if (agentMessages && agentMessages.length > 0) {
+      setMessages((prev) => [...prev, ...agentMessages]);
+    }
+
     setReplyingTo(null);
     setEditingMessage(null);
+
+    // Fetch orbit in background to sync with server
     fetchOrbit();
 
     // Scroll to bottom immediately after sending

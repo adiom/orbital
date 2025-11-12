@@ -36,6 +36,8 @@ type OrbitMessageProps = {
     }>;
     isForked: boolean;
     forkedSferaId: string | null;
+    isGenerating?: boolean;
+    isPending?: boolean;
     createdAt: Date;
   };
   parentMessage?: {
@@ -158,7 +160,7 @@ export function OrbitMessage({
         isSelected && "scale-[1.01]"
       )}
     >
-      <button
+      <div
         className={cn(
           "relative cursor-pointer overflow-hidden rounded-3xl border-2 p-5 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
           isAvroraMessage
@@ -174,7 +176,8 @@ export function OrbitMessage({
             setIsSelected(!isSelected);
           }
         }}
-        type="button"
+        role="button"
+        tabIndex={0}
       >
         {message.isForked && (
           <div className="absolute top-0 right-0 rounded-tr-2xl rounded-bl-2xl bg-gradient-to-br from-blue-500 to-purple-500 px-3 py-1.5">
@@ -202,7 +205,7 @@ export function OrbitMessage({
               {message.userEmail}
             </span>
             <span className="mx-1">•</span>
-            <span className="text-gray-500">
+            <span className="text-gray-500" suppressHydrationWarning>
               {new Date(message.createdAt).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
@@ -216,7 +219,7 @@ export function OrbitMessage({
             <div className="mb-1.5 flex items-center gap-1.5">
               <CornerDownRight className="h-3.5 w-3.5 text-blue-500" />
               <span className="font-semibold text-blue-700 text-xs">
-                Replying to {parentMessage.userEmail}
+                Replying1 to {parentMessage.userEmail}
               </span>
             </div>
             <div className="line-clamp-2 text-gray-700 text-sm">
@@ -232,26 +235,42 @@ export function OrbitMessage({
           )}
           ref={contentRef}
         >
-          {textSegments.map((segment, index) =>
-            segment.isMention && segment.mention?.type === "avrora" ? (
-              <span
-                className="rounded-lg bg-gradient-to-r from-blue-200 to-purple-200 px-2 py-0.5 font-semibold text-blue-800"
-                key={`mention-${index}-${segment.text.slice(0, 10)}`}
-              >
-                {segment.text}
-              </span>
-            ) : (
-              <span key={`text-${index}-${segment.text.slice(0, 10)}`}>
-                {segment.text}
-              </span>
-            )
+          {message.isGenerating && message.content === "" ? (
+            <div className="flex items-center gap-2 text-gray-500">
+              <div className="flex gap-1">
+                <div className="h-2 w-2 animate-bounce rounded-full bg-blue-400 [animation-delay:-0.3s]" />
+                <div className="h-2 w-2 animate-bounce rounded-full bg-purple-400 [animation-delay:-0.15s]" />
+                <div className="h-2 w-2 animate-bounce rounded-full bg-pink-400" />
+              </div>
+              <span className="text-sm italic">Печатает...</span>
+            </div>
+          ) : (
+            <>
+              {textSegments.map((segment, index) =>
+                segment.isMention && segment.mention?.type === "avrora" ? (
+                  <span
+                    className="rounded-lg bg-gradient-to-r from-blue-200 to-purple-200 px-2 py-0.5 font-semibold text-blue-800"
+                    key={`mention-${index}-${segment.text.slice(0, 10)}`}
+                  >
+                    {segment.text}
+                  </span>
+                ) : (
+                  <span key={`text-${index}-${segment.text.slice(0, 10)}`}>
+                    {segment.text}
+                  </span>
+                )
+              )}
+            </>
           )}
 
           {isOverflowing && !isExpanded && (
             <div className="absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-white via-white/95 to-transparent pb-2">
               <button
                 className="rounded-full bg-blue-500 px-4 py-1.5 font-medium text-white text-xs shadow-md transition-all hover:bg-blue-600 hover:shadow-lg"
-                onClick={() => setIsExpanded(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(true);
+                }}
                 type="button"
               >
                 Show more
@@ -263,7 +282,10 @@ export function OrbitMessage({
         {isExpanded && isOverflowing && (
           <button
             className="mt-2 rounded-full bg-gray-200 px-4 py-1.5 font-medium text-gray-700 text-xs transition-all hover:bg-gray-300"
-            onClick={() => setIsExpanded(false)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(false);
+            }}
             type="button"
           >
             Show less
@@ -311,7 +333,10 @@ export function OrbitMessage({
                 <button
                   className="relative h-56 w-full max-w-sm cursor-pointer overflow-hidden rounded-2xl border-2 border-gray-200 bg-muted shadow-md transition-all hover:scale-[1.02] hover:shadow-xl"
                   key={`attachment-${attachment.url}-${index}`}
-                  onClick={() => window.open(attachment.url, "_blank")}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(attachment.url, "_blank");
+                  }}
                   type="button"
                 >
                   <Image
@@ -336,7 +361,7 @@ export function OrbitMessage({
             />
           </div>
         )}
-      </button>
+      </div>
 
       {isSelected && (
         <div className="mt-2 flex flex-wrap items-center gap-2 px-2 opacity-100 transition-all duration-200">

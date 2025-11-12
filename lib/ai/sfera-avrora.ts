@@ -378,7 +378,7 @@ export async function generateAvroraResponse(
     await db.insert(sferaMessage).values({
       sferaId,
       userId: AVRORA_USER_ID,
-      content: resolvedText.trim(),
+      content: resolvedText?.trim() || "",
       parentMessageId: triggerMessageId,
       isForked: false,
       forkCount: 0,
@@ -402,7 +402,7 @@ export async function generateAvroraResponse(
       userId: requestingUserId,
       sferaId,
       messageId: triggerMessageId,
-      modelUsed: "gpt-5-nano",
+      modelUsed: "gpt-5-mini",
       provider: "openai",
       inputTokens: 0,
       outputTokens: 0,

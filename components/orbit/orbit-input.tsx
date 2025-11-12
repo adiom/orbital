@@ -16,6 +16,24 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
+// Client-side agent info (no server dependencies)
+const CLIENT_AGENTS = {
+  avrora: {
+    id: "avrora",
+    userId: "00000000-0000-0000-0000-000000000001",
+    email: "avrora@avrora.click",
+  },
+  kristina: {
+    id: "kristina",
+    userId: "00000000-0000-0000-0000-000000000002",
+    email: "kristina@avrora.click",
+  },
+} as const;
+
+const getClientAgentById = (agentId: string) => {
+  return CLIENT_AGENTS[agentId as keyof typeof CLIENT_AGENTS];
+};
+
 type ReplyingToMessage = {
   id: string;
   content: string;
@@ -34,13 +52,28 @@ type EditingMessage = {
   attachments?: Attachment[];
 };
 
+type Message = {
+  id: string;
+  content: string;
+  userId: string;
+  userEmail: string;
+  parentMessageId: string | null;
+  attachments?: Attachment[];
+  toolResults?: Record<string, unknown>[];
+  isForked: boolean;
+  forkedSferaId: string | null;
+  isGenerating?: boolean;
+  isPending?: boolean;
+  createdAt: Date;
+};
+
 type OrbitInputProps = {
   orbitId: string;
   replyingTo?: ReplyingToMessage | null;
   editingMessage?: EditingMessage | null;
   onCancelReply?: () => void;
   onCancelEdit?: () => void;
-  onMessageSent?: () => void;
+  onMessageSent?: (userMessage?: Message, agentMessages?: Message[]) => void;
 };
 
 export function OrbitInput({
@@ -329,6 +362,9 @@ export function OrbitInput({
         throw new Error("Failed to send message");
       }
 
+      const data = await response.json();
+
+      // Clear form
       setContent("");
       setHasTyped(false);
       setAttachments([]);
@@ -337,7 +373,49 @@ export function OrbitInput({
         textareaRef.current.style.height = "48px";
       }
 
-      onMessageSent?.();
+      // Create optimistic messages for AI agents
+      if (!isEditing && data.agentMessages && data.agentMessages.length > 0) {
+        const optimisticAgentMessages: Message[] = data.agentMessages
+          .map((am: { agentId: string; messageId: string }): Message | null => {
+            const agent = getClientAgentById(am.agentId);
+            if (!agent) {
+              return null;
+            }
+
+            return {
+              id: am.messageId,
+              content: "",
+              userId: agent.userId,
+              userEmail: agent.email,
+              parentMessageId: data.message.id,
+              isForked: false,
+              forkedSferaId: null,
+              isGenerating: true,
+              isPending: true,
+              createdAt: new Date(),
+            };
+          })
+          .filter((msg: Message | null): msg is Message => msg !== null);
+
+        // Create optimistic user message
+        const optimisticUserMessage: Message = {
+          id: data.message.id,
+          content: data.message.content,
+          userId: data.message.userId,
+          userEmail: data.message.userEmail,
+          parentMessageId: data.message.parentMessageId,
+          attachments: data.message.attachments,
+          isForked: false,
+          forkedSferaId: null,
+          createdAt: new Date(data.message.createdAt),
+        };
+
+        // Pass optimistic messages to parent
+        onMessageSent?.(optimisticUserMessage, optimisticAgentMessages);
+      } else {
+        onMessageSent?.();
+      }
+
       if (editingMessage) {
         onCancelEdit?.();
       }
