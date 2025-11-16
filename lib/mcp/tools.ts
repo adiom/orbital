@@ -241,7 +241,11 @@ export async function invokeAvrora(
         .returning();
 
       // Generate Avrora's response
-      const response = await generateAvroraResponse(triggerMessage, sferaId);
+      const response = await generateAvroraResponse(
+        sferaId,
+        triggerMessage.id,
+        userId
+      );
 
       return {
         success: true,
@@ -253,7 +257,11 @@ export async function invokeAvrora(
     }
 
     // Generate response for existing conversation
-    const response = await generateAvroraResponse(lastMessage, sferaId);
+    const response = await generateAvroraResponse(
+      sferaId,
+      lastMessage.id,
+      userId
+    );
 
     return {
       success: true,

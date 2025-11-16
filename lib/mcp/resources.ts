@@ -1,4 +1,4 @@
-import { and, desc, eq, or } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import type { ApiKey, User } from "@/lib/db/schema";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
@@ -183,7 +183,7 @@ export async function searchSferas(
         id: sfera.id,
         title: sfera.title,
         description: sfera.description,
-        type: db.sql<string>`'sfera'`,
+        type: sql<string>`'sfera'`,
       })
       .from(sfera)
       .innerJoin(sferaMember, eq(sferaMember.sferaId, sfera.id))
@@ -191,8 +191,8 @@ export async function searchSferas(
         and(
           eq(sferaMember.userId, userId),
           or(
-            db.sql`${sfera.title} ILIKE ${`%${query}%`}`,
-            db.sql`${sfera.description} ILIKE ${`%${query}%`}`
+            sql`${sfera.title} ILIKE ${`%${query}%`}`,
+            sql`${sfera.description} ILIKE ${`%${query}%`}`
           )
         )
       )
@@ -205,7 +205,7 @@ export async function searchSferas(
         content: sferaMessage.content,
         sferaId: sferaMessage.sferaId,
         sferaTitle: sfera.title,
-        type: db.sql<string>`'message'`,
+        type: sql<string>`'message'`,
       })
       .from(sferaMessage)
       .innerJoin(sfera, eq(sferaMessage.sferaId, sfera.id))
@@ -213,7 +213,7 @@ export async function searchSferas(
       .where(
         and(
           eq(sferaMember.userId, userId),
-          db.sql`${sferaMessage.content} ILIKE ${`%${query}%`}`
+          sql`${sferaMessage.content} ILIKE ${`%${query}%`}`
         )
       )
       .limit(30);
