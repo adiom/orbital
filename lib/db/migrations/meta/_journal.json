@@ -113,6 +113,13 @@
       "when": 1762875218111,
       "tag": "0015_small_riptide",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1762984942775,
+      "tag": "0016_material_ultimates",
+      "breakpoints": true
     }
   ]
 }

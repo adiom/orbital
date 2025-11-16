@@ -1,8 +1,8 @@
 "use client";
 
 import {
+  Code2,
   Copy,
-  CornerDownRight,
   GitBranch,
   LogIn,
   Music,
@@ -15,8 +15,13 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  AVRORA_USER_ID,
+  CLAUDE_CODE_USER_ID,
+} from "@/lib/constants/system-users";
 import { segmentTextWithMentions } from "@/lib/mentions/parser";
 import { cn } from "@/lib/utils";
+import { ParentIndicators } from "./parent-message-indicators";
 import { ToolResultsList } from "./tool-result-display";
 
 type OrbitMessageProps = {
@@ -54,6 +59,7 @@ type OrbitMessageProps = {
   onReply?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  indicatorVariant?: 1 | 2 | 3 | 4 | 5; // Для тестирования разных вариантов
 };
 
 export function OrbitMessage({
@@ -66,6 +72,7 @@ export function OrbitMessage({
   onReply,
   onEdit,
   onDelete,
+  indicatorVariant = 1, // По умолчанию вариант 1
 }: OrbitMessageProps) {
   const router = useRouter();
   const [isForking, setIsForking] = useState(false);
@@ -148,26 +155,37 @@ export function OrbitMessage({
   };
 
   const isAvroraMessage =
-    message.userId === "00000000-0000-0000-0000-000000000001" ||
+    message.userId === AVRORA_USER_ID ||
     message.userEmail === "avrora@avrora.click";
+
+  const isClaudeCodeMessage =
+    message.userId === CLAUDE_CODE_USER_ID ||
+    message.userEmail === "claude-code@avrora.click";
 
   const textSegments = segmentTextWithMentions(message.content);
 
-  return (
-    <article
-      className={cn(
-        "group relative mb-2 transition-all duration-300",
-        isSelected && "scale-[1.01]"
-      )}
-    >
+  // Выбираем компонент индикатора
+  const IndicatorComponent = parentMessage
+    ? {
+        1: ParentIndicators.Variant1,
+        2: ParentIndicators.Variant2,
+        3: ParentIndicators.Variant3,
+        4: ParentIndicators.Variant4,
+        5: ParentIndicators.Variant5,
+      }[indicatorVariant]
+    : null;
+
+  const messageContent = (
+    <article className="group relative mb-2">
       <div
         className={cn(
-          "relative cursor-pointer overflow-hidden rounded-3xl border-2 p-5 shadow-sm transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+          "relative cursor-pointer overflow-hidden rounded-3xl border-2 p-5 shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2",
           isAvroraMessage
-            ? "border-blue-200 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 shadow-blue-100"
-            : "border-gray-200 bg-white",
-          isSelected && "shadow-lg",
-          isAvroraMessage && isSelected && "shadow-blue-200"
+            ? "border-gray-300 bg-gray-50"
+            : isClaudeCodeMessage
+              ? "border-gray-300 bg-gray-50"
+              : "border-gray-200 bg-white",
+          isSelected && "shadow-md"
         )}
         onClick={() => setIsSelected(!isSelected)}
         onKeyDown={(e) => {
@@ -180,7 +198,7 @@ export function OrbitMessage({
         tabIndex={0}
       >
         {message.isForked && (
-          <div className="absolute top-0 right-0 rounded-tr-2xl rounded-bl-2xl bg-gradient-to-br from-blue-500 to-purple-500 px-3 py-1.5">
+          <div className="absolute top-0 right-0 rounded-tr-2xl rounded-bl-2xl bg-gray-700 px-3 py-1.5">
             <div className="flex items-center gap-1.5 text-white text-xs">
               <GitBranch className="h-3 w-3" />
               <span className="font-semibold">Forked</span>
@@ -191,15 +209,23 @@ export function OrbitMessage({
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-gray-500 text-xs">
             {isAvroraMessage && (
-              <div className="flex items-center gap-1 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 px-2.5 py-1">
+              <div className="flex items-center gap-1 rounded-full bg-gray-700 px-2.5 py-1">
                 <Sparkles className="h-3 w-3 text-white" />
                 <span className="font-semibold text-white">Avrora AI</span>
+              </div>
+            )}
+            {isClaudeCodeMessage && (
+              <div className="flex items-center gap-1 rounded-full bg-gray-700 px-2.5 py-1">
+                <Code2 className="h-3 w-3 text-white" />
+                <span className="font-semibold text-white">Claude Code</span>
               </div>
             )}
             <span
               className={cn(
                 "font-medium",
-                isAvroraMessage ? "text-blue-700" : "text-gray-700"
+                isAvroraMessage || isClaudeCodeMessage
+                  ? "text-gray-700"
+                  : "text-gray-700"
               )}
             >
               {message.userEmail}
@@ -214,23 +240,9 @@ export function OrbitMessage({
           </div>
         </div>
 
-        {parentMessage && (
-          <div className="mb-3 overflow-hidden rounded-2xl border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-purple-50 p-3 shadow-sm">
-            <div className="mb-1.5 flex items-center gap-1.5">
-              <CornerDownRight className="h-3.5 w-3.5 text-blue-500" />
-              <span className="font-semibold text-blue-700 text-xs">
-                Replying1 to {parentMessage.userEmail}
-              </span>
-            </div>
-            <div className="line-clamp-2 text-gray-700 text-sm">
-              {parentMessage.content}
-            </div>
-          </div>
-        )}
-
         <div
           className={cn(
-            "relative whitespace-pre-wrap text-[15px] text-gray-900 leading-relaxed transition-all duration-300",
+            "relative whitespace-pre-wrap text-[15px] text-gray-900 leading-relaxed",
             isOverflowing && !isExpanded && "max-h-[100px] overflow-hidden"
           )}
           ref={contentRef}
@@ -238,9 +250,9 @@ export function OrbitMessage({
           {message.isGenerating && message.content === "" ? (
             <div className="flex items-center gap-2 text-gray-500">
               <div className="flex gap-1">
-                <div className="h-2 w-2 animate-bounce rounded-full bg-blue-400 [animation-delay:-0.3s]" />
-                <div className="h-2 w-2 animate-bounce rounded-full bg-purple-400 [animation-delay:-0.15s]" />
-                <div className="h-2 w-2 animate-bounce rounded-full bg-pink-400" />
+                <div className="h-2 w-2 rounded-full bg-gray-400" />
+                <div className="h-2 w-2 rounded-full bg-gray-400" />
+                <div className="h-2 w-2 rounded-full bg-gray-400" />
               </div>
               <span className="text-sm italic">Печатает...</span>
             </div>
@@ -249,7 +261,7 @@ export function OrbitMessage({
               {textSegments.map((segment, index) =>
                 segment.isMention && segment.mention?.type === "avrora" ? (
                   <span
-                    className="rounded-lg bg-gradient-to-r from-blue-200 to-purple-200 px-2 py-0.5 font-semibold text-blue-800"
+                    className="rounded-lg bg-gray-200 px-2 py-0.5 font-semibold text-gray-800"
                     key={`mention-${index}-${segment.text.slice(0, 10)}`}
                   >
                     {segment.text}
@@ -264,9 +276,9 @@ export function OrbitMessage({
           )}
 
           {isOverflowing && !isExpanded && (
-            <div className="absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-white via-white/95 to-transparent pb-2">
+            <div className="absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-white to-transparent pb-2">
               <button
-                className="rounded-full bg-blue-500 px-4 py-1.5 font-medium text-white text-xs shadow-md transition-all hover:bg-blue-600 hover:shadow-lg"
+                className="rounded-full bg-gray-500 px-4 py-1.5 font-medium text-white text-xs shadow-md"
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsExpanded(true);
@@ -281,7 +293,7 @@ export function OrbitMessage({
 
         {isExpanded && isOverflowing && (
           <button
-            className="mt-2 rounded-full bg-gray-200 px-4 py-1.5 font-medium text-gray-700 text-xs transition-all hover:bg-gray-300"
+            className="mt-2 rounded-full bg-gray-200 px-4 py-1.5 font-medium text-gray-700 text-xs"
             onClick={(e) => {
               e.stopPropagation();
               setIsExpanded(false);
@@ -300,12 +312,12 @@ export function OrbitMessage({
               if (isAudio) {
                 return (
                   <div
-                    className="group relative overflow-hidden rounded-2xl border-2 border-gray-200 bg-gradient-to-br from-purple-50 to-blue-50 p-4 shadow-md transition-all hover:shadow-xl"
+                    className="group relative overflow-hidden rounded-2xl border-2 border-gray-200 bg-gray-50 p-4 shadow-md"
                     key={`attachment-${attachment.url}-${index}`}
                   >
                     <div className="mb-3 flex items-center gap-3">
-                      <div className="flex size-12 flex-shrink-0 items-center justify-center rounded-xl bg-purple-100">
-                        <Music className="h-6 w-6 text-purple-600" />
+                      <div className="flex size-12 flex-shrink-0 items-center justify-center rounded-xl bg-gray-200">
+                        <Music className="h-6 w-6 text-gray-600" />
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="truncate font-semibold text-gray-900 text-sm">
@@ -331,7 +343,7 @@ export function OrbitMessage({
 
               return (
                 <button
-                  className="relative h-56 w-full max-w-sm cursor-pointer overflow-hidden rounded-2xl border-2 border-gray-200 bg-muted shadow-md transition-all hover:scale-[1.02] hover:shadow-xl"
+                  className="relative h-56 w-full max-w-sm cursor-pointer overflow-hidden rounded-2xl border-2 border-gray-200 bg-muted shadow-md"
                   key={`attachment-${attachment.url}-${index}`}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -364,9 +376,9 @@ export function OrbitMessage({
       </div>
 
       {isSelected && (
-        <div className="mt-2 flex flex-wrap items-center gap-2 px-2 opacity-100 transition-all duration-200">
+        <div className="mt-2 flex flex-wrap items-center gap-2 px-2 opacity-100">
           <button
-            className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-gray-600 transition-all hover:bg-gray-200 hover:text-gray-800"
+            className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-gray-600"
             onClick={handleCopy}
             title="Copy message"
             type="button"
@@ -376,7 +388,7 @@ export function OrbitMessage({
           </button>
 
           <button
-            className="flex items-center gap-1.5 rounded-full bg-blue-100 px-3 py-1.5 text-blue-600 transition-all hover:bg-blue-200 hover:text-blue-800"
+            className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-gray-600"
             onClick={onReply}
             title="Reply to this message"
             type="button"
@@ -388,7 +400,7 @@ export function OrbitMessage({
           {message.isForked ? (
             message.forkedSferaId ? (
               <button
-                className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 px-3 py-1.5 text-white shadow-md transition-all hover:shadow-lg"
+                className="flex items-center gap-1.5 rounded-full bg-gray-700 px-3 py-1.5 text-white shadow-md"
                 onClick={handleEnterFork}
                 title="Enter forked Orbit"
                 type="button"
@@ -399,7 +411,7 @@ export function OrbitMessage({
             ) : null
           ) : (
             <button
-              className="flex items-center gap-1.5 rounded-full bg-purple-100 px-3 py-1.5 text-purple-600 transition-all hover:bg-purple-200 hover:text-purple-800 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-gray-600 disabled:opacity-50"
               disabled={isForking}
               onClick={handleFork}
               title="Fork this message into a new Orbit"
@@ -414,7 +426,7 @@ export function OrbitMessage({
 
           {canEdit && (
             <button
-              className="flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1.5 text-amber-600 transition-all hover:bg-amber-200 hover:text-amber-800"
+              className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-gray-600"
               onClick={onEdit}
               title="Edit message"
               type="button"
@@ -426,7 +438,7 @@ export function OrbitMessage({
 
           {canDelete && (
             <button
-              className="flex items-center gap-1.5 rounded-full bg-red-100 px-3 py-1.5 text-red-600 transition-all hover:bg-red-200 hover:text-red-800 disabled:opacity-50"
+              className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-gray-600 disabled:opacity-50"
               disabled={deleteDisabled}
               onClick={onDelete}
               title={
@@ -444,4 +456,20 @@ export function OrbitMessage({
       )}
     </article>
   );
+
+  // Оборачиваем в индикатор если есть parentMessage
+  if (IndicatorComponent && parentMessage) {
+    return (
+      <IndicatorComponent
+        parentMessage={{
+          userEmail: parentMessage.userEmail,
+          content: parentMessage.content,
+        }}
+      >
+        {messageContent}
+      </IndicatorComponent>
+    );
+  }
+
+  return messageContent;
 }

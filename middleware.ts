@@ -18,6 +18,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Разрешить доступ к MCP API (используется API key аутентификация)
+  if (pathname.startsWith("/api/mcp")) {
+    return NextResponse.next();
+  }
+
   if (pathname.startsWith("/api/auth")) {
     // NextResponse.next() создает объект ответа, который пропускает запрос дальше по пайплайну Middleware или к конечной точке обработчика,
     // то есть не выполняет никаких изменений или редиректов. По сути это "пропуск" запроса дальше без вмешательства.

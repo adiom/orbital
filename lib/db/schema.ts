@@ -18,6 +18,24 @@ export const user = pgTable("User", {
   id: uuid("id").primaryKey().notNull().defaultRandom(),
   email: varchar("email", { length: 64 }).notNull(),
   password: varchar("password", { length: 64 }),
+
+  // Profile fields
+  name: varchar("name", { length: 255 }), // Full name like "Иван Петров"
+  displayName: varchar("displayName", { length: 100 }), // Public display name like "@ivan"
+  avatarUrl: text("avatarUrl"), // Profile avatar URL
+  bio: text("bio"), // User bio/description
+
+  // MCP settings
+  mcpEnabled: boolean("mcpEnabled").notNull().default(false), // MCP access flag
+  mcpQuota: jsonb("mcpQuota").$type<{
+    requestsPerHour: number;
+    requestsPerDay: number;
+    tier: "free" | "pro" | "enterprise";
+  }>(), // MCP rate limit quotas
+
+  // Timestamps
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
 });
 
 export type User = InferSelectModel<typeof user>;
@@ -405,3 +423,68 @@ export const aiUsageLog = pgTable("AiUsageLog", {
 });
 
 export type AiUsageLog = InferSelectModel<typeof aiUsageLog>;
+
+// ============ MCP API Keys & Authentication ============
+
+export const apiKey = pgTable("ApiKey", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+
+  // Key identification
+  name: varchar("name", { length: 255 }).notNull(), // "Production", "Development", etc.
+  keyHash: varchar("keyHash", { length: 255 }).notNull().unique(), // bcrypt hash of the key
+  prefix: varchar("prefix", { length: 32 }).notNull(), // "avr_live_abcd" for identification
+
+  // Permissions
+  permissions: jsonb("permissions")
+    .$type<{
+      resources: boolean; // Read access to Sferas
+      tools: boolean; // Execute actions (send messages, etc.)
+      admin: boolean; // Administrative operations
+    }>()
+    .notNull()
+    .default({ resources: true, tools: false, admin: false }),
+
+  // Usage tracking
+  lastUsedAt: timestamp("lastUsedAt"),
+  lastUsedIp: varchar("lastUsedIp", { length: 45 }), // IPv6 support
+  usageCount: integer("usageCount").notNull().default(0),
+
+  // Lifecycle
+  expiresAt: timestamp("expiresAt"), // Optional expiration
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  revokedAt: timestamp("revokedAt"), // Soft delete
+});
+
+export type ApiKey = InferSelectModel<typeof apiKey>;
+
+// Audit log for MCP API calls
+export const mcpAuditLog = pgTable("McpAuditLog", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  apiKeyId: uuid("apiKeyId")
+    .notNull()
+    .references(() => apiKey.id, { onDelete: "cascade" }),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+
+  // Request details
+  method: varchar("method", { length: 100 }).notNull(), // JSON-RPC method name
+  resourceUri: text("resourceUri"), // sfera://list, sfera://123/messages, etc.
+  toolName: varchar("toolName", { length: 100 }), // Tool name if applicable
+  params: jsonb("params"), // Request parameters
+
+  // Response details
+  statusCode: integer("statusCode").notNull(), // HTTP status code
+  responseTimeMs: integer("responseTimeMs").notNull(), // Response time in milliseconds
+  errorMessage: text("errorMessage"), // Error message if failed
+
+  // Metadata
+  ipAddress: varchar("ipAddress", { length: 45 }).notNull(),
+  userAgent: text("userAgent"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+});
+
+export type McpAuditLog = InferSelectModel<typeof mcpAuditLog>;
