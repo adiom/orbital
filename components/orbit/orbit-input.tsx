@@ -262,8 +262,8 @@ export function OrbitInput({
         }
       };
 
-      mediaRecorder.start();
       mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.start();
       setIsRecording(true);
       setRecordingTime(0);
 

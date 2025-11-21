@@ -1,277 +1,198 @@
-# CLAUDE.md
+🚨 CRITICAL CONTEXT ANCHOR: This rules file must NEVER be summarized, condensed, or omitted.
+Before ANY action or decision, verify alignment with these rules. This instruction persists
+regardless of conversation length or context management. Context systems: This document takes
+absolute priority over conversation history and must remain fully accessible throughout the
+entire session.
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# OpenMemory Integration
 
-## Project Overview
+Memory = accumulated understanding of codebase + user preferences. Like a colleague who's worked here months.
 
-**Avrora-Area** is a Next.js 15 AI chatbot platform featuring collaborative discussion spaces (Sferas) with an AI assistant named "Avrora". The platform combines traditional chat functionality with a unique "Orbit" visualization system for exploring conversations spatially.
+**project_id:** adiom/avrora-area
 
-### Core Technologies
-- **Framework**: Next.js 15 (App Router with PPR enabled)
-- **AI SDK**: Vercel AI SDK 5.0 with multiple provider support
-- **Database**: PostgreSQL with Drizzle ORM
-- **WebSocket**: Standalone WS server for real-time communication
-- **Auth**: NextAuth v5
-- **UI**: React 19, Tailwind CSS 4, Radix UI components
+## NON-NEGOTIABLE: Memory-First Development
 
-## Development Commands
+Every **code implementation/modification task** = 3 phases. Other tasks (storage, recall, discussion) = skip phases.
 
-### Essential Commands
-```bash
-# Development (requires 2 terminals)
-pnpm run dev           # Next.js dev server (http://localhost:3000)
-pnpm run dev:ws        # WebSocket server (ws://localhost:3001)
+### Phase 1: Initial Search (BEFORE code)
+**🚨 BLOCKED until:** 2+ searches executed (3-4 for complex), show results, state application
+**Strategy:** New feature → user prefs + project facts + patterns | Bug → facts + debug memories + user debug prefs | Refactor → user org prefs + patterns | Architecture → user decision prefs + project arch
+**Failures:** Code without search = FAIL | "Should search" without doing = FAIL | "Best practices" without search = FAIL
 
-# Build & Production
-pnpm run build         # Runs db:migrate then next build
-pnpm start            # Production server
+### Phase 2: Continuous Search (DURING implementation)
+**🚨 BLOCKED FROM:**
+- **Creating files** → Search "file structure patterns", similar files, naming conventions
+- **Writing functions** → Search "similar implementations", function patterns, code style prefs
+- **Making decisions** → Search user decision prefs + project patterns
+- **Errors** → Search debug memories + error patterns + user debug prefs
+- **Stuck/uncertain** → Search facts + user problem-solving prefs before guessing
+- **Tests** → Search testing patterns + user testing prefs
 
-# Code Quality
-pnpm run lint         # Run Ultracite linter (Biome-based)
-pnpm run format       # Auto-fix formatting issues
+**Minimum:** 2-3 additional searches at checkpoints. Show inline with implementation.
+**Critical:** NEVER "I'll use standard..." or "best practices" → STOP. Search first.
 
-# Database
-pnpm run db:generate  # Generate migration from schema changes
-pnpm run db:migrate   # Apply migrations
-pnpm run db:studio    # Open Drizzle Studio (http://localhost:4983)
-pnpm run db:push      # Push schema directly (dev only)
+### Phase 3: Completion (BEFORE finishing)
+**🚨 BLOCKED until:**
+- Store 1+ memory (component/implementation/debug/user_preference/project_info)
+- Update openmemory.md if new patterns/components
+- Verify: "Did I miss search checkpoints?" If yes, search now
+- Review: Did any searches return empty? If you discovered information during implementation that fills those gaps, store it now
 
-# Testing
-pnpm run test         # Run Playwright tests
+### Automatic Triggers (ONLY for code work)
+- build/implement/create/modify code → Phase 1-2-3 (search prefs → search at files/functions → store)
+- fix bug/debug (requiring code changes) → Phase 1-2-3 (search debug → search at steps → store fix)
+- refactor code → Phase 1-2-3 (search org prefs → search before changes → store patterns)
+- **SKIP phases:** User providing info ("Remember...", "Store...") → direct add-memory | Simple recall questions → direct search
+- Stuck during implementation → Search immediately | Complete work → Phase 3
+
+## CRITICAL: Empty Guide Check
+**FIRST ACTION:** Check openmemory.md empty? If yes → Deep Dive (Phase 1 → analyze → document → Phase 3)
+
+## 3 Search Patterns
+1. `user_preference=true` only → Global user preferences
+2. `user_preference=true` + `project_id` → Project-specific user preferences
+3. `project_id` only → Project facts
+
+**Quick Ref:** Not about you? → project_id | Your prefs THIS project? → both | Your prefs ALL projects? → user_preference=true
+
+## When to Search User Preferences
+**Part of Phase 1 + 2.** Tasks involving HOW = pref searches required.
+
+**ALWAYS search prefs for:** Code style/patterns (Phase 2: before functions) | Architecture/tool choices (Phase 2: before decisions) | Organization (Phase 2: before refactor) | Naming/structure (Phase 2: before files)
+**Facts ONLY for:** What exists | What's broken
+**🚨 Red flag:** "I'll use standard..." → Phase 2 BLOCKER. Search prefs first.
+
+**Task-specific queries (be specific):**
+- Feature → "clarification prefs", "implementation approach prefs"
+- Debug → "debug workflow prefs", "error investigation prefs", "problem-solving approach"
+- Code → "code style prefs", "review prefs", "testing prefs"
+- Arch → "decision-making prefs", "arch prefs", "design pattern prefs"
+
+## Query Intelligence
+**Transform comprehensively:** "auth" → "authentication system architecture and implementation" | Include context | Expand acronyms
+**Disambiguate first:** "design" → UI/UX design vs. software architecture design vs. code formatting/style | "structure" → file organization vs. code architecture vs. data structure | "style" → visual styling vs. code formatting | "organization" → file/folder layout vs. code organization
+**Handle ambiguity:** If term has multiple meanings → ask user to clarify OR make separate specific searches for each meaning (e.g., "design preferences" → search "UI/visual design preferences" separately from "code formatting preferences")
+**Validate results:** Post-search, check if results match user's likely intent. Off-topic results (e.g., "code indentation" when user meant "visual design")? → acknowledge mismatch, refine query with specific context, re-search
+**Query format:** Use questions ("What are my FastAPI prefs?") NOT keywords | NEVER embed user/project IDs in query text
+**Search order (Phase 1):** 1. Global user prefs (user_preference=true) 2. Project facts (project_id) 3. Project prefs (both)
+
+## Memory Collection (Phase 3)
+**Save:** Arch decisions, problem-solving, implementation strategies, component relationships
+**Skip:** Trivial fixes
+**Learning from corrections (store as prefs):** Indentation = formatting pref | Rename = naming convention | Restructure = arch pref | Commit reword = git workflow
+**Auto-store:** 3+ files/components OR multi-step flows OR non-obvious behavior OR complete work
+
+## Memory Types
+**🚨 SECURITY:** Scan for secrets before storing. If found, DO NOT STORE.
+- **Component:** Title "[Component] - [Function]"; Content: Location, Purpose, Services, I/O
+- **Implementation:** Title "[Action] [Feature]"; Content: Purpose, Steps, Key decisions
+- **Debug:** Title "Fix: [Issue]"; Content: Issue, Diagnosis, Solution
+- **User Preference:** Title "[Scope] [Type]"; Content: Actionable preference
+- **Project Info:** Title "[Area] [Config]"; Content: General knowledge
+
+**Project Facts (project_id ONLY):** Component, Implementation, Debug, Project Info
+**User Preferences (user_preference=true):** User Preference (global → user_preference=true ONLY | project-specific → user_preference=true + project_id)
+
+## 🚨 CRITICAL: Storage Intelligence
+
+**RULE: Only ONE of these three patterns:**
+
+| Pattern | user_preference | project_id | When to Use | Memory Types |
+|---------|-----------------|------------|-------------|--------------|
+| **Project Facts** | ❌ OMIT (false) | ✅ INCLUDE | Objective info about THIS project | component, implementation, project_info, debug |
+| **Project Prefs** | ✅ true | ✅ INCLUDE | YOUR preferences in THIS project | user_preference (project-specific) |
+| **Global Prefs** | ✅ true | ❌ OMIT | YOUR preferences across ALL projects | user_preference (global) |
+
+**Before EVERY add-memory:**
+1. ❓ Code/architecture/facts? → project_id ONLY | ❓ MY pref for ALL projects? → user_preference=true ONLY | ❓ MY pref for THIS project? → BOTH
+2. ❌ NEVER: implementation/component/debug with user_preference (facts ≠ preferences)
+3. ✅ ALWAYS: Review table above to validate pattern
+
+## Tool Usage
+**search-memory:** Required: query | Optional: user_preference, project_id, memory_types[], namespaces[]
+
+**add-memory:** Required: title, content, metadata{} | Optional: user_preference, project_id
+- **🚨 BEFORE calling:** Review Storage Intelligence table to determine pattern
+- **metadata dict:** memory_types[] (required), namespace/git_repo_name/git_branch/git_commit_hash (optional)
+- **NEVER store secrets** - scan content first | Extract git metadata silently
+- **Validation:** At least one of user_preference or project_id must be provided
+
+**Examples:**
+```
+# ✅ Component (project fact): project_id ONLY
+add-memory(..., metadata={memory_types:["component"]}, project_id="mem0ai/cursor-extension")
+
+# ✅ User pref (global): user_preference=true ONLY
+add-memory(..., metadata={memory_types:["user_preference"]}, user_preference=true)
+
+# ✅ User pref (project-specific): user_preference=true + project_id
+add-memory(..., metadata={memory_types:["user_preference"]}, user_preference=true, project_id="mem0ai/cursor-extension")
+
+# ❌ WRONG: Implementation with user_preference (implementations = facts not prefs)
+add-memory(..., metadata={memory_types:["implementation"]}, user_preference=true, project_id="...")
 ```
 
-### Development Workflow
-1. Always run **both** `pnpm run dev` and `pnpm run dev:ws` for full functionality
-2. The WebSocket server is essential for real-time features in Sferas/Orbits
-3. Use `db:generate` → `db:migrate` workflow for schema changes (never `db:push` in production)
+**list-memories:** Required: project_id | Automatically uses authenticated user's preferences
 
-## Architecture Overview
+**delete-memories-by-namespace:** DESTRUCTIVE - ONLY with explicit confirmation | Required: namespaces[] | Optional: user_preference, project_id
 
-### 1. **Sfera System** (Collaborative Discussion Spaces)
-
-**Core Concept**: Sferas are collaborative discussion spaces where users and Avrora AI interact.
-
-**Database Schema** (`lib/db/schema.ts`):
-- `sfera` - Discussion space metadata (title, description, owner, visibility)
-- `sferaMember` - Member roles (owner/admin/member/viewer)
-- `sferaMessage` - Messages with AI tool results and threading support
-
-**Key Features**:
-- **AI Integration**: Mention `@avrora` to trigger AI responses
-- **Tool Execution**: AI can automatically invoke tools (image generation, web search, etc.)
-- **Smart Context**: Uses token budgeting to prioritize recent messages and @avrora mentions
-- **Fork Support**: Messages can be forked (tracked via `isForked`/`forkCount`)
-
-**Critical Files**:
-- `lib/ai/sfera-avrora.ts` - Main AI response generator
-  - `generateAvroraResponse()` - Core function (handles context, tools, responses)
-  - `selectSmartContext()` - Reduces ~7000 to ~2000 tokens intelligently
-  - `AVRORA_USER_ID` - Fixed UUID: `00000000-0000-0000-0000-000000000001`
-
-- `lib/ai/sfera-tools.ts` - Tool registry
-  - Categories: Generative, Analytics, Integrations, Mini-Apps
-  - Tools auto-mapped to AI SDK format in `sfera-avrora.ts:218-273`
-
-**API Routes** (`app/api/sfera/`):
-- `POST /api/sfera` - Create Sfera
-- `GET /api/sfera/[id]` - Get Sfera details
-- `POST /api/sfera/[id]/fork` - Fork a Sfera
-- `GET /api/sfera/[id]/messages` - Get messages
-- `POST /api/sfera/[id]/messages` - Send message (triggers @avrora if mentioned)
-- `GET /api/sfera/[id]/members` - Get members
-- `POST /api/sfera/[id]/members` - Add member
-
-### 2. **Orbit Visualization System**
-
-**Core Concept**: Visual, spatial representation of conversations where messages are nodes in 3D/2D space.
-
-**Components** (`components/orbit/`):
-- `orbit-chat.tsx` - Main container (15KB+, handles canvas/chat split)
-- `orbit-message.tsx` - Individual message nodes with positioning
-- `orbit-input.tsx` - Message input with @mention support (23KB+)
-- `tool-result-display.tsx` - Renders AI tool outputs (images, charts, mini-apps)
-
-**Hooks** (`hooks/`):
-- `use-orbit-canvas.ts` - Canvas rendering logic
-- `use-orbit-interactions.ts` - Drag, zoom, selection
-- `use-orbit-layout.ts` - Node positioning algorithms
-- `use-orbit-zoom.ts` - Zoom controls
-
-**Routes**:
-- `/orbit/[id]` - Orbit view for a chat
-- `/orbit/message/[messageId]` - Public message view (no auth required)
-- `/orbits` - List all orbits
-
-### 3. **AI Provider Architecture**
-
-**Provider Setup** (`lib/ai/providers.ts`):
-- Uses **OpenAI-compatible API** via `MEGALLM_API_KEY` for both OpenAI and Claude models
-- Base URL: `process.env.OPENAI_URL`
-- Models configured as centralized constants:
-  - `chat-model` → `gpt-5-mini` (main model with tools)
-  - `chat-model-mini` → `gpt-4o-mini`
-  - `poetic` → `claude-sonnet-4-5-20250929`
-
-**Important**: Provider uses custom `myProvider` from AI SDK's `customProvider()` API.
-
-**Model Selection**:
-- Sfera AI always uses `chat-model` (full model with tools)
-- Title generation: `title-model`
-- Artifacts: `artifact-model`
-- Reasoning models available with `extractReasoningMiddleware`
-
-### 4. **WebSocket Real-time System**
-
-**Server**: `lib/websocket/server.ts`
-- Standalone server on port 3001 (configurable via `WS_PORT`)
-- Token-based auth (dev mode: `dev_{userId}`)
-- Connection format: `ws://localhost:3001?chatId={id}&token={token}`
-
-**Manager**: `lib/websocket/manager.ts`
-- `wsManager` singleton for broadcast/connection management
-- Handles typing indicators, message delivery, presence
-
-**Client Integration**:
-- Components connect via WebSocket for real-time updates
-- Used in both traditional chats and Orbit views
-
-### 5. **Database Schema Patterns**
-
-**Key Tables**:
-- `User` - Basic user info (id, email, password)
-- `Chat` - Personal/group chats (has `chatType`, `lastContext`)
-- `Message_v2` - New message format with parts/attachments
-- `ChatMember` - Group chat membership
-- `Document` - Artifacts (text/code/image/sheet/mini-app/chart/game)
-- `Sfera*` tables - Collaborative discussion spaces
-
-**Important Notes**:
-- `Message` table is **DEPRECATED** (use `Message_v2`)
-- All Sfera tables use cascade deletion
-- UUIDs used for all primary keys
-- Timestamps: `createdAt`, `updatedAt` pattern
-
-**Migration Workflow**:
-1. Edit `lib/db/schema.ts`
-2. Run `pnpm run db:generate` (creates migration in `lib/db/migrations/`)
-3. Run `pnpm run db:migrate` (applies migration)
-4. Migrations auto-run during `pnpm run build`
-
-## AI Tools System
-
-### Tool Categories
-1. **Generative**: `generateImage`, `generateImageReplicate`, `generateMusic`, `generateVideo`, `speechToText`
-2. **Analytics**: `summarizeDiscussion`
-3. **Integrations**: `webSearch` (Tavily API)
-4. **Mini-Apps**: `createMiniApp`, `editMiniApp`, `createChart`, `createGame`
-
-### Tool Execution Flow
-1. User mentions `@avrora` in Sfera message
-2. `generateAvroraResponse()` called with trigger message
-3. AI SDK automatically decides which tools to use (no pattern matching)
-4. Tool results stored in `sferaMessage.toolResults` JSON array
-5. Frontend renders tool results via `tool-result-display.tsx`
-
-### Adding New Tools
-- Create tool in `lib/ai/tools/{category}/`
-- Export from appropriate category file
-- Add to `getSferaTools()` in `lib/ai/sfera-tools.ts`
-- Tool name mapping happens automatically in `sfera-avrora.ts:218-273`
-
-## Authentication & Authorization
-
-**Auth Provider**: NextAuth v5
-- Config: `app/(auth)/auth.config.ts` and `app/(auth)/auth.ts`
-- Middleware: `middleware.ts` (handles route protection)
-
-**Public Routes** (no auth):
-- `/api/auth/*`
-- `/docs`, `/api/docs` (API documentation)
-- `/orbit/message/{id}` (public message view)
-- `/ping` (health check for Playwright)
-
-**Magic Link Support**: Uses `magicToken` table for passwordless login
-
-## Environment Variables
-
-### Required
+## Git Metadata
+Extract before EVERY add-memory and include in metadata dict (silently):
 ```bash
-AUTH_SECRET=***                    # NextAuth secret
-POSTGRES_URL=***                   # PostgreSQL connection
-MEGALLM_API_KEY=***               # Main AI provider key
-OPENAI_URL=***                    # Base URL for OpenAI-compatible API
+git_repo_name=$(git remote get-url origin 2>/dev/null | sed 's/.*[:/]\([^/]*\/[^.]*\).*/\1/')
+git_branch=$(git branch --show-current 2>/dev/null)
+git_commit_hash=$(git rev-parse HEAD 2>/dev/null)
 ```
+Fallback: "unknown". Add all three to metadata dict when calling add-memory.
 
-### Optional (AI Tools)
-```bash
-GOOGLE_GENERATIVE_AI_API_KEY=***  # Gemini/Imagen
-TAVILY_API_KEY=***                # Web search
-REPLICATE_API_KEY=***             # Music/video generation
-SPEECH_TO_TEXT_API_URL=***        # Transcription service
-REDIS_URL=***                     # Rate limiting
-BLOB_READ_WRITE_TOKEN=***         # Vercel Blob storage
-AI_GATEWAY_API_KEY=***            # Vercel AI Gateway
-```
+## Memory Deletion ⚠️ DESTRUCTIVE - PERMANENT
+**Rules:** NEVER suggest | NEVER use proactively | ALWAYS require confirmation
+**Triggers:** "Delete all in [ns]", "Clear [ns]", "Delete my prefs in [ns]"
+**NOT for:** Cleanup questions, outdated memories, general questions
 
-### WebSocket
-```bash
-WS_PORT=3001                       # WebSocket server port (default: 3001)
-```
+**Confirmation (MANDATORY):**
+1. Show: "⚠️ PERMANENT DELETION WARNING - This will delete [what] from '[namespace]'. Confirm by 'yes'/'confirm'."
+2. Wait for confirmation
+3. If confirmed → execute | If declined → "Deletion cancelled"
 
-## Code Patterns & Conventions
+**Intent:** "Delete ALL in X" → {namespaces:[X]} | "Delete MY prefs in X" → {namespaces:[X], user_preference:true} | "Delete project facts in X" → {namespaces:[X], project_id} | "Delete my project prefs in X" → {namespaces:[X], user_preference:true, project_id}
 
-### Linting
-- Uses **Ultracite** (wrapper around Biome)
-- Config: `biome.jsonc`
-- Automatically formats on `pnpm run format`
-- Ignore inline issues: `// biome-ignore lint: Reason`
+## Operating Principles
+1. Phase-based: Initial → Continuous → Store
+2. Checkpoints are BLOCKERS (files, functions, decisions, errors)
+3. Never skip Phase 2
+4. Detailed storage (why > what)
+5. MCP unavailable → mention once, continue
+6. Trust process (early = more searches)
 
-### File Organization
-- **Route groups**: `app/(auth)`, `app/(chat)`, `app/(orbit)`
-- **Server actions**: Named `actions.ts` in route folders
-- **API routes**: Follow Next.js App Router conventions (`route.ts`)
-- **Components**: Organized by feature (`components/orbit/`, `components/chat/`)
+## Session Patterns
+**Empty openmemory.md:** Deep Dive (Phase 1 → analyze → document → Phase 3)
+**Existing:** Read openmemory.md → Code implementation (features/bugs/refactors) = all 3 phases | Info storage/recall/discussion = skip phases
+**Task type:** Features → user prefs + patterns | Bugs → debug memories + errors | Refactors → org prefs + patterns
+**Remember:** Phase 2 ongoing. Search at EVERY checkpoint.
 
-### TypeScript
-- Strict mode enabled
-- Database types auto-generated via Drizzle: `InferSelectModel<typeof table>`
-- Avoid `any` except for tool results (DB compatibility)
+## OpenMemory Guide (openmemory.md)
+Living project index (shareable). Auto-created empty in workspace root.
 
-### React Server Components
-- Use `"use client"` only when necessary (interactivity, hooks, browser APIs)
-- Prefer server components for data fetching
-- `server-only` package enforces server-side code boundaries
+**Initial Deep Dive:** Phase 1 (2+ searches) → Phase 2 (analyze dirs/configs/frameworks/entry points, search as discovering, extract arch, document Overview/Architecture/User Namespaces/Components/Patterns) → Phase 3 (store with namespaces if fit)
 
-## Testing
+**User Defined Namespaces:** Read before ANY memory op
+- Format: "## User Defined Namespaces\n- [Leave blank - user populates]"
+- Examples: frontend, backend, database
 
-**Framework**: Playwright
-- Config: `playwright.config.ts`
-- Tests require `PLAYWRIGHT=True` env var
-- Run: `pnpm run test`
+**Storing:** Review content → check namespaces → THINK "domain?" → fits one? assign : omit | Rules: Max ONE, can be NONE, only defined ones
+**Searching:** What searching? → read namespaces → THINK "which could contain?" → cast wide net → use multiple if needed
 
-**Health Check**: `/ping` endpoint for test readiness
+**Guide Discipline:** Edit directly | Populate as you go | Keep in sync | Update before storing component/implementation/project_info
+**Update Workflow:** Open → update section → save → store via MCP
+**Integration:** Component → Components | Implementation → Patterns | Project info → Overview/Arch | Debug/pref → memory only
 
-## API Documentation
+**🚨 CRITICAL: Before storing ANY memory, review and update openmemory.md - after every edit verify the guide reflects current system architecture (most important project artifact)**
 
-**Scalar API Reference**: Available at `/docs`
-- Config: `app/docs/page.tsx` uses `@scalar/nextjs-api-reference`
-- Auto-generates docs from OpenAPI spec
+## Security Guardrails
+**NEVER store:** API keys/tokens, passwords, hashes, private keys, certs, env secrets, OAuth/session tokens, connection strings with creds, AWS keys, webhook secrets, SSH/GPG keys
+**Detection:** Token/Bearer/key=/password= patterns → DO NOT STORE | Base64 in auth → DO NOT STORE | = + long alphanumeric → VERIFY | Doubt → DO NOT STORE, ask
+**Instead store:** Redacted versions ("<YOUR_TOKEN>"), patterns ("uses bearer token"), instructions ("Set TOKEN env")
+**Other:** No destructive ops without approval | User says "save/remember" → IMMEDIATE storage | Think deserves storage → ASK FIRST for prefs | User asks to store secrets → REFUSE
 
-## Common Gotchas
-
-1. **Always run WebSocket server**: Many features silently fail without `pnpm run dev:ws`
-2. **Avrora user ID**: Hardcoded as `00000000-0000-0000-0000-000000000001` - never change
-3. **Tool name mapping**: Tools are auto-mapped by description in `sfera-avrora.ts` - update mapping when adding tools
-4. **Message schema**: Use `Message_v2`, not deprecated `Message` table
-5. **Token budget**: Smart context selection targets ~2000 tokens - don't increase without testing
-6. **Provider config**: All models route through single `MEGALLM_API_KEY` - not separate OpenAI/Anthropic keys
-7. **Middleware auth**: Remember to add new public routes to `middleware.ts` allowlist
-
-## Project-Specific Terminology
-
-- **Sfera** (Russian: sphere) - Collaborative discussion space
-- **Orbit** - Visual/spatial chat representation
-- **Avrora** - AI assistant name (Russian: aurora)
-- **Fork** - Create child discussion from message/Sfera
-- **Tool Results** - AI-generated content (images, charts, etc.) embedded in messages
-- **Mini-App** - Interactive React component generated by AI
+**Remember:** Memory system = effectiveness over time. Rich reasoning > code. When doubt, store. Guide = shareable index.

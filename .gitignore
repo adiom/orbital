@@ -44,3 +44,8 @@ yarn-error.log*
 /playwright-report/
 /blob-report/
 /playwright/*
+
+# OpenMemory - IDE/Assistant specific rules
+.cursor/rules/openmemory.mdc
+CLAUDE.md
+.windsurf/rules/openmemory.md

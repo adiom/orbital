@@ -41,11 +41,11 @@ const optionalEnv = (name: string): string | undefined => {
 
 // Centralized model IDs for easier maintenance.
 const MODEL = {
-  OPENAI_CHAT_TOOL: "gpt-5-mini",
-  OPENAI_CHAT_MINI: "gpt-4o-mini",
-  OPENAI_REASONING_LIGHT: "gpt-4o-mini",
-  OPENAI_TITLE: "gpt-4o-mini",
-  OPENAI_ARTIFACT: "gpt-4o-mini",
+  OPENAI_CHAT_TOOL: "openai-gpt-oss-120b",
+  OPENAI_CHAT_MINI: "openai-gpt-oss-20b",
+  OPENAI_REASONING_LIGHT: "deepseek-ai/deepseek-v3.1-terminus",
+  OPENAI_TITLE: "moonshotai/kimi-k2-instruct-0905",
+  OPENAI_ARTIFACT: "moonshotai/kimi-k2-instruct-0905",
   CLAUDE_POETIC: "claude-sonnet-4-5-20250929",
   // Alias expected by test script
   CLAUDE_SONNET_LATEST: "claude-sonnet-4-5-20250929",
