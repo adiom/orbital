@@ -76,7 +76,7 @@ export function OrbitMessage({
 }: OrbitMessageProps) {
   const router = useRouter();
   const [isForking, setIsForking] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const contentRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [isSelected, setIsSelected] = useState(false);
@@ -275,34 +275,10 @@ export function OrbitMessage({
             </>
           )}
 
-          {isOverflowing && !isExpanded && (
-            <div className="absolute inset-x-0 bottom-0 flex h-12 items-end justify-center bg-gradient-to-t from-white to-transparent pb-2">
-              <button
-                className="rounded-full bg-gray-500 px-4 py-1.5 font-medium text-white text-xs shadow-md"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsExpanded(true);
-                }}
-                type="button"
-              >
-                Show more
-              </button>
-            </div>
-          )}
+          
         </div>
 
-        {isExpanded && isOverflowing && (
-          <button
-            className="mt-2 rounded-full bg-gray-200 px-4 py-1.5 font-medium text-gray-700 text-xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsExpanded(false);
-            }}
-            type="button"
-          >
-            Show less
-          </button>
-        )}
+      
 
         {message.attachments && message.attachments.length > 0 && (
           <div className="mt-4 flex flex-col gap-3">
