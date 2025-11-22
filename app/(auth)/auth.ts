@@ -63,6 +63,8 @@ export const {
             .where(
               and(
                 eq(magicToken.token, token),
+                // Если email тоже передан, проверяем совпадение
+                email ? eq(magicToken.email, email) : undefined,
                 eq(magicToken.used, false),
                 gt(magicToken.expiresAt, new Date())
               )

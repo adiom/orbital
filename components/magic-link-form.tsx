@@ -72,10 +72,21 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
     }
   };
 
-  // Показываем ввод кода в dev режиме
+  // Показываем ввод кода после создания magic link
   if (isSuccess && magicLink && !showCodeInput) {
     return (
       <div className="space-y-4 px-4 text-center sm:px-16">
+        <div className="rounded-md bg-green-50 p-4 dark:bg-green-900/20">
+          <div className="text-green-700 text-sm dark:text-green-200">
+            ✅ Код создан для {email}
+            {isDev && (
+              <div className="mt-2 font-mono text-xs">
+                Код: {magicLink.split('magic_token=')[1]}
+              </div>
+            )}
+          </div>
+        </div>
+        
         <div className="space-y-3">
           <Button className="w-full" onClick={() => setShowCodeInput(true)}>
             Ввести код вручную
@@ -98,14 +109,14 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
     );
   }
 
-  // Форма ввода кода в dev режиме
-  if (showCodeInput && isDev) {
+  // Форма ввода кода
+  if (showCodeInput) {
     return (
       <div className="space-y-4 px-4 sm:px-16">
         <form className="space-y-4" onSubmit={handleCodeSubmit}>
           <div className="space-y-1">
             <Label className="font-medium text-sm" htmlFor="code">
-              Код из консоли сервера
+              8-значный код
             </Label>
             <Input
               className="text-center text-lg tracking-widest"
