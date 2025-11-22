@@ -172,3 +172,39 @@ export const loginWithMagicLink = async (
     return { status: "failed" };
   }
 };
+
+// Верификация 8-значного кода из БД
+export const verifyMagicCode = async (
+  email: string,
+  token: string
+) => {
+  try {
+    // Проверяем, что код существует, не использован и не просрочен
+    const found = await db
+      .select()
+      .from(magicToken)
+      .where(
+        and(
+          eq(magicToken.email, email),
+          eq(magicToken.token, token),
+          eq(magicToken.used, false)
+        )
+      )
+      .limit(1);
+
+    if (!found.length) {
+      return { success: false, error: "Неверный или просроченный код" };
+    }
+
+    // Помечаем код как использованный
+    await db
+      .update(magicToken)
+      .set({ used: true })
+      .where(eq(magicToken.id, found[0].id));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Ошибка при верификации кода:", error);
+    return { success: false, error: "Внутренняя ошибка сервера" };
+  }
+};
