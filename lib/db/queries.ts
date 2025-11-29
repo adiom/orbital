@@ -551,3 +551,140 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
     );
   }
 }
+
+// ============ AVRORA: Sfera Queries ============
+
+/**
+ * Validate if a string is a valid UUID v4
+ */
+export function isValidUUID(id: string): boolean {
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+}
+
+/**
+ * Get Sfera with metadata including member count and parent info
+ */
+export async function getSferaWithMetadata(
+  sferaId: string,
+  userId: string | undefined
+) {
+  try {
+    const { sfera: sferaTable, sferaMember, sferaForkedSfera } = await import(
+      "./schema"
+    );
+
+    // Get Sfera details
+    const [sferaData] = await db
+      .select()
+      .from(sferaTable)
+      .where(eq(sferaTable.id, sferaId))
+      .limit(1);
+
+    if (!sferaData) {
+      return null;
+    }
+
+    // Get member count
+    const [memberCountResult] = await db
+      .select({ count: count(sferaMember.userId) })
+      .from(sferaMember)
+      .where(eq(sferaMember.sferaId, sferaId));
+
+    const memberCount = memberCountResult?.count ?? 0;
+
+    // Get parent Sfera info if this is a fork
+    const [forkInfo] = await db
+      .select({
+        parentSferaId: sferaForkedSfera.parentSferaId,
+        parentSferaTitle: sferaTable.title,
+      })
+      .from(sferaForkedSfera)
+      .innerJoin(
+        sferaTable,
+        eq(sferaForkedSfera.parentSferaId, sferaTable.id)
+      )
+      .where(eq(sferaForkedSfera.forkedSferaId, sferaId))
+      .limit(1);
+
+    const parentSfera = forkInfo
+      ? { id: forkInfo.parentSferaId, title: forkInfo.parentSferaTitle }
+      : null;
+
+    return {
+      ...sferaData,
+      memberCount,
+      parentSfera,
+    };
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get sfera with metadata"
+    );
+  }
+}
+
+/**
+ * Check if user has access to Sfera and return their role
+ */
+export async function checkSferaAccess(
+  sferaId: string,
+  userId: string | undefined
+) {
+  if (!userId) {
+    return { hasAccess: false, role: null };
+  }
+
+  try {
+    const { sferaMember } = await import("./schema");
+
+    const [membership] = await db
+      .select()
+      .from(sferaMember)
+      .where(
+        and(eq(sferaMember.sferaId, sferaId), eq(sferaMember.userId, userId))
+      )
+      .limit(1);
+
+    if (!membership) {
+      return { hasAccess: false, role: null };
+    }
+
+    return { hasAccess: true, role: membership.role };
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to check sfera access"
+    );
+  }
+}
+
+/**
+ * Get parent Sfera for breadcrumbs
+ */
+export async function getParentSfera(sferaId: string) {
+  try {
+    const { sfera: sferaTable, sferaForkedSfera } = await import("./schema");
+
+    const [forkInfo] = await db
+      .select({
+        id: sferaTable.id,
+        title: sferaTable.title,
+      })
+      .from(sferaForkedSfera)
+      .innerJoin(
+        sferaTable,
+        eq(sferaForkedSfera.parentSferaId, sferaTable.id)
+      )
+      .where(eq(sferaForkedSfera.forkedSferaId, sferaId))
+      .limit(1);
+
+    return forkInfo || null;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get parent sfera"
+    );
+  }
+}

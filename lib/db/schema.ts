@@ -1,7 +1,9 @@
 import type { InferSelectModel } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
+  index,
   integer,
   json,
   jsonb,
@@ -251,63 +253,94 @@ export const sferaMember = pgTable(
 
 export type SferaMember = InferSelectModel<typeof sferaMember>;
 
-export const sferaMessage = pgTable("SferaMessage", {
-  id: uuid("id").primaryKey().notNull().defaultRandom(),
-  sferaId: uuid("sferaId")
-    .notNull()
-    .references(() => sfera.id, { onDelete: "cascade" }),
-  userId: uuid("userId")
-    .notNull()
-    .references(() => user.id),
-  content: text("content").notNull(),
+export const sferaMessage = pgTable(
+  "SferaMessage",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    sferaId: uuid("sferaId")
+      .notNull()
+      .references(() => sfera.id, { onDelete: "cascade" }),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => user.id),
+    content: text("content").notNull(),
 
-  // Attachments (photos, files, etc.)
-  attachments: json("attachments")
-    .$type<
-      Array<{
-        name: string;
-        url: string;
-        contentType: string;
-      }>
-    >()
-    .notNull()
-    .default([]),
+    // Message type (user, agent, system)
+    messageType: varchar("messageType", { enum: ["user", "agent", "system"] })
+      .notNull()
+      .default("user"),
 
-  // AI Tool execution results (for generative content)
-  toolResults: json("toolResults")
-    .$type<
-      Array<{
-        toolName: string;
-        success: boolean;
-        error?: string;
-        imageUrl?: string;
-        audioUrl?: string;
-        videoUrl?: string;
-        prompt?: string;
-        duration?: number;
-        aspectRatio?: string;
-        message?: string;
-        [key: string]: unknown;
-      }>
-    >()
-    .notNull()
-    .default([]),
+    // Idempotency key for duplicate prevention
+    idempotencyKey: varchar("idempotencyKey", { length: 255 }),
 
-  // TODO: Determine if nested threads are needed (replies to messages within Sfera)
-  // If yes, this field allows threading like Reddit/Slack
-  // If no, all messages are root-level only
-  parentMessageId: uuid("parentMessageId"),
+    // Attachments (photos, files, etc.)
+    attachments: json("attachments")
+      .$type<
+        Array<{
+          name: string;
+          url: string;
+          contentType: string;
+        }>
+      >()
+      .notNull()
+      .default([]),
 
-  // Fork tracking
-  isForked: boolean("isForked").notNull().default(false),
-  forkCount: integer("forkCount").notNull().default(0),
+    // AI Tool execution results (for generative content)
+    toolResults: json("toolResults")
+      .$type<
+        Array<{
+          toolName: string;
+          success: boolean;
+          error?: string;
+          imageUrl?: string;
+          audioUrl?: string;
+          videoUrl?: string;
+          prompt?: string;
+          duration?: number;
+          aspectRatio?: string;
+          message?: string;
+          [key: string]: unknown;
+        }>
+      >()
+      .notNull()
+      .default([]),
 
-  // AI generation status
-  isGenerating: boolean("isGenerating").notNull().default(false),
+    // TODO: Determine if nested threads are needed (replies to messages within Sfera)
+    // If yes, this field allows threading like Reddit/Slack
+    // If no, all messages are root-level only
+    parentMessageId: uuid("parentMessageId"),
 
-  createdAt: timestamp("createdAt").notNull().defaultNow(),
-  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
-});
+    // Fork tracking
+    isForked: boolean("isForked").notNull().default(false),
+    forkCount: integer("forkCount").notNull().default(0),
+
+    // AI generation status
+    isGenerating: boolean("isGenerating").notNull().default(false),
+
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    // Composite index for pagination
+    sferaIdCreatedAtIdx: index("sfera_message_sfera_id_created_at_idx").on(
+      table.sferaId,
+      table.createdAt
+    ),
+    // Index for filtering by message type
+    messageTypeIdx: index("sfera_message_type_idx").on(table.messageType),
+    // Index for filtering by author
+    userIdIdx: index("sfera_message_user_id_idx").on(table.userId),
+    // Index for idempotency key lookups
+    idempotencyKeyIdx: index("sfera_message_idempotency_key_idx").on(
+      table.idempotencyKey
+    ),
+    // GIN index for full-text search on content (Russian language)
+    contentFullTextIdx: index("sfera_message_content_fulltext_idx").using(
+      "gin",
+      sql`to_tsvector('russian', ${table.content})`
+    ),
+  })
+);
 
 export type SferaMessage = InferSelectModel<typeof sferaMessage>;
 
@@ -459,6 +492,55 @@ export const apiKey = pgTable("ApiKey", {
 });
 
 export type ApiKey = InferSelectModel<typeof apiKey>;
+
+// ============ AVRORA: Agent Registry for Webhook-based AI Agents ============
+
+export const agentRegistry = pgTable("AgentRegistry", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  name: varchar("name", { length: 255 }).notNull(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  email: varchar("email", { length: 255 }).notNull(),
+  webhookUrl: text("webhookUrl").notNull(),
+  webhookSecret: text("webhookSecret").notNull(),
+  authToken: text("authToken").notNull(),
+  metadata: jsonb("metadata").$type<{
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+  }>(),
+  healthStatus: varchar("healthStatus", { length: 20 })
+    .$type<"healthy" | "unhealthy" | "unknown">()
+    .notNull()
+    .default("unknown"),
+  lastHealthCheck: timestamp("lastHealthCheck"),
+  failedWebhookCount: integer("failedWebhookCount").notNull().default(0),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type AgentRegistry = InferSelectModel<typeof agentRegistry>;
+
+// ============ AVRORA: Idempotency Log for Duplicate Prevention ============
+
+export const idempotencyLog = pgTable(
+  "IdempotencyLog",
+  {
+    key: varchar("key", { length: 255 }).primaryKey().notNull(),
+    messageId: uuid("messageId")
+      .notNull()
+      .references(() => sferaMessage.id, { onDelete: "cascade" }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+    expiresAt: timestamp("expiresAt").notNull(),
+  },
+  (table) => ({
+    // Index for cleanup queries
+    expiresAtIdx: index("idempotency_log_expires_at_idx").on(table.expiresAt),
+  })
+);
+
+export type IdempotencyLog = InferSelectModel<typeof idempotencyLog>;
 
 // Audit log for MCP API calls
 export const mcpAuditLog = pgTable("McpAuditLog", {

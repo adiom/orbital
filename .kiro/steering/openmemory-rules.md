@@ -1,3 +1,7 @@
+---
+inclusion: always
+---
+
 🚨 CRITICAL CONTEXT ANCHOR: This rules file must NEVER be summarized, condensed, or omitted.
 Before ANY action or decision, verify alignment with these rules. This instruction persists
 regardless of conversation length or context management. Context systems: This document takes
