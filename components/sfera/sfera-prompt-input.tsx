@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChatStatus } from "ai";
+import { useCallback, useRef } from "react";
 import {
   PromptInput,
   PromptInputActionAddAttachments,
@@ -18,11 +18,15 @@ import {
   PromptInputTextarea,
   PromptInputTools,
 } from "@/components/elements/prompt-input";
+import {
+  MentionButton,
+  type SferaMember,
+} from "@/components/sfera/sfera-mention-button";
 import type { Attachment } from "@/lib/types";
 
 export type SferaPromptInputProps = {
   onSubmit: (message: PromptInputMessage) => void;
-  status?: ChatStatus;
+  isLoading?: boolean;
   replyingTo?: { id: string; content: string } | null;
   editingMessage?: { id: string; content: string } | null;
   onCancelReply?: () => void;
@@ -30,6 +34,8 @@ export type SferaPromptInputProps = {
   value?: string;
   onChange?: (value: string) => void;
   placeholder?: string;
+  members?: SferaMember[];
+  currentUserId?: string;
 };
 
 /**
@@ -38,7 +44,7 @@ export type SferaPromptInputProps = {
  */
 export function SferaPromptInput({
   onSubmit,
-  status,
+  isLoading = false,
   replyingTo,
   editingMessage,
   onCancelReply,
@@ -46,7 +52,11 @@ export function SferaPromptInput({
   value,
   onChange,
   placeholder = "Введите сообщение...",
+  members = [],
+  currentUserId = "",
 }: SferaPromptInputProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const handleSubmit = (message: PromptInputMessage) => {
     onSubmit(message);
   };
@@ -54,6 +64,35 @@ export function SferaPromptInput({
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange?.(e.target.value);
   };
+
+  // Handle mention selection - insert at cursor position
+  const handleMentionSelect = useCallback(
+    (mention: string) => {
+      const textarea = textareaRef.current;
+      if (!textarea) {
+        // Fallback: append to end
+        onChange?.((value || "") + mention);
+        return;
+      }
+
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const currentValue = value || "";
+
+      // Insert mention at cursor position
+      const newValue =
+        currentValue.slice(0, start) + mention + currentValue.slice(end);
+      onChange?.(newValue);
+
+      // Set cursor position after mention
+      setTimeout(() => {
+        const newPosition = start + mention.length;
+        textarea.setSelectionRange(newPosition, newPosition);
+        textarea.focus();
+      }, 0);
+    },
+    [value, onChange]
+  );
 
   return (
     <PromptInput globalDrop multiple onSubmit={handleSubmit}>
@@ -120,6 +159,7 @@ export function SferaPromptInput({
         <PromptInputTextarea
           onChange={handleTextareaChange}
           placeholder={placeholder}
+          ref={textareaRef}
           value={value}
         />
       </PromptInputBody>
@@ -137,13 +177,16 @@ export function SferaPromptInput({
             </PromptInputActionMenuContent>
           </PromptInputActionMenu>
 
-          {/* TODO: Add MentionButton in Task 9 */}
+          {/* Mention button */}
+          <MentionButton
+            currentUserId={currentUserId}
+            disabled={isLoading}
+            members={members}
+            onMentionSelect={handleMentionSelect}
+          />
         </PromptInputTools>
 
-        <PromptInputSubmit
-          disabled={status === "submitted" || status === "streaming"}
-          status={status}
-        />
+        <PromptInputSubmit disabled={isLoading} />
       </PromptInputFooter>
     </PromptInput>
   );

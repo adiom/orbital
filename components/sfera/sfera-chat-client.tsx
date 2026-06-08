@@ -1,17 +1,33 @@
 "use client";
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type UIMessage } from "ai";
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 import type { PromptInputMessage } from "@/components/elements/prompt-input";
+import { SferaMessage } from "@/components/sfera/sfera-message";
 import { SferaPromptInput } from "@/components/sfera/sfera-prompt-input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ui/shadcn-io/ai/conversation";
-import { Message, MessageContent } from "@/components/ui/shadcn-io/ai/message";
-import { Response } from "@/components/ui/shadcn-io/ai/response";
+
+type SferaMember = {
+  userId: string;
+  email: string;
+  role: string;
+  joinedAt: Date;
+};
 
 type SferaChatClientProps = {
   sferaId: string;
@@ -25,7 +41,8 @@ type SferaChatClientProps = {
     createdAt: Date;
     updatedAt: Date;
   };
-  initialMessages?: UIMessage[];
+  initialMessages?: any[];
+  initialMembers?: SferaMember[];
 };
 
 /**
@@ -37,48 +54,133 @@ export function SferaChatClient({
   currentUserId,
   initialSfera,
   initialMessages = [],
+  initialMembers = [],
 }: SferaChatClientProps) {
+  const router = useRouter();
   const [input, setInput] = useState("");
+  const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [messages, setMessages] = useState(initialMessages);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const transport = useMemo(
-    () =>
-      new DefaultChatTransport({
-        api: `/api/sfera/${sferaId}/chat`,
-        body: {
-          sferaId,
-          currentUserId,
-        },
-      }),
-    [sferaId, currentUserId]
-  );
-
-  const { messages, sendMessage, status } = useChat({
-    transport,
-    messages: initialMessages,
-  });
-
-  const handleSubmit = (message: PromptInputMessage) => {
+  const handleSubmit = async (message: PromptInputMessage) => {
     if (!message.text?.trim()) {
       return;
     }
 
-    // Convert Attachment[] to FileUIPart[] format expected by AI SDK
-    const files = message.files?.map((file) => ({
-      type: "file" as const,
-      name: file.name,
-      url: file.url,
-      mediaType: file.contentType,
-    }));
+    setIsLoading(true);
 
-    sendMessage({
-      text: message.text,
-      files,
-    });
-    setInput("");
+    try {
+      // Add user message optimistically
+      const userMessage = {
+        id: crypto.randomUUID(),
+        role: "user" as const,
+        content: message.text,
+        experimental_data: {
+          userId: currentUserId,
+          createdAt: new Date().toISOString(),
+          attachments: message.files,
+        },
+      };
+
+      setMessages((prev) => [...prev, userMessage]);
+      setInput("");
+
+      // Send to API
+      const response = await fetch(`/api/sfera/${sferaId}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: [...messages, userMessage],
+          sferaId,
+          currentUserId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
+
+      // Refresh to get AI responses
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to send message:", error);
+      toast.error("Не удалось отправить сообщение");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (value: string) => {
     setInput(value);
+  };
+
+  // Action handlers
+  const handleRetry = () => {
+    toast.info("Повторная генерация будет реализована в следующей версии");
+  };
+
+  const handleEdit = () => {
+    toast.info("Редактирование будет реализовано в следующей задаче");
+  };
+
+  const handleDelete = (messageId: string) => {
+    setMessageToDelete(messageId);
+  };
+
+  const confirmDelete = async () => {
+    if (!messageToDelete) return;
+
+    try {
+      const response = await fetch(
+        `/api/sfera/${sferaId}/messages/${messageToDelete}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to delete message");
+      }
+
+      toast.success("Сообщение удалено");
+      router.refresh();
+    } catch (error) {
+      console.error("Failed to delete message:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Не удалось удалить сообщение"
+      );
+    } finally {
+      setMessageToDelete(null);
+    }
+  };
+
+  const handleFork = async (messageId: string) => {
+    try {
+      const response = await fetch(`/api/sfera/${sferaId}/fork`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ messageId }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to fork message");
+      }
+
+      const data = await response.json();
+      toast.success("Сообщение форкнуто!");
+      router.push(`/sfera/${data.sfera.id}/chat`);
+    } catch (error) {
+      console.error("Failed to fork message:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Не удалось форкнуть сообщение"
+      );
+    }
   };
 
   return (
@@ -108,66 +210,17 @@ export function SferaChatClient({
                 </div>
               </div>
             ) : (
-              messages.map((message: UIMessage) => {
-                const metadata = message.metadata as
-                  | {
-                      userId?: string;
-                      userEmail?: string;
-                      attachments?: unknown[];
-                      toolResults?: unknown[];
-                      isGenerating?: boolean;
-                      createdAt?: string;
-                    }
-                  | undefined;
-
-                const isOwn = metadata?.userId === currentUserId;
-                const userEmail = metadata?.userEmail || "Unknown";
-                const displayName = userEmail.split("@")[0];
-
-                return (
-                  <Message from={message.role} key={message.id}>
-                    <MessageContent>
-                      {/* Author info */}
-                      <div className="mb-1 flex items-center gap-2 text-muted-foreground text-xs">
-                        <span className="font-medium">
-                          {isOwn ? "Вы" : displayName}
-                        </span>
-                        <span>•</span>
-                        <span>
-                          {metadata?.createdAt
-                            ? new Date(metadata.createdAt).toLocaleTimeString(
-                                "ru-RU",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }
-                              )
-                            : ""}
-                        </span>
-                        {metadata?.isGenerating && (
-                          <>
-                            <span>•</span>
-                            <span className="text-blue-500">Генерация...</span>
-                          </>
-                        )}
-                      </div>
-
-                      {/* Message content */}
-                      {message.parts.map((part) => {
-                        if (part.type === "text") {
-                          return (
-                            <Response key={`${message.id}-${part.type}`}>
-                              {part.text}
-                            </Response>
-                          );
-                        }
-                        // TODO: Handle other part types (reasoning, tool, etc.) in Task 6
-                        return null;
-                      })}
-                    </MessageContent>
-                  </Message>
-                );
-              })
+              messages.map((message: any) => (
+                <SferaMessage
+                  key={message.id}
+                  currentUserId={currentUserId}
+                  message={message}
+                  onRetry={handleRetry}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onFork={handleFork}
+                />
+              ))
             )}
           </div>
         </ConversationContent>
@@ -178,14 +231,40 @@ export function SferaChatClient({
       <div className="border-t bg-background p-4">
         <div className="mx-auto max-w-4xl">
           <SferaPromptInput
+            value={input}
             onChange={handleInputChange}
             onSubmit={handleSubmit}
             placeholder="Введите сообщение..."
-            status={status}
-            value={input}
+            isLoading={isLoading}
+            currentUserId={currentUserId}
+            members={initialMembers}
           />
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        onOpenChange={() => {
+          setMessageToDelete(null);
+        }}
+        open={!!messageToDelete}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить сообщение?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить. Сообщение будет удалено навсегда.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete}>
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

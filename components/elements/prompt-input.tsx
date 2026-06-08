@@ -335,7 +335,10 @@ export const PromptInputHeader = ({
 );
 
 // Attachments component
-export type PromptInputAttachmentsProps = Omit<HTMLAttributes<HTMLDivElement>, 'children'> & {
+export type PromptInputAttachmentsProps = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  "children"
+> & {
   children: (attachment: Attachment, index: number) => ReactNode;
 };
 

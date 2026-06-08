@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { user, sferaMember } from "@/lib/db/schema";
+import { sferaMember, user } from "@/lib/db/schema";
 
 async function fixMembers() {
   // Find adiom@list.ru

@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     // Создать сессию через NextAuth - вся логика в auth.ts
     const result = await signIn("credentials", {
       token: code,
-      email: email,
+      email,
       redirect: false,
     });
 

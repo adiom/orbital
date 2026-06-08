@@ -1,3 +1,5 @@
+import "server-only";
+
 import { compare } from "bcrypt-ts";
 import { and, eq, gt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";

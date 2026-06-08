@@ -17,9 +17,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import type { SferaMessage } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
 import { useWebSocket } from "@/lib/websocket/use-websocket";
-import type { SferaMessage } from "@/lib/db/schema";
 
 type Message = SferaMessage & {
   userEmail: string;
@@ -275,10 +275,10 @@ export function SferaGroupChat({
               const isOwn = message.userId === currentUserId;
 
               return (
-                <div key={message.id} className="group">
+                <div className="group" key={message.id}>
                   {/* Parent indicator */}
                   {parentMessage && (
-                    <div className="mb-2 ml-4 border-l-2 border-gray-300 pl-3 text-xs text-gray-500">
+                    <div className="mb-2 ml-4 border-gray-300 border-l-2 pl-3 text-gray-500 text-xs">
                       <div className="font-medium">
                         {parentMessage.userEmail}
                       </div>
@@ -295,7 +295,7 @@ export function SferaGroupChat({
                       isOwn
                         ? "border-blue-200 bg-blue-50"
                         : "border-gray-200 bg-white",
-                      isSelected && "ring-2 ring-gray-300 shadow-md",
+                      isSelected && "shadow-md ring-2 ring-gray-300",
                       message.isForked && "border-gray-400"
                     )}
                     onClick={() =>
@@ -305,8 +305,8 @@ export function SferaGroupChat({
                   >
                     {/* Forked badge */}
                     {message.isForked && (
-                      <div className="absolute top-0 right-0 rounded-bl-xl rounded-tr-xl bg-gray-700 px-2 py-1">
-                        <div className="flex items-center gap-1 text-xs text-white">
+                      <div className="absolute top-0 right-0 rounded-tr-xl rounded-bl-xl bg-gray-700 px-2 py-1">
+                        <div className="flex items-center gap-1 text-white text-xs">
                           <GitBranch className="h-3 w-3" />
                           <span>Forked</span>
                         </div>
@@ -328,7 +328,7 @@ export function SferaGroupChat({
                     </div>
 
                     {/* Content */}
-                    <div className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-900">
+                    <div className="whitespace-pre-wrap break-words text-gray-900 text-sm leading-relaxed">
                       {message.isGenerating && !message.content ? (
                         <div className="flex items-center gap-2 text-gray-500">
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -343,7 +343,7 @@ export function SferaGroupChat({
                     {isSelected && (
                       <div className="mt-3 flex flex-wrap gap-2">
                         <button
-                          className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-200"
+                          className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-gray-600 text-xs hover:bg-gray-200"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleCopy(message.id);
@@ -355,7 +355,7 @@ export function SferaGroupChat({
                         </button>
 
                         <button
-                          className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-200"
+                          className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-gray-600 text-xs hover:bg-gray-200"
                           onClick={(e) => {
                             e.stopPropagation();
                             setReplyingTo(message);
@@ -370,7 +370,7 @@ export function SferaGroupChat({
 
                         {message.isForked && message.forkedSferaId ? (
                           <button
-                            className="flex items-center gap-1 rounded-full bg-gray-700 px-2.5 py-1 text-xs text-white hover:bg-gray-800"
+                            className="flex items-center gap-1 rounded-full bg-gray-700 px-2.5 py-1 text-white text-xs hover:bg-gray-800"
                             onClick={(e) => {
                               e.stopPropagation();
                               router.push(`/orbit/${message.forkedSferaId}`);
@@ -382,7 +382,7 @@ export function SferaGroupChat({
                           </button>
                         ) : (
                           <button
-                            className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-200"
+                            className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-gray-600 text-xs hover:bg-gray-200"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleFork(message.id);
@@ -397,7 +397,7 @@ export function SferaGroupChat({
                         {canEditMessage(message) && (
                           <>
                             <button
-                              className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-200"
+                              className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-gray-600 text-xs hover:bg-gray-200"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEditingMessage(message);
@@ -412,7 +412,7 @@ export function SferaGroupChat({
                             </button>
 
                             <button
-                              className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+                              className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-gray-600 text-xs hover:bg-gray-200 disabled:opacity-50"
                               disabled={message.isForked}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -442,12 +442,12 @@ export function SferaGroupChat({
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-200 bg-white p-4">
+      <div className="border-gray-200 border-t bg-white p-4">
         {/* Reply/Edit indicator */}
         {(replyingTo || editingMessage) && (
           <div className="mb-2 flex items-center justify-between rounded-lg bg-gray-100 px-3 py-2">
             <div className="flex-1">
-              <div className="flex items-center gap-2 text-xs text-gray-600">
+              <div className="flex items-center gap-2 text-gray-600 text-xs">
                 {editingMessage ? (
                   <>
                     <PenSquare className="h-3 w-3" />
@@ -460,7 +460,7 @@ export function SferaGroupChat({
                   </>
                 )}
               </div>
-              <div className="mt-1 line-clamp-1 text-xs text-gray-500">
+              <div className="mt-1 line-clamp-1 text-gray-500 text-xs">
                 {editingMessage?.content || replyingTo?.content}
               </div>
             </div>
@@ -480,7 +480,7 @@ export function SferaGroupChat({
 
         <div className="flex gap-2">
           <Textarea
-            className="min-h-[44px] max-h-32 resize-none"
+            className="max-h-32 min-h-[44px] resize-none"
             disabled={isSending}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -508,7 +508,7 @@ export function SferaGroupChat({
           </Button>
         </div>
         {isConnected && (
-          <div className="mt-2 text-xs text-green-600">● Connected</div>
+          <div className="mt-2 text-green-600 text-xs">● Connected</div>
         )}
       </div>
     </div>

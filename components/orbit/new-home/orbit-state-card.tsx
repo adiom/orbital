@@ -28,13 +28,13 @@ export function OrbitStateCard({
   return (
     <div
       className={cn(
-        "flex flex-col items-center gap-4 rounded-3xl border border-dashed border-gray-200 bg-white/80 px-10 py-12 text-center shadow-sm backdrop-blur",
-        className,
+        "flex flex-col items-center gap-4 rounded-3xl border border-gray-200 border-dashed bg-white/80 px-10 py-12 text-center shadow-sm backdrop-blur",
+        className
       )}
     >
       {icon && <div className="text-gray-500">{icon}</div>}
       <div>
-        <h2 className="text-2xl font-semibold text-gray-900">{title}</h2>
+        <h2 className="font-semibold text-2xl text-gray-900">{title}</h2>
         <p className="mt-2 text-gray-500">{description}</p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-3">

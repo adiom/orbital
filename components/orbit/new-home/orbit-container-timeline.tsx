@@ -65,7 +65,7 @@ export function OrbitContainerTimeline({
           "pointer-events-auto relative overflow-hidden rounded-3xl border-2 bg-white shadow-lg transition-all duration-300",
           isHovered
             ? "scale-105 border-blue-400 shadow-2xl shadow-blue-200"
-            : "border-gray-200 hover:border-blue-300",
+            : "border-gray-200 hover:border-blue-300"
         )}
         style={{
           width: "180px",

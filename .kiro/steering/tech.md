@@ -1,3 +1,7 @@
+---
+inclusion: always
+---
+
 # Tech Stack
 
 ## Core Technologies
@@ -74,19 +78,3 @@ pnpm shadcn:update    # Update shadcn components
 - PostgreSQL database
 - Redis (optional but recommended)
 - Required API keys: AI providers, Vercel Blob, Tavily, Replicate
-
-## Key Dependencies
-
-- `ai` 5.0.26 - Vercel AI SDK
-- `drizzle-orm` 0.34 - Type-safe ORM
-- `next-auth` 5.0.0-beta.25 - Authentication
-- `prosemirror-*` - Rich text editing
-- `codemirror` 6.0 - Code editing
-- `ws` 8.18 - WebSocket server
-- `zod` 3.25 - Schema validation
-
-## Documentation
-
-- [Next.js](http://nextjs.org/docs)
-- [Vercel AI SDK](https://ai-sdk.dev/docs/introduction)
-

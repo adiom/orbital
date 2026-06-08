@@ -61,7 +61,7 @@ export function OrbitPageHeader({
           {parentSfera && (
             <div className="mb-2 flex items-center gap-2 text-sm">
               <Link
-                className="text-gray-500 hover:text-gray-700 transition-colors"
+                className="text-gray-500 transition-colors hover:text-gray-700"
                 href={`/orbit/${parentSfera.id}`}
               >
                 {parentSfera.title}
@@ -73,7 +73,7 @@ export function OrbitPageHeader({
 
           {/* Header Content */}
           <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               {/* Title */}
               <h1 className="mb-2 font-semibold text-2xl text-gray-900 md:text-3xl">
                 {sfera.title}
@@ -89,13 +89,19 @@ export function OrbitPageHeader({
               {/* Metadata Badges */}
               <div className="flex flex-wrap items-center gap-2">
                 {/* Member Count */}
-                <Badge className="gap-1.5 bg-blue-100 text-blue-700" variant="secondary">
+                <Badge
+                  className="gap-1.5 bg-blue-100 text-blue-700"
+                  variant="secondary"
+                >
                   <Users className="h-3.5 w-3.5" />
                   {memberCount} {memberCount === 1 ? "member" : "members"}
                 </Badge>
 
                 {/* Visibility Status */}
-                <Badge className={visibilityColors[sfera.visibility]} variant="secondary">
+                <Badge
+                  className={visibilityColors[sfera.visibility]}
+                  variant="secondary"
+                >
                   {visibilityLabels[sfera.visibility]}
                 </Badge>
               </div>
@@ -117,12 +123,7 @@ export function OrbitPageHeader({
               </Button>
 
               {/* Mobile Back Button */}
-              <Button
-                asChild
-                className="md:hidden"
-                size="sm"
-                variant="outline"
-              >
+              <Button asChild className="md:hidden" size="sm" variant="outline">
                 <Link href="/orbits">
                   <ArrowLeft className="h-4 w-4" />
                 </Link>

@@ -49,3 +49,6 @@ yarn-error.log*
 .cursor/rules/openmemory.mdc
 CLAUDE.md
 .windsurf/rules/openmemory.md
+.kiro/
+.vscode/
+.codenomad/

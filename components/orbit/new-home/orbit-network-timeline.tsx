@@ -18,9 +18,9 @@ import { useOrbitCanvas } from "@/hooks/use-orbit-canvas";
 import { useOrbitInteractions } from "@/hooks/use-orbit-interactions";
 import type { ForkRelationship, Orbit } from "@/hooks/use-orbit-layout";
 import { useOrbitZoom } from "@/hooks/use-orbit-zoom";
-import { OrbitContainerTimeline } from "./orbit-container-timeline";
 import { OrbitSettings } from "../orbit-settings";
 import { OrbitZoomControls } from "../orbit-zoom-controls";
+import { OrbitContainerTimeline } from "./orbit-container-timeline";
 
 type Member = {
   userId: string;
@@ -42,7 +42,10 @@ type OrbitNetworkTimelineProps = {
 };
 
 // Простейший layout по времени создания: ось X = createdAt, ось Y = уровень форка
-function useTimelineLayout(orbits: Orbit[], forkRelationships: ForkRelationship[]) {
+function useTimelineLayout(
+  orbits: Orbit[],
+  forkRelationships: ForkRelationship[]
+) {
   const nodePositions = useMemo(() => {
     if (orbits.length === 0) {
       return new Map<string, NodePosition>();
@@ -90,7 +93,7 @@ function useTimelineLayout(orbits: Orbit[], forkRelationships: ForkRelationship[
       0,
       ...sorted.map((orbit) => {
         return getLevel(orbit.id);
-      }),
+      })
     );
 
     sorted.forEach((orbit, index) => {
@@ -100,7 +103,7 @@ function useTimelineLayout(orbits: Orbit[], forkRelationships: ForkRelationship[
       // дискретный индекс слота по времени
       const slotIndex = Math.min(
         maxSlots - 1,
-        Math.floor(tNorm * maxSlots + 0.0001),
+        Math.floor(tNorm * maxSlots + 0.0001)
       );
 
       const level = getLevel(orbit.id);
@@ -150,7 +153,7 @@ export function OrbitNetworkTimeline({
 
   const { hoveredNode, handleCanvasClick, handleCanvasMove } =
     useOrbitInteractions(canvasRef, nodePositions, (nodeId) =>
-      router.push(`/orbit/${nodeId}`),
+      router.push(`/orbit/${nodeId}`)
     );
 
   useOrbitCanvas(canvasRef, nodePositions, forkRelationships);
@@ -201,7 +204,7 @@ export function OrbitNetworkTimeline({
     } catch (error) {
       console.error("Error deleting Orbit:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to delete Orbit",
+        error instanceof Error ? error.message : "Failed to delete Orbit"
       );
     } finally {
       setIsDeleting(false);
@@ -234,7 +237,7 @@ export function OrbitNetworkTimeline({
 
             const isHovered = hoveredNode === id;
             const childCount = forkRelationships.filter(
-              (r) => r.parentSferaId === id,
+              (r) => r.parentSferaId === id
             ).length;
 
             return (

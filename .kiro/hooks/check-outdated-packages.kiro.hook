@@ -1,16 +1,15 @@
 {
-  "enabled": true,
+  "enabled": false,
   "name": "Check Outdated NPM Packages",
   "description": "Monitors package.json for changes and checks for outdated npm packages, providing a summary of available updates",
   "version": "1",
   "when": {
-    "type": "fileEdited",
-    "patterns": [
-      "package.json"
-    ]
+    "type": "userTriggered"
   },
   "then": {
     "type": "askAgent",
     "prompt": "The package.json file has been modified. Please run `pnpm outdated` to check for outdated npm packages and provide a summary of:\n1. Which packages have available updates\n2. Current versions vs latest versions\n3. Any major version updates that might require attention\n4. Recommendations for which packages should be updated first based on security or feature importance\n\nFormat the output in a clear, readable way that helps the developer understand what needs attention."
-  }
+  },
+  "workspaceFolderName": "avrora-area",
+  "shortName": "check-outdated-packages"
 }

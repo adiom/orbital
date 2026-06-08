@@ -174,10 +174,7 @@ export const loginWithMagicLink = async (
 };
 
 // Верификация 8-значного кода из БД
-export const verifyMagicCode = async (
-  email: string,
-  token: string
-) => {
+export const verifyMagicCode = async (email: string, token: string) => {
   try {
     // Проверяем, что код существует, не использован и не просрочен
     const found = await db

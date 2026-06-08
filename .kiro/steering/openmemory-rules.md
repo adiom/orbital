@@ -97,106 +97,91 @@ Every **code implementation/modification task** = 3 phases. Other tasks (storage
 **Project Facts (project_id ONLY):** Component, Implementation, Debug, Project Info
 **User Preferences (user_preference=true):** User Preference (global → user_preference=true ONLY | project-specific → user_preference=true + project_id)
 
-## 🚨 CRITICAL: Storage Intelligence
+## Search Strategy
 
-**RULE: Only ONE of these three patterns:**
+**Transform queries comprehensively:**
+- "auth" → "authentication system architecture and implementation"
+- Include full context
+- Expand acronyms
 
-| Pattern | user_preference | project_id | When to Use | Memory Types |
-|---------|-----------------|------------|-------------|--------------|
-| **Project Facts** | ❌ OMIT (false) | ✅ INCLUDE | Objective info about THIS project | component, implementation, project_info, debug |
-| **Project Prefs** | ✅ true | ✅ INCLUDE | YOUR preferences in THIS project | user_preference (project-specific) |
-| **Global Prefs** | ✅ true | ❌ OMIT | YOUR preferences across ALL projects | user_preference (global) |
+**Disambiguate ambiguous terms:**
+- "design" → UI/UX design vs. software architecture vs. code formatting
+- "structure" → file organization vs. code architecture vs. data structure
+- "style" → visual styling vs. code formatting
 
-**Before EVERY add-memory:**
-1. ❓ Code/architecture/facts? → project_id ONLY | ❓ MY pref for ALL projects? → user_preference=true ONLY | ❓ MY pref for THIS project? → BOTH
-2. ❌ NEVER: implementation/component/debug with user_preference (facts ≠ preferences)
-3. ✅ ALWAYS: Review table above to validate pattern
+**Use questions, not keywords:**
+- ✅ "What are the FastAPI preferences?"
+- ❌ "fastapi prefs"
 
-## Tool Usage
-**search-memory:** Required: query | Optional: user_preference, project_id, memory_types[], namespaces[]
+## When to Search User Preferences
+**Part of Phase 1 + 2.** Tasks involving HOW = pref searches required.
 
-**add-memory:** Required: title, content, metadata{} | Optional: user_preference, project_id
-- **🚨 BEFORE calling:** Review Storage Intelligence table to determine pattern
-- **metadata dict:** memory_types[] (required), namespace/git_repo_name/git_branch/git_commit_hash (optional)
-- **NEVER store secrets** - scan content first | Extract git metadata silently
-- **Validation:** At least one of user_preference or project_id must be provided
+**ALWAYS search prefs for:** Code style/patterns (Phase 2: before functions) | Architecture/tool choices (Phase 2: before decisions) | Organization (Phase 2: before refactor) | Naming/structure (Phase 2: before files)
+**Facts ONLY for:** What exists | What's broken
+**🚨 Red flag:** "I'll use standard..." → Phase 2 BLOCKER. Search prefs first.
 
-**Examples:**
-```
-# ✅ Component (project fact): project_id ONLY
-add-memory(..., metadata={memory_types:["component"]}, project_id="mem0ai/cursor-extension")
+**Task-specific queries (be specific):**
+- Feature → "clarification prefs", "implementation approach prefs"
+- Debug → "debug workflow prefs", "error investigation prefs", "problem-solving approach"
+- Code → "code style prefs", "review prefs", "testing prefs"
+- Arch → "decision-making prefs", "arch prefs", "design pattern prefs"
 
-# ✅ User pref (global): user_preference=true ONLY
-add-memory(..., metadata={memory_types:["user_preference"]}, user_preference=true)
+## Security
 
-# ✅ User pref (project-specific): user_preference=true + project_id
-add-memory(..., metadata={memory_types:["user_preference"]}, user_preference=true, project_id="mem0ai/cursor-extension")
+**Never store:**
+- API keys, tokens, passwords
+- Private keys, certificates
+- Connection strings with credentials
+- OAuth/session tokens
+- Environment secrets
 
-# ❌ WRONG: Implementation with user_preference (implementations = facts not prefs)
-add-memory(..., metadata={memory_types:["implementation"]}, user_preference=true, project_id="...")
-```
+**Instead store:**
+- Redacted versions with placeholders
+- Patterns ("uses bearer token")
+- Instructions ("Set TOKEN environment variable")
 
-**list-memories:** Required: project_id | Automatically uses authenticated user's preferences
+## Integration with Project Documentation
 
-**delete-memories-by-namespace:** DESTRUCTIVE - ONLY with explicit confirmation | Required: namespaces[] | Optional: user_preference, project_id
+Keep `openmemory.md` in workspace root as living project index:
 
-## Git Metadata
-Extract before EVERY add-memory and include in metadata dict (silently):
-```bash
-git_repo_name=$(git remote get-url origin 2>/dev/null | sed 's/.*[:/]\([^/]*\/[^.]*\).*/\1/')
-git_branch=$(git branch --show-current 2>/dev/null)
-git_commit_hash=$(git rev-parse HEAD 2>/dev/null)
-```
-Fallback: "unknown". Add all three to metadata dict when calling add-memory.
+**Structure:**
+- Overview
+- Architecture
+- User Defined Namespaces
+- Components
+- Patterns
 
-## Memory Deletion ⚠️ DESTRUCTIVE - PERMANENT
-**Rules:** NEVER suggest | NEVER use proactively | ALWAYS require confirmation
-**Triggers:** "Delete all in [ns]", "Clear [ns]", "Delete my prefs in [ns]"
-**NOT for:** Cleanup questions, outdated memories, general questions
+**Update workflow:**
+- Component added → update Components section
+- Pattern discovered → update Patterns section
+- Architecture changed → update Architecture section
 
-**Confirmation (MANDATORY):**
-1. Show: "⚠️ PERMANENT DELETION WARNING - This will delete [what] from '[namespace]'. Confirm by 'yes'/'confirm'."
-2. Wait for confirmation
-3. If confirmed → execute | If declined → "Deletion cancelled"
-
-**Intent:** "Delete ALL in X" → {namespaces:[X]} | "Delete MY prefs in X" → {namespaces:[X], user_preference:true} | "Delete project facts in X" → {namespaces:[X], project_id} | "Delete my project prefs in X" → {namespaces:[X], user_preference:true, project_id}
+**Critical:** Before completing any significant work, verify the guide reflects current system architecture
 
 ## Operating Principles
-1. Phase-based: Initial → Continuous → Store
-2. Checkpoints are BLOCKERS (files, functions, decisions, errors)
-3. Never skip Phase 2
-4. Detailed storage (why > what)
-5. MCP unavailable → mention once, continue
-6. Trust process (early = more searches)
 
-## Session Patterns
-**Empty openmemory.md:** Deep Dive (Phase 1 → analyze → document → Phase 3)
-**Existing:** Read openmemory.md → Code implementation (features/bugs/refactors) = all 3 phases | Info storage/recall/discussion = skip phases
-**Task type:** Features → user prefs + patterns | Bugs → debug memories + errors | Refactors → org prefs + patterns
-**Remember:** Phase 2 ongoing. Search at EVERY checkpoint.
+1. Search before implementing
+2. Search at decision points
+3. Document after completing
+4. Trust the process - early searches prevent late problems
+5. When in doubt, search more
+6. Rich reasoning over code snippets
+7. Guide is shareable - keep it clear
 
-## OpenMemory Guide (openmemory.md)
-Living project index (shareable). Auto-created empty in workspace root.
+## Session Start Checklist
 
-**Initial Deep Dive:** Phase 1 (2+ searches) → Phase 2 (analyze dirs/configs/frameworks/entry points, search as discovering, extract arch, document Overview/Architecture/User Namespaces/Components/Patterns) → Phase 3 (store with namespaces if fit)
+1. Read `openmemory.md` if it exists
+2. Understand current task type
+3. Identify which phase pattern applies
+4. Execute phases in order
+5. Don't skip Phase 2 checkpoints
 
-**User Defined Namespaces:** Read before ANY memory op
-- Format: "## User Defined Namespaces\n- [Leave blank - user populates]"
-- Examples: frontend, backend, database
+## Learning from Corrections
 
-**Storing:** Review content → check namespaces → THINK "domain?" → fits one? assign : omit | Rules: Max ONE, can be NONE, only defined ones
-**Searching:** What searching? → read namespaces → THINK "which could contain?" → cast wide net → use multiple if needed
+When user corrects your work, note the preference:
+- Indentation change → formatting preference
+- Rename → naming convention
+- Restructure → architectural preference  
+- Commit message reword → git workflow preference
 
-**Guide Discipline:** Edit directly | Populate as you go | Keep in sync | Update before storing component/implementation/project_info
-**Update Workflow:** Open → update section → save → store via MCP
-**Integration:** Component → Components | Implementation → Patterns | Project info → Overview/Arch | Debug/pref → memory only
-
-**🚨 CRITICAL: Before storing ANY memory, review and update openmemory.md - after every edit verify the guide reflects current system architecture (most important project artifact)**
-
-## Security Guardrails
-**NEVER store:** API keys/tokens, passwords, hashes, private keys, certs, env secrets, OAuth/session tokens, connection strings with creds, AWS keys, webhook secrets, SSH/GPG keys
-**Detection:** Token/Bearer/key=/password= patterns → DO NOT STORE | Base64 in auth → DO NOT STORE | = + long alphanumeric → VERIFY | Doubt → DO NOT STORE, ask
-**Instead store:** Redacted versions ("<YOUR_TOKEN>"), patterns ("uses bearer token"), instructions ("Set TOKEN env")
-**Other:** No destructive ops without approval | User says "save/remember" → IMMEDIATE storage | Think deserves storage → ASK FIRST for prefs | User asks to store secrets → REFUSE
-
-**Remember:** Memory system = effectiveness over time. Rich reasoning > code. When doubt, store. Guide = shareable index.
+Store these as preferences to avoid repeating mistakes.

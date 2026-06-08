@@ -30,26 +30,26 @@
     - Test migrations on development database
     - _Requirements: All schema changes_
 
-- [ ] 2. Validation layer with Zod schemas
-  - [ ] 2.1 Create validation schemas
+- [x] 2. Validation layer with Zod schemas
+  - [x] 2.1 Create validation schemas
     - Create createMessageSchema with content, parentMessageId, attachments, idempotencyKey
     - Create paginationSchema with cursor, limit (1-100)
     - Create messageFilterSchema with userId, messageType, hasAttachments, isForked, dateFrom, dateTo
     - Create agentRegistrationSchema
     - _Requirements: 2.1_
   
-  - [ ]* 2.2 Write property test for validation
+  - [x] 2.2 Write property test for validation
     - **Property 5: Validation and error response**
     - **Validates: Requirements 2.1, 2.2**
   
-  - [ ] 2.3 Create validation middleware
+  - [x] 2.3 Create validation middleware
     - Implement validateRequest middleware that uses Zod schemas
     - Return 400 with detailed error messages on validation failure
     - Support strict mode configuration
     - _Requirements: 2.2, 2.3_
 
-- [ ] 3. Rate limiting system
-  - [ ] 3.1 Implement Redis-based rate limiter
+- [x] 3. Rate limiting system
+  - [x] 3.1 Implement Redis-based rate limiter
     - Create checkRateLimit function using Redis sorted sets
     - Implement sliding window algorithm
     - Support different limits for users, agents, admins
@@ -60,14 +60,14 @@
     - **Property 12: Rate limit enforcement**
     - **Validates: Requirements 3.2**
   
-  - [ ] 3.3 Create rate limit middleware
+  - [x] 3.3 Create rate limit middleware
     - Apply rate limits to API routes
     - Return 429 with retry-after header when exceeded
     - Log rate limit violations
     - _Requirements: 3.2, 10.4_
 
-- [ ] 4. Pagination system
-  - [ ] 4.1 Implement cursor-based pagination
+- [x] 4. Pagination system
+  - [x] 4.1 Implement cursor-based pagination
     - Create encodeCursor and decodeCursor functions
     - Implement getMessages with cursor support
     - Support limit parameter (1-100, default 50)
@@ -90,8 +90,8 @@
     - **Property 4: End of pagination indicator**
     - **Validates: Requirements 1.4**
 
-- [ ] 5. Message filtering and search
-  - [ ] 5.1 Implement message filters
+- [x] 5. Message filtering and search
+  - [x] 5.1 Implement message filters
     - Add support for userId filter
     - Add support for messageType filter
     - Add support for hasAttachments filter
@@ -103,14 +103,14 @@
     - **Property 11: Author filter correctness**
     - **Validates: Requirements 7.1**
   
-  - [ ] 5.3 Implement full-text search
+  - [x] 5.3 Implement full-text search
     - Create searchMessages function using PostgreSQL to_tsvector
     - Support Russian language search
     - Return results with pagination
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 6. Idempotency system
-  - [ ] 6.1 Create IdempotencyService
+- [-] 6. Idempotency system
+  - [x] 6.1 Create IdempotencyService
     - Implement checkAndStore method
     - Check for existing keys in idempotency_log
     - Handle expired keys (>24 hours)
@@ -127,21 +127,21 @@
     - Return 200 with existing message for duplicates
     - _Requirements: 15.1, 15.3_
 
-- [ ] 7. Agent Registry Service
-  - [ ] 7.1 Create AgentRegistryService class
+- [x] 7. Agent Registry Service
+  - [x] 7.1 Create AgentRegistryService class
     - Implement registerAgent method
     - Implement updateAgent method
     - Implement deleteAgent method
     - Implement getAgent and listActiveAgents methods
     - _Requirements: 12.1, 12.3, 12.4_
   
-  - [ ] 7.2 Implement webhook validation
+  - [x] 7.2 Implement webhook validation
     - Create validateWebhook method that sends test ping
     - Verify webhook responds with 200
     - Update agent configuration on success
     - _Requirements: 12.2_
   
-  - [ ] 7.3 Implement health status management
+  - [x] 7.3 Implement health status management
     - Create updateHealthStatus method
     - Create incrementFailedWebhooks method
     - Create resetFailedWebhooks method
@@ -200,7 +200,7 @@
     - **Property 15: Priority ordering**
     - **Validates: Requirements 18.4**
 
-- [ ] 11. Message Service enhancements
+- [-] 11. Message Service enhancements
   - [ ] 11.1 Update MessageService.createMessage
     - Add messageType parameter
     - Auto-detect messageType based on userId (agent vs user)
@@ -213,14 +213,14 @@
     - **Property 8: Agent message type invariant**
     - **Validates: Requirements 16.2**
   
-  - [ ] 11.3 Update MessageService.getMessages
+  - [x] 11.3 Update MessageService.getMessages
     - Add pagination support
     - Add filtering support
     - Optimize with JOINs to avoid N+1 queries
     - Use indexes for performance
     - _Requirements: 1.1, 1.2, 7.1, 7.2, 7.3, 7.4, 8.1_
   
-  - [ ] 11.4 Create MessageService.searchMessages
+  - [x] 11.4 Create MessageService.searchMessages
     - Implement full-text search
     - Return paginated results
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
@@ -376,4 +376,3 @@
 
 - [ ] 19. Final checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
-

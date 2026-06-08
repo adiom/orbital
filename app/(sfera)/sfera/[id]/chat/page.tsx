@@ -1,10 +1,14 @@
-import { auth } from "@/app/(auth)/auth";
-import { notFound } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
-import { checkSferaAccess, getSferaWithMetadata } from "@/lib/db/queries";
-import { db } from "@/lib/db";
-import { sferaMessage, user } from "@/lib/db/schema";
+import { notFound } from "next/navigation";
+import { auth } from "@/app/(auth)/auth";
 import { SferaChatClient } from "@/components/sfera/sfera-chat-client";
+import { db } from "@/lib/db";
+import {
+  checkSferaAccess,
+  getSferaMembers,
+  getSferaWithMetadata,
+} from "@/lib/db/queries";
+import { sferaMessage, user } from "@/lib/db/schema";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -26,7 +30,7 @@ export default async function SferaChatPage({ params }: PageProps) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Требуется авторизация</h1>
+          <h1 className="mb-2 font-bold text-2xl">Требуется авторизация</h1>
           <p className="text-muted-foreground">
             Пожалуйста, войдите в систему для доступа к чату
           </p>
@@ -50,7 +54,7 @@ export default async function SferaChatPage({ params }: PageProps) {
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Доступ запрещен</h1>
+          <h1 className="mb-2 font-bold text-2xl">Доступ запрещен</h1>
           <p className="text-muted-foreground">
             Вы не являетесь участником этой Sfera
           </p>
@@ -58,6 +62,9 @@ export default async function SferaChatPage({ params }: PageProps) {
       </div>
     );
   }
+
+  // Загрузка участников Sfera
+  const members = await getSferaMembers(id);
 
   // Загрузка существующих сообщений
   const messages = await db
@@ -78,18 +85,16 @@ export default async function SferaChatPage({ params }: PageProps) {
     .orderBy(desc(sferaMessage.createdAt))
     .limit(50);
 
-  // Преобразуем сообщения в формат UIMessage для AI SDK
+  // Преобразуем сообщения в формат Message для AI SDK
   const initialMessages = messages.reverse().map((msg) => ({
     id: msg.id,
-    role: msg.userId === session.user.id ? ("user" as const) : ("assistant" as const),
-    parts: [
-      {
-        type: "text" as const,
-        text: msg.content,
-      },
-    ],
+    role:
+      msg.userId === session.user.id
+        ? ("user" as const)
+        : ("assistant" as const),
+    content: msg.content,
     // Дополнительные данные для отображения
-    metadata: {
+    experimental_data: {
       userId: msg.userId,
       userEmail: msg.userEmail,
       attachments: msg.attachments,
@@ -102,9 +107,10 @@ export default async function SferaChatPage({ params }: PageProps) {
   return (
     <SferaChatClient
       currentUserId={session.user.id}
+      initialMembers={members}
+      initialMessages={initialMessages}
       initialSfera={sferaData}
       sferaId={id}
-      initialMessages={initialMessages}
     />
   );
 }

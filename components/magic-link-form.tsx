@@ -81,12 +81,12 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
             ✅ Код создан для {email}
             {isDev && (
               <div className="mt-2 font-mono text-xs">
-                Код: {magicLink.split('magic_token=')[1]}
+                Код: {magicLink.split("magic_token=")[1]}
               </div>
             )}
           </div>
         </div>
-        
+
         <div className="space-y-3">
           <Button className="w-full" onClick={() => setShowCodeInput(true)}>
             Ввести код вручную

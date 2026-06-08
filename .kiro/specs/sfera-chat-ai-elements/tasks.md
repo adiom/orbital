@@ -68,14 +68,14 @@
   - Add PromptInputFooter with tools and submit
   - _Requirements: 2.1, 2.5_
 
-- [ ] 8. Implement file attachments
+- [x] 8. Implement file attachments
   - Add PromptInputActionMenu with file picker
   - Handle image uploads (preview)
   - Handle audio uploads (indicator)
   - Allow removing attachments before send
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
-- [ ] 9. Add mention functionality
+- [x] 9. Add mention functionality
   - Create MentionButton component
   - Show participant list on @ symbol
   - Insert @username into textarea
@@ -93,21 +93,21 @@
   - Parse request body (messages, parentMessageId)
   - _Requirements: 8.1, 8.2_
 
-- [ ] 11. Implement message saving
+- [x] 11. Implement message saving
   - Save user message to sferaMessage table
   - Include content, attachments, parentMessageId
   - Return message ID to client
   - Update Sfera updatedAt timestamp
   - _Requirements: 2.2, 2.4, 8.2_
 
-- [ ] 12. Implement mention detection
-  - Create detectMentions utility function
+- [x] 12. Implement mention detection
+  - Create detectMentions utility function (lib/ai/agents/detector.ts)
   - Parse message content for @username and @agent patterns
   - Return list of mentioned users/agents
   - Save mentions to database
   - _Requirements: 3.3, 3.4_
 
-- [ ] 13. Implement AI agent streaming
+- [x] 13. Implement AI agent streaming
   - Detect AI agent mentions
   - Create empty message for each mentioned agent
   - Set isGenerating to true
@@ -115,8 +115,8 @@
   - Return toUIMessageStreamResponse
   - _Requirements: 8.3, 8.4, 10.1, 10.2, 10.3_
 
-- [ ] 14. Implement streamAgentResponse helper
-  - Create helper function for async agent streaming
+- [x] 14. Implement streamAgentResponse helper
+  - Create helper function for async agent streaming (lib/ai/agents/base-streamer.ts)
   - Stream tokens to message in real-time
   - Update message content in database
   - Handle reasoning, sources, tool results
@@ -127,7 +127,7 @@
 
 ## Phase 5: Message Actions
 
-- [ ] 15. Implement MessageActions
+- [ ] 15. Implement MessageActions in SferaChatClient
   - Add Copy action (all messages)
   - Add Retry action (AI messages only)
   - Add Edit action (own messages only)
@@ -136,24 +136,24 @@
   - Add Copy Link action (all messages)
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5, 15.1_
 
-- [ ] 16. Implement message editing
+- [ ] 16. Implement message editing UI
   - Load message content into input on Edit click
   - Show "Editing" indicator
-  - Send PATCH request to update message
+  - Send PATCH request to `/api/sfera/[id]/messages/[messageId]` (API exists)
   - Prevent editing of other users' messages
   - Clear input on cancel
   - _Requirements: 11.1, 11.2, 11.3, 11.4, 11.5_
 
-- [ ] 17. Implement message deletion
+- [ ] 17. Implement message deletion UI
   - Show confirmation dialog
-  - Send DELETE request to API
+  - Send DELETE request to `/api/sfera/[id]/messages/[messageId]` (API exists)
   - Remove message from UI
   - Only allow deletion of own messages
   - Prevent deletion if message is forked
   - _Requirements: 6.5, 11.2_
 
-- [ ] 18. Implement message forking
-  - Create new Sfera on Fork action
+- [ ] 18. Implement message forking UI
+  - Call POST `/api/sfera/[id]/fork` on Fork action (API exists)
   - Copy message to new Sfera
   - Copy all members from parent Sfera
   - Set isForked flag on original message
@@ -204,7 +204,7 @@
   - _Requirements: 2.2, 11.1_
 
 - [ ] 24. Implement tool execution display
-  - Create ToolResultDisplay component
+  - Create ToolResultDisplay component (exists in components/orbit/)
   - Render tool results in special format
   - Show tool execution indicator during execution
   - Save tool results to toolResults field
@@ -264,7 +264,7 @@
   - Ensure color contrast meets WCAG standards
   - _Requirements: All_
 
-- [ ] 32. Write integration tests
+- [ ]* 32. Write integration tests
   - Test full chat flow (send → AI responds)
   - Test message editing and deletion
   - Test forking messages
@@ -287,3 +287,6 @@
 - Commit changes after completing each phase
 - New page exists at `/sfera/[id]/chat` parallel to old `/orbit/[id]`
 - Old implementation remains untouched during development
+- API endpoints for message CRUD already exist in `/api/sfera/[id]/messages/`
+- Fork API already exists in `/api/sfera/[id]/fork/`
+- Message page already exists at `/m/[uuid]/page.tsx`

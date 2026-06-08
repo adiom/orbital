@@ -274,11 +274,7 @@ export function OrbitMessage({
               )}
             </>
           )}
-
-          
         </div>
-
-      
 
         {message.attachments && message.attachments.length > 0 && (
           <div className="mt-4 flex flex-col gap-3">

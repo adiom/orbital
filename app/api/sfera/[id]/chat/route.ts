@@ -1,8 +1,10 @@
+import "server-only";
+
 import { streamText } from "ai";
 import { and, desc, eq } from "drizzle-orm";
 import { auth } from "@/app/(auth)/auth";
-import { detectMentionedAgents } from "@/lib/ai/agents/detector";
 import { streamAgentResponse } from "@/lib/ai/agents/base-streamer";
+import { detectMentionedAgents } from "@/lib/ai/agents/detector";
 import { myProvider } from "@/lib/ai/providers";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
@@ -14,12 +16,12 @@ type RouteContext = {
 
 /**
  * POST /api/sfera/[id]/chat - Streaming chat endpoint for AI SDK Elements
- * 
+ *
  * This endpoint handles:
  * 1. User message creation
  * 2. AI agent mention detection
  * 3. Streaming responses from mentioned agents
- * 
+ *
  * Requirements: 8.1, 8.2
  */
 export async function POST(request: Request, context: RouteContext) {
@@ -69,10 +71,7 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
-    const {
-      messages,
-      parentMessageId,
-    } = body as {
+    const { messages, parentMessageId } = body as {
       messages?: Array<{
         role: string;
         content: string;
@@ -133,7 +132,7 @@ export async function POST(request: Request, context: RouteContext) {
       })
       .returning();
 
-    console.log(`📝 User message created:`, {
+    console.log("📝 User message created:", {
       messageId: userMessage.id,
       sferaId,
       userId: session.user.id,
@@ -150,7 +149,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     if (mentionedAgents.length === 0) {
       // No AI agents mentioned, return empty response
-      console.log(`ℹ️ No AI agents mentioned in message`);
+      console.log("ℹ️ No AI agents mentioned in message");
       return Response.json(
         {
           message: userMessage,
@@ -294,7 +293,7 @@ export async function POST(request: Request, context: RouteContext) {
     // for the first agent if any agents were mentioned
     if (agentMessages.length > 0) {
       const firstAgent = mentionedAgents[0];
-      
+
       // Get Sfera details for context
       const [sferaData] = await db
         .select()
@@ -362,9 +361,9 @@ ${content}`,
   } catch (error) {
     console.error("Failed to process chat message:", error);
     return Response.json(
-      { 
+      {
         error: "Failed to process message",
-        details: error instanceof Error ? error.message : "Unknown error"
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );

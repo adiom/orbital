@@ -571,9 +571,11 @@ export async function getSferaWithMetadata(
   userId: string | undefined
 ) {
   try {
-    const { sfera: sferaTable, sferaMember, sferaForkedSfera } = await import(
-      "./schema"
-    );
+    const {
+      sfera: sferaTable,
+      sferaMember,
+      sferaForkedSfera,
+    } = await import("./schema");
 
     // Get Sfera details
     const [sferaData] = await db
@@ -601,10 +603,7 @@ export async function getSferaWithMetadata(
         parentSferaTitle: sferaTable.title,
       })
       .from(sferaForkedSfera)
-      .innerJoin(
-        sferaTable,
-        eq(sferaForkedSfera.parentSferaId, sferaTable.id)
-      )
+      .innerJoin(sferaTable, eq(sferaForkedSfera.parentSferaId, sferaTable.id))
       .where(eq(sferaForkedSfera.forkedSferaId, sferaId))
       .limit(1);
 
@@ -673,10 +672,7 @@ export async function getParentSfera(sferaId: string) {
         title: sferaTable.title,
       })
       .from(sferaForkedSfera)
-      .innerJoin(
-        sferaTable,
-        eq(sferaForkedSfera.parentSferaId, sferaTable.id)
-      )
+      .innerJoin(sferaTable, eq(sferaForkedSfera.parentSferaId, sferaTable.id))
       .where(eq(sferaForkedSfera.forkedSferaId, sferaId))
       .limit(1);
 
@@ -685,6 +681,33 @@ export async function getParentSfera(sferaId: string) {
     throw new ChatSDKError(
       "bad_request:database",
       "Failed to get parent sfera"
+    );
+  }
+}
+
+/**
+ * Get all members of a Sfera
+ */
+export async function getSferaMembers(sferaId: string) {
+  try {
+    const { sferaMember, user: userTable } = await import("./schema");
+
+    const members = await db
+      .select({
+        userId: sferaMember.userId,
+        role: sferaMember.role,
+        joinedAt: sferaMember.joinedAt,
+        email: userTable.email,
+      })
+      .from(sferaMember)
+      .innerJoin(userTable, eq(sferaMember.userId, userTable.id))
+      .where(eq(sferaMember.sferaId, sferaId));
+
+    return members;
+  } catch (_error) {
+    throw new ChatSDKError(
+      "bad_request:database",
+      "Failed to get sfera members"
     );
   }
 }
