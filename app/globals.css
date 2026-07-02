@@ -192,6 +192,35 @@
   }
 }
 
+@keyframes constellation-pulse {
+  0% {
+    box-shadow: 0 0 0 0 var(--pulse-color, rgba(99, 102, 241, 0.25));
+  }
+  100% {
+    box-shadow: 0 0 0 12px transparent;
+  }
+}
+
+.constellation-pulse {
+  animation: constellation-pulse 3s ease-out infinite;
+}
+
+.constellation-pulse-focused {
+  animation: constellation-pulse 2s ease-out infinite;
+}
+
+.constellation-pulse-strong {
+  animation: constellation-pulse 1.8s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .constellation-pulse,
+  .constellation-pulse-focused,
+  .constellation-pulse-strong {
+    animation: none;
+  }
+}
+
 @layer base {
   body {
     @apply text-foreground;

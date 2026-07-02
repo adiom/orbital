@@ -1,13 +1,13 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { GitBranch, Lock, Settings, Trash2, Unlock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ForkRelationship, Orbit } from "@/hooks/use-orbit-layout";
 import { cn } from "@/lib/utils";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────
 
 type NodeData = Orbit & {
   x: number;
@@ -27,21 +27,24 @@ type ConstellationProps = {
   onDeleteClick?: (orbit: Orbit) => void;
 };
 
-// ─── Static star field ────────────────────────────────────────────────────────
+ // ─── Subtle reference grid (barely visible for alignment) ────────────────────
 
-const STAR_COUNT = 180;
+// Create a very subtle grid reference - only visible on close inspection
+const referencePoints = [];
+for (let x = 50; x <= 750; x += 100) {
+  for (let y = 50; y <= 550; y += 100) {
+    referencePoints.push({
+      id: referencePoints.length,
+      x,
+      y,
+      size: 0.3,
+      color: "bg-gray-100/5",
+      opacity: 0.08,
+    });
+  }
+}
 
-const starField = Array.from({ length: STAR_COUNT }, (_, i) => ({
-  id: i,
-  x: (i * 137.508 + 23) % 100,
-  y: (i * 97.381 + 11) % 100,
-  size: i % 7 === 0 ? 1.5 : i % 3 === 0 ? 1 : 0.5,
-  opacity: 0.15 + ((i * 53) % 100) / 200,
-  delay: (i * 0.17) % 4,
-  duration: 2.5 + ((i * 31) % 30) / 10,
-}));
-
-// ─── Layout algorithm ─────────────────────────────────────────────────────────
+// ─── Layout algorithm (more geometric/workspace-like) ────────────────────
 
 function computeLayout(
   orbits: Orbit[],
@@ -61,31 +64,28 @@ function computeLayout(
   }
 
   const roots = orbits.filter((o) => !parentOf.has(o.id));
-  const orbitMap = new Map(orbits.map((o) => [o.id, o]));
 
   const positions = new Map<string, { x: number; y: number; depth: number }>();
 
-  // Place roots in a soft grid with organic offsets
-  const cols = Math.ceil(Math.sqrt(roots.length * 1.6));
-  const cellW = (W * 0.82) / Math.max(cols, 1);
-  const cellH = (H * 0.76) / Math.max(Math.ceil(roots.length / cols), 1);
-  const marginX = W * 0.09;
-  const marginY = H * 0.12;
+  // Place roots in a precise grid (workspace-appropriate, tighter spacing)
+  const cols = Math.ceil(Math.sqrt(roots.length));
+  const cellW = (W * 0.72) / Math.max(cols, 1); // Tighter horizontal spacing
+  const cellH = (H * 0.62) / Math.max(Math.ceil(roots.length / cols), 1); // Tighter vertical spacing
+  const marginX = W * 0.14;
+  const marginY = H * 0.19;
 
   roots.forEach((root, i) => {
     const col = i % cols;
     const row = Math.floor(i / cols);
-    // Organic offset using deterministic pseudo-random
-    const jitterX = ((root.id.charCodeAt(0) * 37 + root.id.charCodeAt(1) * 13) % 40) - 20;
-    const jitterY = ((root.id.charCodeAt(2) * 29 + root.id.charCodeAt(3) * 17) % 40) - 20;
+    // Perfectly aligned grid - no decorative offset for workspace precision
     positions.set(root.id, {
-      x: marginX + col * cellW + cellW / 2 + jitterX,
-      y: marginY + row * cellH + cellH / 2 + jitterY,
+      x: marginX + col * cellW + cellW / 2,
+      y: marginY + row * cellH + cellH / 2,
       depth: 0,
     });
   });
 
-  // Place children radially around parents
+  // Place children in orthogonal layout (more structured)
   function placeChildren(parentId: string, depth: number) {
     const children = childrenOf.get(parentId) ?? [];
     if (children.length === 0) return;
@@ -93,12 +93,22 @@ function computeLayout(
     const parent = positions.get(parentId);
     if (!parent) return;
 
-    const orbitRadius = 140 - depth * 20;
+    // Distribute children in a compact grid around parent
+    const childCols = Math.ceil(Math.sqrt(children.length));
+    const childCellW = 90; // Tighter spacing
+    const childCellH = 75; // Tighter spacing
+
     children.forEach((childId, idx) => {
-      const angle = ((idx / children.length) * 2 * Math.PI) - Math.PI / 2;
+      const childCol = idx % childCols;
+      const childRow = Math.floor(idx / childCols);
+
+      // Compact grid positioning for workspace efficiency
+      const offsetX = (childCol - Math.floor(childCols / 2)) * childCellW;
+      const offsetY = (childRow - Math.floor(childCols / 2)) * childCellH; // Use child cell height for consistency
+
       positions.set(childId, {
-        x: parent.x + orbitRadius * Math.cos(angle),
-        y: parent.y + orbitRadius * Math.sin(angle),
+        x: parent.x + offsetX,
+        y: parent.y + offsetY,
         depth,
       });
       placeChildren(childId, depth + 1);
@@ -127,22 +137,91 @@ function computeLayout(
       depth: pos.depth,
       isRoot,
       childCount: children.length,
-      radius: isRoot ? 48 : 36,
+      radius: isRoot ? 38 : 28, // Even more compact for dense workspace layouts
       parentId: parentOf.get(o.id),
     };
   });
 }
 
-// ─── Glow colour by role / depth ──────────────────────────────────────────────
+// ─── Tier styling by role / depth ────────────────────────────────────────
 
-function nodeGlow(node: NodeData) {
-  if (node.role === "owner" && node.isRoot) return { core: "#7fffd4", ring: "#00ffe0", trail: "#00ffe044" };
-  if (node.role === "owner") return { core: "#a5f3fc", ring: "#38bdf8", trail: "#38bdf844" };
-  if (node.depth === 1) return { core: "#d8b4fe", ring: "#a855f7", trail: "#a855f744" };
-  return { core: "#fda4af", ring: "#f43f5e", trail: "#f43f5e33" };
+type NodeTier = {
+  ringClass: string;
+  dotClass: string;
+  labelClass: string;
+  rootPulseRgba: string;
+  legendLabel: string;
+};
+
+function nodeTier(node: NodeData): NodeTier {
+  if (node.role === "owner" && node.isRoot) {
+    return {
+      ringClass: "border-indigo-300/80",
+      dotClass: "bg-indigo-500",
+      labelClass: "text-indigo-700",
+      rootPulseRgba: "rgba(99,102,241,0.4)",
+      legendLabel: "Your root orbit",
+    };
+  }
+  if (node.role === "owner") {
+    return {
+      ringClass: "border-indigo-200",
+      dotClass: "bg-indigo-300",
+      labelClass: "text-indigo-600",
+      rootPulseRgba: "rgba(99,102,241,0.3)",
+      legendLabel: "Owned fork",
+    };
+  }
+  if (node.depth === 1) {
+    return {
+      ringClass: "border-blue-200",
+      dotClass: "bg-blue-300",
+      labelClass: "text-blue-600",
+      rootPulseRgba: "rgba(59,130,246,0.25)",
+      legendLabel: "Member — level 1",
+    };
+  }
+  return {
+    ringClass: "border-gray-200",
+    dotClass: "bg-gray-300",
+    labelClass: "text-gray-500",
+    rootPulseRgba: "rgba(99,102,241,0.2)",
+    legendLabel: "Deeper fork",
+  };
 }
 
-// ─── SVG connection path ──────────────────────────────────────────────────────
+const TIER_LEGEND_ORDER: NodeTier[] = [
+  {
+    ringClass: "border-indigo-300/80",
+    dotClass: "bg-indigo-500",
+    labelClass: "text-indigo-700",
+    rootPulseRgba: "rgba(99,102,241,0.4)",
+    legendLabel: "Your root orbit",
+  },
+  {
+    ringClass: "border-indigo-200",
+    dotClass: "bg-indigo-300",
+    labelClass: "text-indigo-600",
+    rootPulseRgba: "rgba(99,102,241,0.3)",
+    legendLabel: "Owned fork",
+  },
+  {
+    ringClass: "border-blue-200",
+    dotClass: "bg-blue-300",
+    labelClass: "text-blue-600",
+    rootPulseRgba: "rgba(59,130,246,0.25)",
+    legendLabel: "Member — level 1",
+  },
+  {
+    ringClass: "border-gray-200",
+    dotClass: "bg-gray-300",
+    labelClass: "text-gray-500",
+    rootPulseRgba: "rgba(99,102,241,0.2)",
+    legendLabel: "Deeper fork",
+  },
+];
+
+// ─── SVG connection path ────────────────────────────────────────────────
 
 function curvePath(x1: number, y1: number, x2: number, y2: number) {
   const dx = x2 - x1;
@@ -154,7 +233,7 @@ function curvePath(x1: number, y1: number, x2: number, y2: number) {
   return `M${x1},${y1} C${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`;
 }
 
-// ─── Single edge ──────────────────────────────────────────────────────────────
+// ─── Single edge ────────────────────────────────────────────────────────
 
 function ConstellationEdge({
   from,
@@ -167,45 +246,33 @@ function ConstellationEdge({
   highlighted: boolean;
   dimmed: boolean;
 }) {
-  const colors = nodeGlow(from);
-  const d = curvePath(from.x, from.y, to.x, to.y);
-  const id = `grad-${from.id.slice(0, 6)}-${to.id.slice(0, 6)}`;
+  // More direct, technical connection - mostly straight with minimal curve for flow
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const curveStrength = 0.1; // Very subtle curve for natural flow
+  const cx1 = from.x + dx * curveStrength;
+  const cy1 = from.y + dy * curveStrength;
+  const cx2 = to.x - dx * curveStrength;
+  const cy2 = to.y - dy * curveStrength;
+  const d = `M${from.x},${from.y} C${cx1},${cy1} ${cx2},${cy2} ${to.x},${to.y}`;
+
+  // More technical stroke - sharper, less soft
+  const stroke = "rgb(100,110,140)"; // More muted, technical blue-gray
 
   return (
-    <g>
-      <defs>
-        <linearGradient id={id} gradientUnits="userSpaceOnUse"
-          x1={from.x} y1={from.y} x2={to.x} y2={to.y}>
-          <stop offset="0%" stopColor={nodeGlow(from).ring} stopOpacity={highlighted ? 0.9 : 0.25} />
-          <stop offset="100%" stopColor={nodeGlow(to).ring} stopOpacity={highlighted ? 0.6 : 0.1} />
-        </linearGradient>
-      </defs>
-      {/* Glow halo */}
-      <path d={d} fill="none"
-        stroke={colors.trail} strokeWidth={highlighted ? 10 : 5}
-        strokeLinecap="round"
-        opacity={dimmed ? 0 : highlighted ? 0.6 : 0.18}
-        style={{ transition: "all 0.3s ease" }}
-      />
-      {/* Main line */}
-      <path d={d} fill="none"
-        stroke={`url(#${id})`} strokeWidth={highlighted ? 1.5 : 0.8}
-        strokeDasharray={highlighted ? "none" : "4 6"}
-        strokeLinecap="round"
-        opacity={dimmed ? 0.03 : 1}
-        style={{ transition: "all 0.3s ease" }}
-      />
-      {/* Animated particle on highlighted edge */}
-      {highlighted && (
-        <circle r={2} fill={colors.core} opacity={0.9}>
-          <animateMotion dur="1.8s" repeatCount="indefinite" path={d} />
-        </circle>
-      )}
-    </g>
+    <path
+      d={d}
+      fill="none"
+      stroke={stroke}
+      strokeWidth={highlighted ? 1.2 : 0.8} // Thinner, more precise lines
+      strokeLinecap="square" // Square ends for technical feel
+      opacity={dimmed ? 0.08 : highlighted ? 0.6 : 0.15}
+      style={{ transition: "opacity 0.15s ease, stroke-width 0.15s ease" }}
+    />
   );
 }
 
-// ─── Single node card ─────────────────────────────────────────────────────────
+// ─── Single node card ───────────────────────────────────────────────────
 
 function ConstellationNode({
   node,
@@ -218,6 +285,7 @@ function ConstellationNode({
   onSettings,
   onDelete,
   isOwner,
+  reduced,
 }: {
   node: NodeData;
   isHovered: boolean;
@@ -229,198 +297,125 @@ function ConstellationNode({
   onSettings?: () => void;
   onDelete?: () => void;
   isOwner: boolean;
+  reduced: boolean;
 }) {
-  const colors = nodeGlow(node);
-  const [showActions, setShowActions] = useState(false);
+  const tier = nodeTier(node);
 
   return (
     <motion.div
-      className="absolute"
+      className="group absolute"
       style={{
         left: node.x,
         top: node.y,
         transform: "translate(-50%, -50%)",
         zIndex: isHovered ? 50 : isConnected ? 30 : 10,
       }}
-      initial={{ opacity: 0, scale: 0.4 }}
-      animate={{
-        opacity: isDimmed ? 0.15 : 1,
-        scale: 1,
-      }}
-      transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
-      onMouseEnter={() => { onHover(); setShowActions(true); }}
-      onMouseLeave={() => { onLeave(); setShowActions(false); }}
+      initial={reduced ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.5 }}
+      animate={{ opacity: isDimmed ? 0.4 : 1, scale: 1 }}
+      transition={reduced ? { duration: 0 } : { duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
     >
-      {/* Outer pulse ring — root nodes only */}
-      {node.isRoot && (
-        <motion.div
-          className="absolute inset-0 rounded-full pointer-events-none"
+      {/* Subtle pulse for root nodes - more professional */}
+      {node.isRoot && !reduced && (
+        <div
+          className={cn(
+            "constellation-pulse pointer-events-none absolute rounded-full",
+            isHovered && "constellation-pulse-focused",
+          )}
           style={{
-            boxShadow: `0 0 0 0 ${colors.ring}`,
-            borderRadius: "50%",
             width: node.radius * 2,
             height: node.radius * 2,
             left: "50%",
             top: "50%",
             transform: "translate(-50%,-50%)",
-          }}
-          animate={{
-            boxShadow: isHovered
-              ? [`0 0 0 0 ${colors.ring}88`, `0 0 0 20px ${colors.ring}00`]
-              : [`0 0 0 0 ${colors.ring}44`, `0 0 0 12px ${colors.ring}00`],
-          }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeOut" }}
+            "--pulse-color": tier.rootPulseRgba,
+          } as React.CSSProperties}
+          aria-hidden="true"
         />
       )}
-
-      {/* Glow backdrop */}
-      <div
-        className="absolute rounded-full pointer-events-none"
-        style={{
-          width: node.radius * 3.5,
-          height: node.radius * 3.5,
-          left: "50%",
-          top: "50%",
-          transform: "translate(-50%,-50%)",
-          background: `radial-gradient(circle, ${colors.trail} 0%, transparent 70%)`,
-          opacity: isHovered ? 1 : 0.5,
-          transition: "opacity 0.3s ease",
-        }}
-      />
 
       {/* Main card */}
       <motion.button
         type="button"
         onClick={onClick}
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.97 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        whileHover={reduced ? undefined : { scale: 1.03 }}
+        whileTap={reduced ? undefined : { scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 200, damping: 20 }}
         className={cn(
-          "relative flex flex-col items-center justify-center",
-          "rounded-2xl border cursor-pointer select-none",
-          "text-center transition-colors duration-300",
-          node.isRoot
-            ? "w-[112px] h-[112px] px-3"
-            : "w-[86px] h-[86px] px-2",
+          "relative flex flex-col items-center justify-center rounded-lg border bg-white shadow-sm cursor-pointer select-none text-center transition-colors transition-shadow duration-75",
+          tier.ringClass,
+          node.isRoot ? "w-[76px] h-[76px] px-1" : "w-[56px] h-[56px]",
+          isHovered && !isDimmed && "shadow-sm border-blue-400",
+          isConnected && !isHovered && "border-blue-200",
         )}
-        style={{
-          background: isHovered
-            ? `radial-gradient(circle at 40% 35%, ${colors.ring}22 0%, #0a0f1e 100%)`
-            : "radial-gradient(circle at 40% 35%, #0f1a2e 0%, #070b14 100%)",
-          borderColor: isHovered ? colors.ring : `${colors.ring}44`,
-          boxShadow: isHovered
-            ? `0 0 24px ${colors.ring}66, 0 0 6px ${colors.ring}44, inset 0 0 20px ${colors.ring}11`
-            : `0 0 10px ${colors.ring}22, inset 0 0 8px ${colors.ring}08`,
-        }}
       >
-        {/* Fork badge */}
+        {/* Workspace-appropriate badge styling */}
         {node.childCount > 0 && (
           <div
-            className="absolute -top-2 -right-2 flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold"
-            style={{ background: colors.ring, color: "#000" }}
+            aria-label={`${node.childCount} ${node.childCount === 1 ? "dependency" : "dependencies"}`}
+            className="absolute -1 -1 flex h-5 w-5 items-center justify-center rounded-full border border-blue-200 bg-blue-50 text-xs font-mono font-semibold text-blue-800"
           >
-            <GitBranch className="h-2.5 w-2.5" />
+            <GitBranch aria-hidden="true" className="h-3 w-3" />
             {node.childCount}
           </div>
         )}
 
-        {/* Visibility icon */}
-        <div className="mb-1 opacity-40">
-          {node.visibility === "private"
-            ? <Lock className="h-2.5 w-2.5" style={{ color: colors.core }} />
-            : <Unlock className="h-2.5 w-2.5" style={{ color: colors.core }} />
-          }
+        {/* Status indicator */}
+        <div className="mb-1 flex h-3 w-3 items-center justify-center">
+          {node.visibility === "private" ? (
+            <Lock aria-hidden="true" className="h-2 w-2 text-blue-600" />
+          ) : (
+            <Unlock aria-hidden="true" className="h-2 w-2 text-blue-400" />
+          )}
         </div>
 
-        {/* Title */}
+        {/* Title - compact */}
         <p
-          className={cn(
-            "font-semibold leading-tight",
-            node.isRoot ? "text-[11px]" : "text-[9px]",
-          )}
-          style={{ color: isHovered ? colors.core : `${colors.core}bb` }}
+          className="mb-0.5 line-clamp-1 font-semibold text-[9px] text-gray-900"
+          title={node.title}
         >
-          {node.title.length > 20 ? `${node.title.slice(0, 18)}…` : node.title}
+          {node.title.length > 14 ? `${node.title.slice(0, 12)}…` : node.title}
         </p>
 
-        {/* Role label */}
-        <p
-          className="mt-0.5 text-[8px] uppercase tracking-widest opacity-50"
-          style={{ color: colors.ring }}
-        >
+        {/* Role - compact */}
+        <p className="text-[8px] font-mono tracking-wider text-gray-400 uppercase">
           {node.role}
         </p>
       </motion.button>
 
-      {/* Hover action buttons */}
+      {/* Workspace-style action buttons - only on hover/focus */}
       {isOwner && (
-        <motion.div
-          className="absolute left-1/2 -translate-x-1/2 flex gap-1.5 mt-1"
-          style={{ top: "100%", paddingTop: 6 }}
-          initial={{ opacity: 0, y: -4 }}
-          animate={{ opacity: showActions ? 1 : 0, y: showActions ? 0 : -4 }}
-          transition={{ duration: 0.15 }}
-        >
+        <div className="mt-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity duration-100">
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onSettings?.(); }}
-            className="flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/50 transition-colors hover:bg-white/15 hover:text-white/90"
+            aria-label="Configure"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSettings?.();
+            }}
+            className="p-1 rounded hover:bg-blue-50 hover:text-blue-600 transition-colors duration-100"
           >
-            <Settings className="h-3 w-3" />
+            <Settings aria-hidden="true" className="h-4 w-4 text-blue-500" />
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
-            className="flex h-6 w-6 items-center justify-center rounded-full border border-red-500/20 bg-red-500/5 text-red-400/50 transition-colors hover:bg-red-500/20 hover:text-red-400"
+            aria-label="Remove"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete?.();
+            }}
+            className="p-1 rounded hover:bg-red-50 hover:text-red-600 transition-colors duration-100"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 aria-hidden="true" className="h-4 w-4 text-red-500" />
           </button>
-        </motion.div>
+        </div>
       )}
     </motion.div>
   );
 }
 
-// ─── Aurora nebula blobs ──────────────────────────────────────────────────────
-
-function AuroraBlobs() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {[
-        { x: "15%", y: "20%", w: 480, h: 280, color: "#00ffe022", rot: -20 },
-        { x: "60%", y: "55%", w: 520, h: 240, color: "#7c3aed22", rot: 15 },
-        { x: "40%", y: "10%", w: 360, h: 180, color: "#0ea5e922", rot: 5 },
-        { x: "75%", y: "75%", w: 300, h: 200, color: "#f43f5e18", rot: -10 },
-      ].map((blob, i) => (
-        <motion.div
-          key={i}
-          className="absolute rounded-full"
-          style={{
-            left: blob.x,
-            top: blob.y,
-            width: blob.w,
-            height: blob.h,
-            background: `radial-gradient(ellipse, ${blob.color} 0%, transparent 70%)`,
-            rotate: blob.rot,
-            filter: "blur(40px)",
-          }}
-          animate={{
-            scale: [1, 1.08, 0.96, 1],
-            opacity: [0.7, 1, 0.8, 0.7],
-          }}
-          transition={{
-            duration: 8 + i * 2.5,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: i * 1.3,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main component ───────────────────────────────────────────────────────
 
 export function OrbitConstellationView({
   orbits,
@@ -433,6 +428,8 @@ export function OrbitConstellationView({
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ w: 1200, h: 700 });
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const reducedMotion = useReducedMotion();
+  const reduced = reducedMotion ?? false;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -468,29 +465,24 @@ export function OrbitConstellationView({
   return (
     <div
       ref={containerRef}
-      className="relative h-full w-full overflow-hidden"
-      style={{ background: "#03060f" }}
+      className="relative h-full w-full overflow-hidden bg-gradient-to-br from-gray-50 via-blue-50/50 to-purple-50/50"
     >
-      {/* Star field */}
+      {/* Reference points */}
       <div className="pointer-events-none absolute inset-0">
-        {starField.map((star) => (
-          <motion.div
-            key={star.id}
-            className="absolute rounded-full bg-white"
+        {referencePoints.map((point) => (
+          <div
+            key={point.id}
+            className={cn("absolute rounded-full", point.color)}
             style={{
-              left: `${star.x}%`,
-              top: `${star.y}%`,
-              width: star.size,
-              height: star.size,
+              left: `${point.x}px`,
+              top: `${point.y}px`,
+              width: point.size,
+              height: point.size,
+              opacity: point.opacity,
             }}
-            animate={{ opacity: [star.opacity, star.opacity * 2.5, star.opacity] }}
-            transition={{ duration: star.duration, repeat: Infinity, delay: star.delay, ease: "easeInOut" }}
           />
         ))}
       </div>
-
-      {/* Aurora nebula */}
-      <AuroraBlobs />
 
       {/* SVG edges layer */}
       <svg
@@ -542,25 +534,28 @@ export function OrbitConstellationView({
               onSettings={() => onSettingsClick?.(node)}
               onDelete={() => onDeleteClick?.(node)}
               isOwner={isOwner}
+              reduced={reduced}
             />
           );
         })}
       </div>
 
-      {/* Legend */}
-      <div className="absolute bottom-6 left-6 flex flex-col gap-2 text-[10px] font-medium tracking-wider uppercase">
-        {[
-          { color: "#7fffd4", label: "Your root orbit" },
-          { color: "#a5f3fc", label: "Owned fork" },
-          { color: "#d8b4fe", label: "Member — level 1" },
-          { color: "#fda4af", label: "Deeper fork" },
-        ].map(({ color, label }) => (
-          <div key={label} className="flex items-center gap-2 opacity-40">
-            <div
-              className="h-1.5 w-1.5 rounded-full"
-              style={{ background: color, boxShadow: `0 0 4px ${color}` }}
+      {/* Compact legend - workspace style */}
+      <div
+        aria-label="Orbit legend"
+        className="pointer-events-none absolute bottom-4 left-4 flex flex-row gap-3 rounded-md border border-gray-200/30 bg-white/20 px-2 py-1 shadow-sm backdrop-blur-sm backdrop-blur"
+      >
+        {TIER_LEGEND_ORDER.map((tier, index) => (
+          <div key={tier.legendLabel} className="flex items-center gap-1.5">
+            <div className="h-2 w-2 rounded-full"
+                 style={{ backgroundColor: tier.dotClass.includes('bg-indigo-500') ? '#6366f1' :
+                           tier.dotClass.includes('bg-indigo-300') ? '#a5b4fc' :
+                           tier.dotClass.includes('bg-blue-300') ? '#60a5fa' :
+                           '#9ca3af' }}
             />
-            <span style={{ color }}>{label}</span>
+            <span className="text-xs font-mono tracking-wider text-gray-400 uppercase">
+              {tier.legendLabel}
+            </span>
           </div>
         ))}
       </div>

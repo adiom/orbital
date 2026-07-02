@@ -11,6 +11,7 @@ import { OrbitNetwork } from "@/components/orbit/orbit-network";
 import { OrbitSettings } from "@/components/orbit/orbit-settings";
 import { OrbitSkeleton } from "@/components/orbit/orbit-skeleton";
 import { OrbitToolbar } from "@/components/orbit/orbit-toolbar";
+import { OrbitConstellationView } from "@/components/orbit/orbit-constellation-view";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -257,9 +258,13 @@ export default function OrbitsPage() {
           )}
 
           {viewMode === "grid" && (
-            <div className="flex h-full items-center justify-center">
-              <p className="text-gray-500">Grid view coming soon...</p>
-            </div>
+            <OrbitConstellationView
+              currentUserId={session?.user?.id}
+              forkRelationships={forkRelationships}
+              onDeleteClick={setOrbitToDelete}
+              onSettingsClick={handleOpenSettings}
+              orbits={filteredOrbits}
+            />
           )}
         </div>
       )}

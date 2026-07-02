@@ -137,42 +137,4 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE /api/keys/[id] - Revoke an API key
-export async function DELETE(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const session = await auth();
 
-    if (!session || !session.user) {
-      return Response.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { id } = await context.params;
-
-    if (!id) {
-      return Response.json(
-        { error: "API key ID is required" },
-        { status: 400 }
-      );
-    }
-
-    const revoked = await revokeApiKey(id, session.user.id);
-
-    if (!revoked) {
-      return Response.json(
-        { error: "API key not found or already revoked" },
-        { status: 404 }
-      );
-    }
-
-    return Response.json({ message: "API key revoked successfully" });
-  } catch (error) {
-    console.error("Failed to revoke API key:", error);
-    return Response.json(
-      { error: "Failed to revoke API key" },
-      { status: 500 }
-    );
-  }
-}

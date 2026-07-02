@@ -280,8 +280,24 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
             (m) => (m.isPending || m.isGenerating) && !newMessagesMap.has(m.id)
           );
 
-          // Merge: real messages from server + remaining optimistic messages
-          return [...newMessages, ...optimisticMessages];
+          // Merge server snapshots with optimistic agent placeholders so polling
+          // can show streamed text without dropping local generating state.
+          const previousById = new Map(prevMessages.map((m) => [m.id, m]));
+          const mergedMessages = newMessages.map((message) => {
+            const previous = previousById.get(message.id);
+
+            if (!(previous?.isPending || previous?.isGenerating)) {
+              return message;
+            }
+
+            return {
+              ...message,
+              isPending: message.isGenerating ? previous.isPending : false,
+              isGenerating: message.isGenerating,
+            };
+          });
+
+          return [...mergedMessages, ...optimisticMessages];
         });
         setMembers(
           Array.isArray(rawMembers)

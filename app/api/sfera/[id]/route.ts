@@ -93,6 +93,7 @@ export async function GET(_request: Request, context: RouteContext) {
         toolResults: sferaMessage.toolResults,
         isForked: sferaMessage.isForked,
         forkedSferaId: sferaForkedSfera.forkedSferaId,
+        isGenerating: sferaMessage.isGenerating,
         createdAt: sferaMessage.createdAt,
       })
       .from(sferaMessage)

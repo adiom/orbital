@@ -6,7 +6,7 @@ import type { ForkRelationship, NodePosition } from "./use-orbit-layout";
  * Handles HiDPI displays and draws gradient connections with arrows
  */
 export function useOrbitCanvas(
-  canvasRef: RefObject<HTMLCanvasElement>,
+  canvasRef: RefObject<HTMLCanvasElement | null>,
   nodePositions: Map<string, NodePosition>,
   forkRelationships: ForkRelationship[]
 ) {

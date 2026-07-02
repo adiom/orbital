@@ -6,7 +6,7 @@ import type { NodePosition } from "./use-orbit-layout";
  * Returns hovered node and event handlers
  */
 export function useOrbitInteractions(
-  canvasRef: RefObject<HTMLCanvasElement>,
+  canvasRef: RefObject<HTMLCanvasElement | null>,
   nodePositions: Map<string, NodePosition>,
   onNodeClick?: (nodeId: string) => void
 ) {
