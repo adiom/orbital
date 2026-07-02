@@ -17,6 +17,12 @@ module.exports = {
     },
     extend: {
       colors: {
+        chatBg: "#F5F7FA",
+        userBubble: "#0F62FE",
+        aiBubble: "#E2E8F0",
+        accentOrange: "#F97316",
+      },
+      colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

@@ -1,295 +1,172 @@
 # CLAUDE.md
 
-<!-- BEGIN:nextjs-agent-rules -->
-
-# Next.js: ALWAYS read docs before coding
-
-Before any Next.js work, find and read the relevant doc in `node_modules/next/dist/docs/`. Your training data is outdated — the docs are the source of truth.
-
-<!-- END:nextjs-agent-rules -->
-
-
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Commands
+---
 
-```bash
-pnpm install              # pnpm 9.12.3 (required — not npm/yarn)
-pnpm dev                  # next dev --turbo (port 3000)
-pnpm dev:ws               # WebSocket server (required for real-time features)
-pnpm start                # next start (production server)
-pnpm build                # runs drizzle migration THEN next build
-pnpm lint                 # ultracite check (Biome-based)
-pnpm format               # ultracite fix
-pnpm test:unit            # vitest --run
-pnpm test:unit:watch      # vitest in watch mode
-pnpm test                 # Playwright E2E (sets PLAYWRIGHT=True, starts dev server)
-pnpm db:generate          # create migration from schema changes
-pnpm db:migrate           # apply migrations (reads POSTGRES_URL from .env.local)
-pnpm db:push              # push schema directly (dev only)
-pnpm db:pull              # pull schema from database
-pnpm db:check             # check schema for consistency
-pnpm db:up                # up migrations
-pnpm db:studio            # Drizzle Studio GUI
-pnpm shadcn:update        # regenerate shadcn/ui components (scripts/update-shadcn.sh)
-pnpm mcp                  # run the Avrora MCP CLI (scripts/mcp-cli.js)
-```
+## Project Overview
 
-**Validation order:** `pnpm lint && pnpm test:unit && pnpm build`
+**Avrora Area** is an AI‑enhanced collaboration platform built with **Next.js (App Router)**, **React 19**, **TypeScript**, **PostgreSQL + Drizzle ORM**, **Redis**, and **Vercel AI SDK**.  It supports:
 
-No CI pipeline exists — no `.github/` directory.
+- **Sfera spaces** – public, private and DAO‑style collaborative workspaces with role‑based access.
+- **AI agents** – Avrora AI, Claude Code, and multi‑provider agents (Anthropic, OpenAI, Google, xAI).
+- **Message threading & forking** – conversations can be branched into new Sferas.
+- **Artifacts** – generated content types (text, code, images, charts, mini‑apps, games, sheets).
+- **Magic‑link authentication** – password‑less sign‑in via email tokens.
+- **MCP (Model Context Protocol) integration** – external tools (Claude Desktop) can read/write Sferas.
 
-## Architecture
+The system is organized into a clear separation of concerns: UI components, core business logic (`lib/`), database layer, AI integration, and real‑time WebSocket services.
 
-**Avrora Area** is an AI collaboration platform (Next.js 15 canary, React 19 RC, App Router, PPR enabled).
+---
 
-### Route groups
-
-- `app/(auth)/` — login, registration, magic-link auth (NextAuth v5 beta)
-- `app/(chat)/` — personal/group chat with AI agents
-- `app/(orbit)/` — visual message trajectory canvas (Orbit UI)
-- `app/(sfera)/` — collaborative discussion spaces (Sfera)
-- `app/v2/` — **new code goes here** (see Legacy constraint below)
-- `app/api/` — REST + MCP endpoints
-
-### AI system
-
-- All LLM calls route through MegaLLM proxy (`MEGALLM_API_KEY` + `OPENAI_URL`) using OpenAI-compatible SDK
-- Model aliases defined in `lib/ai/providers.ts` (chat-model, chat-model-reasoning, poetic, etc.)
-- Agent instances (Avrora, Kristina) in `lib/ai/agents/instances/`
-- Agent registry + detection: `lib/ai/agents/registry.ts`, `detector.ts`
-- Entitlements (guest vs regular): `lib/ai/entitlements.ts`
-- Usage tracking: `AiUsageLog` table, $10/day budget cap
-- Prompts split by concern: `lib/ai/prompts/{core,artifacts,sfera,tools}.ts` (plus `index.ts` barrel). A legacy `lib/ai/prompts.ts` also exists on the level above.
-
-### Sfera (collaboration spaces)
-
-DB tables: `Sfera`, `SferaMember`, `SferaMessage`, `SferaForkedSfera`, `SferaArtifact`. API under `app/api/sfera/`. Supports forking, @-mentioning agents, idempotent message sends (`idempotencyKey`).
-
-### MCP API
-
-JSON-RPC 2.0 at `POST /api/mcp`. Bearer token auth (prefix `avr_live_`/`avr_test_`). Rate-limited via Redis. Implementation: `lib/mcp/`.
-
-### Artifacts
-
-Generated content types: text, code, image, sheet, chart, game, mini-app. Each has `client.tsx` (render) and optionally `server.ts` (generation). Located in `artifacts/`.
-
-### Database
-
-PostgreSQL + Drizzle ORM. Schema: `lib/db/schema.ts`. Migrations: `lib/db/migrations/`. Config reads `.env.local`.
-
-### Other `lib/` directories
-
-- `lib/ai/` — providers, models, agents, prompts, tools, entitlements, usage-logger
-- `lib/api/` — REST helpers (pagination, validation, rate-limit middleware)
-- `lib/auth/` — API key management (`api-keys.ts`)
-- `lib/blob/` — media storage (`media-storage.ts`, Vercel Blob)
-- `lib/claude-code/` — Claude Code integration logger
-- `lib/constants/` — system users and app constants
-- `lib/editor/` — ProseMirror rich-text editor config/renderers
-- `lib/mentions/` — @-mention intent detection, parser, processor
-- `lib/mcp/` — MCP JSON-RPC server (auth, resources, tools, rate-limit, logger)
-- `lib/redis/` — Redis client + rate limiter
-- `lib/services/` — agent registry, idempotency, message service
-- `lib/websocket/` — WS server, manager, client hook
-
-### WebSocket
-
-Standalone server at `lib/websocket/server.ts` — must run separately (`pnpm dev:ws`).
-
-### Deployment
-
-PM2 via `deploy/ecosystem.config.json` (single fork, 1GB max, reads `.env.local`). Nginx config at `deploy/nginx-avrora.click.conf`.
-
-## Conventions
-
-- `@/*` path alias resolves to project root
-- `components/ui/` are shadcn/ui — do NOT edit manually; use `pnpm shadcn:update`
-- `lib/utils.ts` and `hooks/use-mobile.ts` excluded from lint — do not modify
-- Property-based testing with fast-check + vitest (see `lib/api/validation.test.ts`)
-- Guest users: email matches `/^guest-\d+$/`, limited to 20 msgs/day, 2 models
-- Philosophy: function over class, composition over inheritance
-
-## Legacy code constraint
-
-All pages/components under `app/(auth)/`, `app/(chat)/`, `app/(orbit)/`, `app/(sfera)/` are **LEGACY**. New code MUST go in `app/v2/`. Do not extend legacy route groups or their components.
-
-> Note: `app/v2/` currently exists but is empty — no code has been migrated there yet. The directive still applies for all new work.
-
-## Lint rules (Biome via Ultracite)
-
-- `useExhaustiveDependencies`: error
-- `noExplicitAny`: off (needs work)
-- `noConsole`: off
-- Excludes: `components/ui/`, `lib/utils.ts`, `hooks/use-mobile.ts`
-
-## Key env vars
-
-Copy `.env.example` → `.env.local`. Required: `POSTGRES_URL`, `AUTH_SECRET`, `MEGALLM_API_KEY`, `OPENAI_URL` (MegaLLM proxy base URL, used in `lib/ai/providers.ts`). See `.env.example` for the full list.
-
-## Project Architecture
-
-### Router type
-
-App Router only. No `pages/` directory. PPR (`experimental.ppr`) is enabled.
-
-### Pages
-
-| Route | File | Notes |
-|---|---|---|
-| `/login` | `app/(auth)/login/page.tsx` | Magic link + code entry |
-| `/` | `app/page.tsx` | Root redirect |
-| `/settings/api-keys` | `app/(chat)/settings/api-keys/page.tsx` | Manage MCP API keys |
-| `/home` | `app/(orbit)/home/page.tsx` | Orbit home |
-| `/orbits` | `app/(orbit)/orbits/page.tsx` | Orbits list |
-| `/orbits/new` | `app/(orbit)/orbits/new/page.tsx` | Create orbit |
-| `/orbits/new_home` | `app/(orbit)/orbits/new_home/page.tsx` | New orbit home |
-| `/orbit/[id]` | `app/(orbit)/orbit/[id]/page.tsx` | Orbit canvas |
-| `/orbit/[id]/test-chat` | `app/(orbit)/orbit/[id]/test-chat/page.tsx` | Test chat in orbit |
-| `/m/[uuid]` | `app/(orbit)/m/[uuid]/page.tsx` | Public message view (intended no-auth; see middleware note) |
-| `/sfera/[id]/chat` | `app/(sfera)/sfera/[id]/chat/page.tsx` | Sfera chat |
-| `/docs` | `app/docs/page.tsx` | Scalar API reference (public) |
-| `/test-artifact` | `app/test-artifact/page.tsx` | Artifact sandbox |
-
-### API routes
-
-| Method | Path | Purpose |
-|---|---|---|
-| `GET/POST` | `/api/auth/[...nextauth]` | NextAuth.js handlers |
-| `POST` | `/api/auth/verify-magic-token` | Verify magic link JWT token |
-| `POST` | `/api/auth/verify-code-direct` | Verify 8-digit numeric code |
-| `GET` | `/api/docs` | OpenAPI spec (served to Scalar) |
-| `POST` | `/api/files/upload` | Upload file to Vercel Blob |
-| `GET/POST/DELETE` | `/api/keys` | List/create/revoke MCP API keys |
-| `DELETE` | `/api/keys/[id]` | Delete specific API key |
-| `POST/OPTIONS` | `/api/mcp` | MCP JSON-RPC 2.0 endpoint (Bearer auth) |
-| `GET/POST` | `/api/sfera` | List user's Sferas / create Sfera |
-| `GET/PUT/DELETE` | `/api/sfera/[id]` | Get/update/delete Sfera |
-| `POST` | `/api/sfera/[id]/chat` | Streaming AI chat (Vercel AI SDK) |
-| `POST` | `/api/sfera/[id]/fork` | Fork Sfera from a message |
-| `POST/DELETE` | `/api/sfera/[id]/members` | Add/remove Sfera members |
-| `POST` | `/api/sfera/[id]/messages` | Send message to Sfera |
-| `PATCH/DELETE` | `/api/sfera/[id]/messages/[messageId]` | Edit/delete message |
-| `GET/PATCH` | `/api/sfera/message/[messageId]` | Get/update message (cross-Sfera) |
-| — | `/api/sfera/[id]/claude-code/` | Directory exists but is empty (stub, no route handler) |
-
-### Component tree (key)
+## High‑Level Architecture
 
 ```
-app/layout.tsx                    — SessionProvider + Toaster (root)
-├── components/app-sidebar.tsx    — Nav sidebar
-│   ├── sidebar-history.tsx       — Chat history list
-│   ├── sidebar-history-item.tsx
-│   └── sidebar-user-nav.tsx      — User menu + sign out
-│
-├── components/artifact.tsx       — Artifact panel wrapper
-│   └── artifacts/*/client.tsx    — text, code, image, sheet, chart, game, mini-app
-│
-├── components/elements/          — shadcn/ai primitives
-│   ├── message.tsx / response.tsx / prompt-input.tsx
-│   ├── reasoning.tsx             — Chain-of-thought display
-│   ├── tool.tsx                  — Tool call display
-│   ├── code-block.tsx, inline-citation.tsx, source.tsx
-│   ├── actions.tsx, branch.tsx, context.tsx, conversation.tsx
-│   ├── image.tsx, loader.tsx, suggestion.tsx, task.tsx, web-preview.tsx
-│
-├── components/sfera/             — Sfera-specific UI
-│   ├── sfera-chat-client.tsx     — Main Sfera chat wrapper
-│   ├── sfera-group-chat.tsx      — Group message list
-│   ├── sfera-message.tsx         — Single Sfera message
-│   ├── sfera-prompt-input.tsx    — Input with @mention support
-│   └── sfera-mention-button.tsx
-│
-└── components/orbit/             — Orbit canvas UI
-    ├── orbit-container.tsx       — Canvas host
-    ├── orbit-network.tsx         — D3-style node graph
-    ├── orbit-chat.tsx            — Inline chat in orbit
-    ├── orbit-constellation-view.tsx, orbit-list-view.tsx
-    ├── orbit-message.tsx, orbit-input.tsx, orbit-settings.tsx
-    ├── orbit-toolbar.tsx, orbit-zoom-controls.tsx, orbit-page-header.tsx
-    ├── orbit-error-state.tsx, orbit-skeleton.tsx
-    ├── parent-message-indicators.tsx, tool-result-display.tsx, tool-result-types.ts
-    ├── chart-artifact.tsx, mini-app-artifact.tsx
-    └── new-home/
+avrora-area/
+├── app/                     # Next.js App Router – routes and pages
+│   ├── (auth)/              # Authentication (NextAuth magic‑link)
+│   ├── (chat)/              # Personal / group chat UI
+│   ├── (orbit)/             # Orbit view – visual network of Sferas
+│   └── api/                 # Server‑side API endpoints
+├── components/              # React UI components
+│   ├── ui/                  # Radix UI primitives + Tailwind styling
+│   ├── orbit/               # Orbit‑specific visual components
+│   └── elements/            # Reusable chat/message elements
+├── lib/                     # Core application logic
+│   ├── ai/                  # AI agents, prompts, tools, MCP glue
+│   ├── db/                  # Drizzle schema, migrations, DB helpers
+│   ├── mcp/                 # Model Context Protocol server proxy
+│   ├── mentions/            # @‑mention parsing & handling
+│   └── websocket/           # Real‑time WebSocket server
+├── artifacts/               # Implementations of generated artifact types
+├── hooks/                   # Custom React hooks (messages, chat, orbit, etc.)
+├── public/                  # Static assets (images, favicons)
+├── scripts/                 # Dev helpers (dev.sh, MCP CLI, migration helpers)
+└── docs/                    # Integration docs (Claude, MCP, etc.)
 ```
 
-`components/ui/` — shadcn/ui primitives (Radix-based). Do not edit directly.  
-`components/ui/shadcn-io/ai/` — shadcn/ui AI chat components (also do not edit).  
-`components/elements/` — thin wrappers over `components/ui/shadcn-io/ai/` with project-specific bindings.
+### Core Layers
 
-### Data flow
+- **Frontend** – Radix UI + Tailwind, CodeMirror editor, ProseMirror for rich text, Recharts & data‑grid for visual artefacts, SWR for data fetching.
+- **Backend** – Next.js API routes, server actions, WebSocket server (`lib/websocket/server.ts`), rate limiting (`lib/redis/rate-limit.ts`).
+- **Database** – PostgreSQL accessed via Drizzle ORM (`lib/db/schema.ts`).  Core tables include `User`, `Sfera`, `SferaMessage`, `SferaMember`, `Artifact`, `AgentRegistry`, `ToolExecution`, etc.
+- **AI Integration** – Vercel AI SDK streams responses (`streamText`, `streamObject`), provider‑agnostic SDK (`@ai-sdk/*`), and custom tools under `lib/ai/tools/`.
+- **MCP** – Model Context Protocol endpoint (`app/api/mcp/route.ts`) exposing JSON‑RPC for external Claude Code clients.
 
-```
-Browser
-  │
-  ├─ SWR (client fetching) → REST API routes → Drizzle ORM → PostgreSQL
-  │
-  ├─ useChat / AI SDK streaming → POST /api/sfera/[id]/chat
-  │     └─ detectMentionedAgents() → streamAgentResponse()
-  │           └─ myProvider (customProvider) → MegaLLM proxy (OpenAI-compat)
-  │                 ├─ chat-model / chat-model-reasoning  (OpenAI-OSS models)
-  │                 └─ poetic / poetic-reasoning          (Claude via proxy)
-  │
-  ├─ AI tools (called by agent during streaming):
-  │     ├─ generateImage / generateImageReplicate → Google Imagen / Replicate FLUX
-  │     ├─ generateMusic / generateVideo          → Replicate
-  │     ├─ speechToText                           → external Python service
-  │     ├─ webSearch                              → Tavily API
-  │     └─ createMiniApp / createChart / createGame → LLM tokens only
-  │
-  ├─ File uploads → POST /api/files/upload → Vercel Blob
-  │
-  ├─ MCP clients (Claude Code, external) → POST /api/mcp (JSON-RPC 2.0)
-  │     └─ Bearer token auth → Redis rate-limit → resources/tools handlers
-  │
-  └─ WebSocket (port 3001, pnpm dev:ws) → lib/websocket/server.ts
-        └─ Redis pub/sub for real-time message delivery
-```
+---
 
-All usage (tokens, tool costs) is written to `AiUsageLog` after each AI call. Daily budget cap is $10/day enforced in `lib/ai/usage-logger.ts`.
+## Common Development Commands
 
-### Auth flow
+Run all commands from the repository root.
 
-1. User submits email → `createMagicLink` server action → generates 8-digit numeric code → stores in `MagicToken` table (15 min TTL) → returns magic link URL
-2. In dev: token printed to console. In prod: link would be emailed (email sending not yet implemented — link returned directly)
-3. Two verification paths:
-   - **Link click**: `/login?magic_token=XXX` → NextAuth Credentials provider validates token, marks `used=true`, finds/creates user → JWT cookie
-   - **Code entry**: `POST /api/auth/verify-code-direct` → same DB check → then `signIn("credentials", { token })`
-4. **Guest access**: `signIn("guest")` creates a row in `User` with email `guest-<timestamp>`, no password
-5. JWT stored in cookie (`secureCookie: shouldUseSecureCookies`). Session exposes `user.id` and `user.type` (`"guest" | "regular"`)
-6. Middleware (`middleware.ts`) runs on all routes. It short-circuits with `NextResponse.next()` for public paths (`/ping`, `/docs`, `/api/docs`, `/api/mcp`, `/api/auth/**`, `/orbit/message/**`) and for `/login` + `/register`. For all other paths it still resolves `next()` after reading the JWT — it does **not** block unauthenticated requests (no real route protection). The only enforced redirect: authenticated non-guest users hitting `/login` or `/register` are sent to `/`. ⚠️ The whitelist entry `/orbit/message/**` is stale — the actual public message page is `/m/[uuid]`, which is **not** whitelisted and therefore currently requires auth.
-7. Rate limiting for magic link requests: 3 attempts per 15 min per email (in-memory via `lib/rate-limit.ts`)
-8. `/register` is referenced in middleware but no `app/(auth)/register/` page exists (dead reference).
+| Task | Command | Notes |
+|------|---------|-------|
+| **Start dev environment** | `pnpm dev` | Starts Next.js dev server (Turbo). |
+| **Start WebSocket server** | `pnpm dev:ws` | Runs the real‑time WS server in a separate terminal. |
+| **Full dev stack (incl. PostgreSQL & Redis)** | `./scripts/dev.sh` | Boots Postgres (via Postgres.app) and Redis (brew), then runs both servers. |
+| **Build for production** | `pnpm build` | Runs DB migrations then creates a Next.js production build. |
+| **Run production server** | `pnpm start` | Serves the built app. |
+| **Lint** | `pnpm lint` | Runs Ultracite (Bioma) static analysis. |
+| **Auto‑format** | `pnpm format` | Fixes lintable issues automatically. |
+| **Run unit tests** | `pnpm test:unit` | Vitest test runner. |
+| **Run unit tests in watch mode** | `pnpm test:unit:watch` | Continuous testing during development. |
+| **Run end‑to‑end tests** | `pnpm test` | Executes Playwright test suite (requires `PLAYWRIGHT=True`). |
+| **Database migration** | `pnpm db:migrate` | Applies pending Drizzle migrations. |
+| **Generate migration files** | `pnpm db:generate` | Scans schema changes and creates new migration SQL. |
+| **Open Drizzle Studio** | `pnpm db:studio` | GUI for inspecting DB schema & data. |
+| **Push schema without migrations** | `pnpm db:push` | Directly syncs schema to Postgres (use with caution). |
+| **Check migration status** | `pnpm db:check` | Validates migration consistency. |
+| **MCP CLI** | `pnpm mcp` | Helper for interacting with the MCP proxy (`scripts/mcp-cli.js`). |
+| **Update shadcn components** | `pnpm shadcn:update` | Runs the shadcn update script. |
 
-### DB schema (tables)
+---
 
-Core: `User`, `Chat`, `Message_v2`, `Document`, `Suggestion`, `Stream`, `ChatMember`, `MagicToken`, `MessageMention`
+## Testing Strategy
 
-Sfera: `Sfera`, `SferaMember`, `SferaMessage`, `SferaForkedSfera`, `SferaArtifact`, `ToolExecution`
+- **Unit tests** – Located under `test/` or alongside modules, executed with Vitest (`pnpm test:unit`).
+- **End‑to‑end tests** – Playwright test suite in `tests/` (or as defined by `playwright.config.ts`). Run via `pnpm test` which sets `PLAYWRIGHT=True`.
+- **CI** – The project’s CI (GitHub Actions) runs both Vitest and Playwright on push/PR.
 
-Platform: `AiUsageLog`, `ApiKey`, `AgentRegistry`, `IdempotencyLog`, `McpAuditLog`
+---
 
-### Key dependencies and their role
+## Linting & Formatting
 
-| Package | Role |
-|---|---|
-| `next` 15 canary | Framework — App Router, RSC, PPR, Server Actions |
-| `ai` v5 (Vercel AI SDK) | Streaming text, `useChat`, tool-call protocol, `customProvider` |
-| `next-auth` v5 beta | Session management, JWT cookies, Credentials provider |
-| `drizzle-orm` | Type-safe SQL queries and migrations |
-| `@ai-sdk/openai` | OpenAI-compatible adapter (used for MegaLLM proxy AND Claude proxy) |
-| `@ai-sdk/anthropic` / `@ai-sdk/google` / `@ai-sdk/xai` | Direct Anthropic, Gemini (Imagen), xAI adapters |
-| `@ai-sdk/gateway` | Vercel AI Gateway adapter |
-| `@modelcontextprotocol/sdk` | MCP server primitives |
-| `prosemirror-*` | Rich text editor (ProseMirror) for document artifacts |
-| `codemirror` v6 | Code editor for code artifacts |
-| `recharts` | Charts in chart artifacts |
-| `react-data-grid` | Spreadsheet in sheet artifacts |
-| `framer-motion` | UI animations |
-| `swr` | Client-side data fetching with cache invalidation |
-| `redis` | Rate limiting for Avrora AI calls |
-| `@vercel/blob` | File and image upload storage |
-| `@vercel/otel` | OpenTelemetry tracing (service name: `ai-chatbot`) |
-| `ultracite` + `@biomejs/biome` | Lint + format (Biome-based, extended by Ultracite) |
-| `vitest` + `fast-check` | Unit + property-based tests |
-| `playwright` | E2E browser tests |
+- **Linter** – Ultracite (extends Biome) configured in `eslint.config.mjs`. Run with `pnpm lint`.
+- **Formatter** – Biome / ESLint `--fix` via `pnpm format`.
+- **Ignored paths** – `.next`, `out`, `build`, `node_modules`, generated files, and UI primitives are excluded in `eslint.config.mjs`.
+
+---
+
+## Database Workflow
+
+1. **Edit schema** – `lib/db/schema.ts`.
+2. **Generate migration** – `pnpm db:generate` (creates a file in `lib/db/migrations/`).
+3. **Apply migration** – `pnpm db:migrate`.
+4. **Verify** – `pnpm db:studio` or `pnpm db:check`.
+
+---
+
+## MCP / Claude Code Integration
+
+- **MCP server** – Exposed at `/api/mcp` (`app/api/mcp/route.ts`).  Uses JSON‑RPC 2.0.
+- **Configuration** – Add your API key to `.env.local` (`CLAUDE_CODE_API_KEY`).  See `docs/CLAUDE_CODE_INTEGRATION.md` for desktop client setup.
+- **Common MCP actions** – List resources, create Sferas, send messages, invoke Avrora AI.  Use the `pnpm mcp` CLI for quick local testing.
+
+---
+
+## OpenMemory & Memory‑First Development (⦿ .cursor/rules/openmemory.mdc)
+
+Claude Code is expected to follow a **three‑phase memory workflow** for any code change:
+
+1. **Initial Search** – Run 2‑3 searches (project facts, user preferences, patterns) before writing code.
+2. **Continuous Search** – Search at each checkpoint (file creation, function implementation, naming decisions, error handling, testing).
+3. **Completion** – Store at least one memory entry (component, implementation, debug, or preference) and verify no missed search steps.
+
+The `openmemory.mdc` file also defines the required memory‑type metadata (component, implementation, debug, user_preference, etc.) and enforces security checks to avoid storing secrets.
+
+---
+
+## Key Component Groups (high‑level, not an exhaustive list)
+
+- **Core UI** – `components/ui/*` (Radix primitives), `components/orbit/*` (network visualization), `components/elements/*` (chat/message rendering).
+- **Editors** – `components/code-editor.tsx` (CodeMirror), `components/text-editor.tsx` (ProseMirror), `components/image-editor.tsx`.
+- **AI Tools** – Implemented under `lib/ai/tools/` (e.g., generative image/video, mini‑apps, analytics).
+- **Database Layer** – `lib/db/*` (schema, migrations, helper utilities).
+- **WebSocket** – Real‑time channel for AI streaming (`lib/websocket/*`).
+- **Authentication** – NextAuth magic‑link flow (`app/(auth)/*`).
+- **MCP Glue** – `lib/mcp/*` and API route `app/api/mcp/route.ts`.
+
+---
+
+## Important Configuration Files
+
+- `next.config.ts` – Next.js server configuration, custom rewrites, and experimental flags.
+- `tailwind.config.js` – Tailwind CSS with `tailwind-merge` and `tailwindcss-animate`.
+- `postcss.config.mjs` – PostCSS plugins (Tailwind, typography).
+- `drizzle.config.ts` – Drizzle ORM database connection settings.
+- `.env.example` – Template for required environment variables (Postgres DSN, Redis URL, NextAuth secret, CLAUDE_CODE_API_KEY, etc.).
+
+---
+
+## Security & Best Practices
+
+- **Never commit secrets** – `.env.local` is ignored; any secret must be stored in environment variables.
+- **Input validation** – Zod schemas are used throughout API routes (`lib/api/validation.ts`).
+- **Rate limiting** – Redis‑backed limiter (`lib/redis/rate-limit.ts`) protects public endpoints.
+- **Idempotency** – `X-Idempotency-Key` header prevents duplicate message creation.
+- **Memory storage** – The OpenMemory system enforces secret‑scanning before persisting any memory entry.
+
+---
+
+## Getting Started Quick Checklist
+
+1. **Copy `.env.example` → `.env.local`** and fill required values (Postgres, Redis, NextAuth secret, `CLAUDE_CODE_API_KEY`).
+2. **Install dependencies** – `pnpm install`.
+3. **Launch dev stack** – `./scripts/dev.sh` (or run `pnpm dev` + `pnpm dev:ws` separately).
+4. **Open http://localhost:3000** to view the app.
+5. **Run tests** – `pnpm test` (E2E) and `pnpm test:unit` (unit).
+6. **Use MCP** – `pnpm mcp` or configure Claude Desktop per `docs/CLAUDE_CODE_INTEGRATION.md`.
+
+---
+
+*This CLAUDE.md file is intended for Claude Code to quickly understand project layout, common commands, and the required memory workflow.  Keep it up‑to‑date as the architecture evolves.*

@@ -95,7 +95,7 @@ export function SferaPromptInput({
   );
 
   return (
-    <PromptInput globalDrop multiple onSubmit={handleSubmit}>
+    <PromptInput globalDrop multiple className="flex flex-col gap-2" onSubmit={handleSubmit}>
       {/* Header with attachments display */}
       {(replyingTo || editingMessage) && (
         <PromptInputHeader>

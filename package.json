@@ -6,7 +6,7 @@
     "avrora-mcp": "scripts/mcp-cli.js"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "bash scripts/dev-next.sh",
     "dev:ws": "tsx lib/websocket/server.ts",
     "build": "tsx lib/db/migrate && next build",
     "start": "next start",
