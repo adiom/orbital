@@ -43,66 +43,70 @@ export function useWebSocket({
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:3001";
 
   const connect = useCallback(() => {
-    if (!chatId || !shouldConnectRef.current) {
-      return;
-    }
-
-    try {
-      // Build WebSocket URL with query params
-      const url = new URL(wsUrl);
-      url.searchParams.set("chatId", chatId);
-      if (token) {
-        url.searchParams.set("token", token);
+    function createWs() {
+      if (!chatId || !shouldConnectRef.current) {
+        return;
       }
 
-      const ws = new WebSocket(url.toString());
+      try {
+        // Build WebSocket URL with query params
+        const url = new URL(wsUrl);
+        url.searchParams.set("chatId", chatId);
+        if (token) {
+          url.searchParams.set("token", token);
+        }
 
-      ws.onopen = () => {
-        console.log("✅ WebSocket connected");
-        setIsConnected(true);
-        onConnect?.();
-      };
+        const ws = new WebSocket(url.toString());
 
-      ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data) as WebSocketMessage;
+        ws.onopen = () => {
+          console.log("✅ WebSocket connected");
+          setIsConnected(true);
+          onConnect?.();
+        };
 
-          // Handle connection confirmation
-          if (message.type === "connected") {
-            setClientId(message.clientId as string);
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data) as WebSocketMessage;
+
+            // Handle connection confirmation
+            if (message.type === "connected") {
+              setClientId(message.clientId as string);
+            }
+
+            onMessage?.(message);
+          } catch (error) {
+            console.error("Error parsing WebSocket message:", error);
           }
+        };
 
-          onMessage?.(message);
-        } catch (error) {
-          console.error("Error parsing WebSocket message:", error);
-        }
-      };
+        ws.onclose = () => {
+          console.log("❌ WebSocket disconnected");
+          setIsConnected(false);
+          setClientId(null);
+          wsRef.current = null;
+          onDisconnect?.();
 
-      ws.onclose = () => {
-        console.log("❌ WebSocket disconnected");
-        setIsConnected(false);
-        setClientId(null);
-        wsRef.current = null;
-        onDisconnect?.();
+          // Attempt reconnection if enabled
+          if (autoReconnect && shouldConnectRef.current) {
+            console.log(`🔄 Reconnecting in ${reconnectInterval}ms...`);
+            reconnectTimeoutRef.current = setTimeout(() => {
+              createWs();
+            }, reconnectInterval);
+          }
+        };
 
-        // Attempt reconnection if enabled
-        if (autoReconnect && shouldConnectRef.current) {
-          console.log(`🔄 Reconnecting in ${reconnectInterval}ms...`);
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connect();
-          }, reconnectInterval);
-        }
-      };
+        ws.onerror = (error) => {
+          console.error("WebSocket error:", error);
+          onError?.(error);
+        };
 
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        onError?.(error);
-      };
-
-      wsRef.current = ws;
-    } catch (error) {
-      console.error("Error creating WebSocket connection:", error);
+        wsRef.current = ws;
+      } catch (error) {
+        console.error("Error creating WebSocket connection:", error);
+      }
     }
+
+    createWs();
   }, [
     chatId,
     token,

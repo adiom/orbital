@@ -67,10 +67,6 @@ export default function ApiKeysPage() {
   });
   const [createdKey, setCreatedKey] = useState<string>("");
 
-  useEffect(() => {
-    fetchApiKeys();
-  }, []);
-
   const fetchApiKeys = async () => {
     try {
       const response = await fetch("/api/keys");
@@ -179,6 +175,10 @@ export default function ApiKeysPage() {
     return perms.join(", ") || "None";
   };
 
+  useEffect(() => {
+    fetchApiKeys();
+  }, []);
+
   return (
     <div className="container mx-auto py-10">
       <div className="mb-8">
@@ -212,7 +212,7 @@ export default function ApiKeysPage() {
             <div className="py-8 text-center">
               <Key className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
               <p className="mb-4 text-muted-foreground">
-                You haven't created any API keys yet
+                You haven&apos;t created any API keys yet
               </p>
               <Button onClick={() => setShowCreateDialog(true)}>
                 Create your first API key
@@ -368,14 +368,14 @@ export default function ApiKeysPage() {
           <DialogHeader>
             <DialogTitle>API Key Created</DialogTitle>
             <DialogDescription>
-              Save this API key securely. You won't be able to see it again!
+               Save this API key securely. You won&apos;t be able to see it again!
             </DialogDescription>
           </DialogHeader>
 
           <div className="mb-4 flex items-center gap-2 text-destructive">
             <AlertCircle className="h-4 w-4" />
             <span className="text-sm">
-              Save this API key securely. You won't be able to see it again!
+               Save this API key securely. You won&apos;t be able to see it again!
             </span>
           </div>
 

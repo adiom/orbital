@@ -477,68 +477,80 @@ function getIconForType(type: string) {
 
   switch (type) {
     case "header":
-      return () => (
-        <svg
-          className={iconClass}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M4 6h16M4 12h16m-7 6h7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-          />
-        </svg>
-      );
+      // biome-ignore lint/correctness/useExhaustiveDependencies: iconClass is stable
+      return function HeaderIcon() {
+        return (
+          <svg
+            className={iconClass}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M4 6h16M4 12h16m-7 6h7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
+          </svg>
+        );
+      };
     case "text":
-      return () => (
-        <svg
-          className={iconClass}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M4 6h16M4 12h10M4 18h16"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-          />
-        </svg>
-      );
+      // biome-ignore lint/correctness/useExhaustiveDependencies: iconClass is stable
+      return function TextIcon() {
+        return (
+          <svg
+            className={iconClass}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M4 6h16M4 12h10M4 18h16"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
+          </svg>
+        );
+      };
     case "module":
-      return () => (
-        <svg
-          className={iconClass}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-          />
-        </svg>
-      );
+      // biome-ignore lint/correctness/useExhaustiveDependencies: iconClass is stable
+      return function ModuleIcon() {
+        return (
+          <svg
+            className={iconClass}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
+          </svg>
+        );
+      };
     default:
-      return () => (
-        <svg
-          className={iconClass}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+      // biome-ignore lint/correctness/useExhaustiveDependencies: iconClass is stable
+      return function DefaultIcon() {
+        return (
+          <svg
+            className={iconClass}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             strokeWidth={2}
           />
         </svg>
       );
+    }
   }
 }

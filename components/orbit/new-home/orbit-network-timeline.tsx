@@ -285,7 +285,7 @@ export function OrbitNetworkTimeline({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Orbit</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{orbitToDelete?.title}"? This
+              Are you sure you want to delete &ldquo;{orbitToDelete?.title}&rdquo;? This
               action cannot be undone. All messages, members, and forks will be
               removed.
             </AlertDialogDescription>

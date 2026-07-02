@@ -470,7 +470,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
           <Sparkles className="mx-auto mb-4 h-16 w-16 text-gray-300" />
           <p className="font-medium text-gray-700 text-lg">Orbit not found</p>
           <p className="mt-2 text-gray-500 text-sm">
-            This orbit may have been deleted or you don't have access
+            This orbit may have been deleted or you don&apos;t have access
           </p>
           <Button
             className="mt-6"

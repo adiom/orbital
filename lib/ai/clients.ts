@@ -13,7 +13,7 @@ const map: Record<Role, string> = {
 };
 
 export function createAIClient(defaultRole: Role = "primary") {
-  function use(role: Role = defaultRole): LanguageModel {
+  function getModel(role: Role = defaultRole): LanguageModel {
     const id = map[role];
     try {
       return myProvider.languageModel(id);
@@ -25,7 +25,7 @@ export function createAIClient(defaultRole: Role = "primary") {
   }
 
   return {
-    use,
+    getModel,
     chat: {
       completions: {
         create: async (options: any) => {
@@ -53,7 +53,7 @@ export function createAIClient(defaultRole: Role = "primary") {
       },
     },
     stream: (text: string, role?: Role) => {
-      const model = use(role);
+      const model = getModel(role);
       return streamText({ model, prompt: text });
     },
   };
