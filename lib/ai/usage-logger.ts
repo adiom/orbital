@@ -3,15 +3,15 @@ import { db } from "@/lib/db";
 import { aiUsageLog } from "@/lib/db/schema";
 
 // Model pricing (per 1M tokens) in USD
+// Ollama Cloud uses subscription pricing — no per-token cost.
 const MODEL_PRICING = {
-  "gpt-5": {
-    input: 1.25,
-    output: 10.0,
+  "gpt-oss:120b-cloud": {
+    input: 0,
+    output: 0,
   },
-
-  "gpt-5-mini": {
-    input: 0.25,
-    output: 2,
+  "gpt-oss:20b-cloud": {
+    input: 0,
+    output: 0,
   },
 } as const;
 

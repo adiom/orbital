@@ -43,30 +43,20 @@ const optionalEnv = (name: string): string | undefined => {
 
 // Centralized model IDs for easier maintenance.
 const MODEL = {
-  OPENAI_CHAT_TOOL: "openai-gpt-oss-120b",
-  OPENAI_CHAT_MINI: "openai-gpt-oss-20b",
-  OPENAI_REASONING_LIGHT: "deepseek-ai/deepseek-v3.1-terminus",
-  OPENAI_TITLE: "moonshotai/kimi-k2-instruct-0905",
-  OPENAI_ARTIFACT: "moonshotai/kimi-k2-instruct-0905",
-  CLAUDE_POETIC: "claude-sonnet-4-5-20250929",
-  // Alias expected by test script
-  CLAUDE_SONNET_LATEST: "claude-sonnet-4-5-20250929",
+  OLLAMA_CHAT: "gpt-oss:120b-cloud",
+  OLLAMA_CHAT_MINI: "gpt-oss:20b-cloud",
+  OLLAMA_REASONING: "gpt-oss:120b-cloud",
+  OLLAMA_TITLE: "gpt-oss:20b-cloud",
+  OLLAMA_ARTIFACT: "gpt-oss:20b-cloud",
+  OLLAMA_POETIC: "gpt-oss:120b-cloud",
 } as const;
 
-const openaiApiKey = optionalEnv("MEGALLM_API_KEY");
-const openai = openaiApiKey
+// Ollama Cloud — primary provider (OpenAI-compatible API).
+const ollamaApiKey = optionalEnv("OLLAMA_API_KEY");
+const ollama = ollamaApiKey
   ? createOpenAI({
-      apiKey: openaiApiKey,
-      baseURL: process.env.OPENAI_URL || undefined,
-    })
-  : null;
-
-// Anthropic/Claude. If key missing, we skip adding claude models.
-const claudeApiKey = optionalEnv("MEGALLM_API_KEY");
-const claude = claudeApiKey
-  ? createOpenAI({
-      apiKey: claudeApiKey,
-      baseURL: process.env.OPENAI_URL || undefined,
+      apiKey: ollamaApiKey,
+      baseURL: process.env.OLLAMA_CLOUD_BASE_URL || "https://ollama.com/v1",
     })
   : null;
 
@@ -76,24 +66,18 @@ export const geminiProvider = google;
 // Build language model registry only with available providers (avoid undefined entries).
 const languageModels: Record<string, LanguageModelV2> = {};
 
-if (openai) {
-  languageModels["chat-model"] = openai.chat(MODEL.OPENAI_CHAT_TOOL);
-  languageModels["chat-model-mini"] = openai.chat(MODEL.OPENAI_CHAT_MINI);
+if (ollama) {
+  languageModels["chat-model"] = ollama.chat(MODEL.OLLAMA_CHAT);
+  languageModels["chat-model-mini"] = ollama.chat(MODEL.OLLAMA_CHAT_MINI);
   languageModels["chat-model-reasoning"] = wrapLanguageModel({
-    model: openai.languageModel(MODEL.OPENAI_REASONING_LIGHT),
+    model: ollama.languageModel(MODEL.OLLAMA_REASONING),
     middleware: extractReasoningMiddleware({ tagName: "think" }),
   });
-  languageModels["title-model"] = openai.chat(MODEL.OPENAI_TITLE);
-  languageModels["artifact-model"] = openai.chat(MODEL.OPENAI_ARTIFACT);
-}
-
-if (claude) {
-  languageModels.poetic = claude.chat(MODEL.CLAUDE_POETIC);
-  languageModels[MODEL.CLAUDE_SONNET_LATEST] = claude.chat(
-    MODEL.CLAUDE_SONNET_LATEST
-  );
+  languageModels["title-model"] = ollama.chat(MODEL.OLLAMA_TITLE);
+  languageModels["artifact-model"] = ollama.chat(MODEL.OLLAMA_ARTIFACT);
+  languageModels.poetic = ollama.chat(MODEL.OLLAMA_POETIC);
   languageModels["poetic-reasoning"] = wrapLanguageModel({
-    model: claude.languageModel(MODEL.CLAUDE_POETIC),
+    model: ollama.languageModel(MODEL.OLLAMA_POETIC),
     middleware: extractReasoningMiddleware({ tagName: "think" }),
   });
 }
