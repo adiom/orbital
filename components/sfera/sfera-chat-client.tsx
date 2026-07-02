@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { PromptInputMessage } from "@/components/elements/prompt-input";
-import { SferaMessage } from "@/components/sfera/sfera-message";
 import { SferaPromptInput } from "@/components/sfera/sfera-prompt-input";
 import {
   AlertDialog,
@@ -16,11 +15,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Conversation,
-  ConversationContent,
-  ConversationScrollButton,
-} from "@/components/ui/shadcn-io/ai/conversation";
+import { MessageList } from "@/components/sfera/message-list";
+import { SferaDetails } from "@/components/sfera/sfera-details";
 
 type SferaMember = {
   userId: string;
@@ -184,65 +180,61 @@ export function SferaChatClient({
   };
 
   return (
-    <div className="flex h-screen flex-col">
-      {/* Header */}
-      <header className="border-b bg-background px-4 py-3">
-        <div className="mx-auto max-w-4xl">
-          <h1 className="font-semibold text-lg">{initialSfera.title}</h1>
-          {initialSfera.description && (
-            <p className="text-muted-foreground text-sm">
-              {initialSfera.description}
-            </p>
-          )}
-        </div>
-      </header>
-
-      {/* Conversation Area */}
-      <Conversation className="flex-1">
-        <ConversationContent>
-          <div className="mx-auto max-w-4xl space-y-4">
-            {messages.length === 0 ? (
-              <div className="flex h-full min-h-[400px] items-center justify-center">
-                <div className="text-center">
-                  <p className="text-muted-foreground">
-                    Начните беседу, отправив сообщение
-                  </p>
-                </div>
-              </div>
-            ) : (
-              messages.map((message: any) => (
-                <SferaMessage
-                  key={message.id}
-                  currentUserId={currentUserId}
-                  message={message}
-                  onRetry={handleRetry}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
-                  onFork={handleFork}
-                />
-              ))
+    <div className="flex h-screen w-full bg-background overflow-hidden">
+      <div className="flex flex-col flex-1 min-w-0 bg-chatBg">
+        {/* Header */}
+        <header className="border-b bg-background px-4 py-3 flex items-center justify-between">
+          <div className="flex flex-col">
+            <h1 className="font-semibold text-lg leading-none">{initialSfera.title}</h1>
+            {initialSfera.description && (
+              <p className="text-muted-foreground text-xs mt-1">
+                {initialSfera.description}
+              </p>
             )}
           </div>
-        </ConversationContent>
-        <ConversationScrollButton />
-      </Conversation>
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium border">
+              {initialSfera.title[0]?.toUpperCase()}
+            </div>
+          </div>
+        </header>
 
-      {/* Input Area */}
-      <div className="border-t bg-background p-4">
-        <div className="mx-auto max-w-4xl">
-          <SferaPromptInput
-            value={input}
-            onChange={handleInputChange}
-            onSubmit={handleSubmit}
-            placeholder="Введите сообщение..."
-            isLoading={isLoading}
-            currentUserId={currentUserId}
-            members={initialMembers}
-          />
+        {/* Conversation Area */}
+        <MessageList
+          messages={messages}
+          currentUserId={currentUserId}
+          onRetry={handleRetry}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onFork={handleFork}
+        />
+
+        {/* Input Area */}
+        <div className="p-4 bg-gradient-to-t from-background via-background to-transparent">
+          <div className="mx-auto max-w-4xl">
+            <div className="rounded-2xl border bg-background shadow-lg transition-shadow focus-within:shadow-xl ring-offset-background">
+              <SferaPromptInput
+                value={input}
+                onChange={handleInputChange}
+                onSubmit={handleSubmit}
+                placeholder="Введите сообщение..."
+                isLoading={isLoading}
+                currentUserId={currentUserId}
+                members={initialMembers}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Sfera Info Panel - hidden on mobile/tablet, visible on desktop */}
+      <div className="hidden lg:flex w-80 border-l bg-background flex-col shrink-0">
+        <SferaDetails
+          sfera={initialSfera}
+          members={initialMembers}
+        />
+      </div>
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog
         onOpenChange={() => {
