@@ -20,6 +20,7 @@ export const avroraAgent: AIAgent = {
   userId: AVRORA_USER_ID,
   email: "avrora@avrora.click",
   model: "chat-model", // gpt-5-mini
+  runtime: "internal",
   temperature: 0.7,
   maxSteps: 5,
 

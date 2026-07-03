@@ -1,15 +1,5 @@
-"use server";
-
-import { and, eq, gt } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
 import { type NextRequest, NextResponse } from "next/server";
-import postgres from "postgres";
 import { signIn } from "@/app/(auth)/auth";
-import { magicToken, user } from "@/lib/db/schema";
-
-// biome-ignore lint: Forbidden non-null assertion.
-const client = postgres(process.env.POSTGRES_URL!);
-const db = drizzle(client);
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,52 +12,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Найти токен в БД
-    const [foundToken] = await db
-      .select()
-      .from(magicToken)
-      .where(
-        and(
-          eq(magicToken.token, token),
-          eq(magicToken.email, email),
-          eq(magicToken.used, false),
-          gt(magicToken.expiresAt, new Date())
-        )
-      )
-      .limit(1);
+    const result = await signIn("credentials", {
+      token,
+      email,
+      redirect: false,
+    });
 
-    if (!foundToken) {
+    if (result?.error) {
       return NextResponse.json(
         { success: false, error: "Invalid or expired token" },
         { status: 401 }
       );
     }
-
-    // Найти или создать пользователя
-    let [existingUser] = await db
-      .select()
-      .from(user)
-      .where(eq(user.email, email))
-      .limit(1);
-
-    if (!existingUser) {
-      // Создать нового пользователя
-      const [newUser] = await db.insert(user).values({ email }).returning();
-      existingUser = newUser;
-    }
-
-    // Пометить токен как использованный
-    await db
-      .update(magicToken)
-      .set({ used: true })
-      .where(eq(magicToken.id, foundToken.id));
-
-    // Создать сессию через NextAuth
-    await signIn("credentials", {
-      email: existingUser.email,
-      password: process.env.DUMMY_PASSWORD || "dummy",
-      redirect: false,
-    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

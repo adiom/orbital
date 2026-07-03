@@ -203,7 +203,7 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
     <form className="space-y-4 px-4 sm:px-16" onSubmit={handleSubmit}>
       <div className="space-y-1">
         <Label className="font-medium text-sm" htmlFor="magic-email">
-          Email
+          Электронная почта
         </Label>
         <Input
           autoComplete="email"

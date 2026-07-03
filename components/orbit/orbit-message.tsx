@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Bot,
   Code2,
   Copy,
   GitBranch,
@@ -19,6 +20,7 @@ import { Response } from "@/components/elements/response";
 import {
   AVRORA_USER_ID,
   CLAUDE_CODE_USER_ID,
+  CF_KRISTINA_USER_ID,
 } from "@/lib/constants/system-users";
 import { segmentTextWithMentions } from "@/lib/mentions/parser";
 import { cn } from "@/lib/utils";
@@ -163,6 +165,10 @@ export function OrbitMessage({
     message.userId === CLAUDE_CODE_USER_ID ||
     message.userEmail === "claude-code@avrora.click";
 
+  const isCfKristinaMessage =
+    message.userId === CF_KRISTINA_USER_ID ||
+    message.userEmail === "cf-kristina@avrora.click";
+
   const textSegments = segmentTextWithMentions(message.content);
 
   // Выбираем компонент индикатора
@@ -221,6 +227,12 @@ export function OrbitMessage({
                 <span className="font-semibold text-white">Claude Code</span>
               </div>
             )}
+            {isCfKristinaMessage && (
+              <div className="flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1">
+                <Bot className="h-3 w-3 text-white" />
+                <span className="font-semibold text-white">cf-kristina</span>
+              </div>
+            )}
             <span
               className={cn(
                 "font-medium",
@@ -257,7 +269,7 @@ export function OrbitMessage({
               </div>
               <span className="text-sm italic">Печатает...</span>
             </div>
-          ) : isAvroraMessage || isClaudeCodeMessage ? (
+          ) : isAvroraMessage || isClaudeCodeMessage || isCfKristinaMessage ? (
             <Response className="prose prose-gray max-w-none prose-sm [&_hr]:my-4 [&_ol]:my-3 [&_p]:my-3 [&_table]:my-4 [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_td]:border [&_td]:border-gray-200 [&_td]:px-3 [&_td]:py-2 [&_th]:border [&_th]:border-gray-200 [&_th]:bg-gray-100 [&_th]:px-3 [&_th]:py-2">
               {message.content}
             </Response>

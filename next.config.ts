@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  allowedDevOrigins: ["10.37.180.52", "monitor-glade-porous.ngrok-free.dev"],
   images: {
     remotePatterns: [
       {

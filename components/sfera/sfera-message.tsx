@@ -7,6 +7,7 @@ type AIMessage = {
   experimental_data?: Record<string, any>;
 };
 import {
+  Bot,
   Code2,
   GitFork,
   Link2,
@@ -32,6 +33,7 @@ import { MentionHighlight } from "@/components/sfera/sfera-mention-button";
 import {
   AVRORA_USER_ID,
   CLAUDE_CODE_USER_ID,
+  CF_KRISTINA_USER_ID,
 } from "@/lib/constants/system-users";
 import type { Attachment } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -79,7 +81,8 @@ export const SferaMessage = memo(
     const data = message.experimental_data;
     const isAvrora = data?.userId === AVRORA_USER_ID;
     const isClaudeCode = data?.userId === CLAUDE_CODE_USER_ID;
-    const isAI = isAvrora || isClaudeCode;
+    const isCfKristina = data?.userId === CF_KRISTINA_USER_ID;
+    const isAI = isAvrora || isClaudeCode || isCfKristina;
     const isOwn = data?.userId === currentUserId;
 
     // Extract text content for copying
@@ -149,6 +152,14 @@ export const SferaMessage = memo(
                   <Code2 className="h-3 w-3 text-primary" />
                   <span className="font-medium text-primary text-[10px] uppercase tracking-wider">
                     Claude Code
+                  </span>
+                </div>
+              )}
+              {isCfKristina && (
+                <div className="flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 border border-blue-500/20">
+                  <Bot className="h-3 w-3 text-blue-500" />
+                  <span className="font-medium text-blue-500 text-[10px] uppercase tracking-wider">
+                    cf-kristina
                   </span>
                 </div>
               )}

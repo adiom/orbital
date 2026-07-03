@@ -5,6 +5,21 @@
 import type { Tool } from "ai";
 
 /**
+ * Agent runtime type
+ */
+export type AgentRuntime = "internal" | "external-mcp";
+
+/**
+ * External MCP agent configuration
+ */
+export type ExternalMcpConfig = {
+  /** Base URL of the MCP server (e.g., http://localhost:3000/api/mcp) */
+  endpoint: string;
+  /** Optional auth token */
+  authToken?: string;
+};
+
+/**
  * AI Agent configuration
  */
 export type AIAgent = {
@@ -25,6 +40,12 @@ export type AIAgent = {
 
   /** Model to use for this agent (e.g., "chat-model", "gpt-5-mini") */
   model: string;
+
+  /** Agent runtime - internal (Vercel AI SDK) or external-mcp */
+  runtime?: AgentRuntime;
+
+  /** External MCP configuration (only when runtime = "external-mcp") */
+  externalMcp?: ExternalMcpConfig;
 
   /** Build system prompt for this agent */
   buildSystemPrompt: (context: AgentPromptContext) => string;

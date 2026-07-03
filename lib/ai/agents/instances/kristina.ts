@@ -61,6 +61,7 @@ export const kristinaAgent: AIAgent = {
   userId: KRISTINA_USER_ID,
   email: "kristina@avrora.click",
   model: "chat-model", // Same model as Avrora for consistency
+  runtime: "internal",
   temperature: 0.5, // Lower temperature for more analytical responses
   maxSteps: 5,
 

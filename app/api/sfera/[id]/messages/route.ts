@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { auth } from "@/app/(auth)/auth";
 import { streamAgentResponse } from "@/lib/ai/agents/base-streamer";
+import { streamExternalMcpAgentResponse } from "@/lib/ai/agents/external-mcp-streamer";
 import { detectMentionedAgents } from "@/lib/ai/agents/detector";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
@@ -223,13 +224,18 @@ export async function POST(request: Request, context: RouteContext) {
         setTimeout(async () => {
           try {
             console.log(`🤖 Starting ${agent.name} response generation...`);
-            await streamAgentResponse({
+            const agentContext = {
               sferaId,
               triggerMessageId: newMessage.id,
               targetMessageId: messageId,
               requestingUserId: session.user.id,
               agent,
-            });
+            };
+            if (agent.runtime === "external-mcp") {
+              await streamExternalMcpAgentResponse(agentContext);
+            } else {
+              await streamAgentResponse(agentContext);
+            }
             console.log(`✅ ${agent.name} finished streaming`);
           } catch (error) {
             console.error(`❌ ${agent.name} streaming failed:`, error);

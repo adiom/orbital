@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { MessageList } from "@/components/sfera/message-list";
 import { SferaDetails } from "@/components/sfera/sfera-details";
+import { generateUUID } from "@/lib/utils";
 
 type SferaMember = {
   userId: string;
@@ -68,7 +69,7 @@ export function SferaChatClient({
     try {
       // Add user message optimistically
       const userMessage = {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         role: "user" as const,
         content: message.text,
         experimental_data: {

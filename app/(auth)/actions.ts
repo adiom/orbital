@@ -6,27 +6,15 @@ import postgres from "postgres";
 import { z } from "zod/v3";
 import { magicToken } from "@/lib/db/schema";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { signIn } from "./auth";
 
 // biome-ignore lint: Forbidden non-null assertion.
 const client = postgres(process.env.POSTGRES_URL!);
 const db = drizzle(client);
 
-// Вход только по Magic Link — валидируем только email
-const loginFormSchema = z.object({
-  email: z.string().email(),
-});
-
 // Схема для создания Magic Link
 const createMagicLinkSchema = z.object({
   email: z.string().email(),
 });
-
-// Регистрация по паролю удалена — используем только Magic Link
-
-export type LoginActionState = {
-  status: "idle" | "in_progress" | "success" | "failed" | "invalid_data";
-};
 
 export type CreateMagicLinkState = {
   status: "idle" | "in_progress" | "success" | "failed" | "invalid_data";
@@ -114,62 +102,6 @@ export const createMagicLink = async (
     }
 
     return { status: "failed", message: "Внутренняя ошибка сервера" };
-  }
-};
-
-export const login = async (
-  _: LoginActionState,
-  formData: FormData
-): Promise<LoginActionState> => {
-  try {
-    const validatedData = loginFormSchema.parse({
-      email: formData.get("email"),
-    });
-
-    const result = await signIn("credentials", {
-      email: validatedData.email,
-      redirect: false,
-    });
-
-    if (result?.error) {
-      return { status: "failed" };
-    }
-
-    return { status: "success" };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return { status: "invalid_data" };
-    }
-
-    return { status: "failed" };
-  }
-};
-
-export const loginWithMagicLink = async (
-  _: LoginActionState,
-  formData: FormData
-): Promise<LoginActionState> => {
-  try {
-    const validatedData = loginFormSchema.parse({
-      email: formData.get("email"),
-    });
-
-    const result = await signIn("credentials", {
-      email: validatedData.email,
-      redirect: false,
-    });
-
-    if (result?.error) {
-      return { status: "failed" };
-    }
-
-    return { status: "success" };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return { status: "invalid_data" };
-    }
-
-    return { status: "failed" };
   }
 };
 

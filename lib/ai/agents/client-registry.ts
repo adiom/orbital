@@ -3,7 +3,7 @@
  * Lightweight registry for client-side use (no server dependencies)
  */
 
-import { AVRORA_USER_ID } from "@/lib/constants/system-users";
+import { AVRORA_USER_ID, CF_KRISTINA_USER_ID } from "@/lib/constants/system-users";
 
 export type AIAgentMetadata = {
   id: string;
@@ -27,6 +27,12 @@ export const aiAgentsMetadata: AIAgentMetadata[] = [
     name: "Kristina",
     email: "kristina@avrora.click",
     userId: "00000000-0000-0000-0000-000000000002",
+  },
+  {
+    id: "cf-kristina",
+    name: "cf-kristina",
+    email: "cf-kristina@avrora.click",
+    userId: CF_KRISTINA_USER_ID,
   },
 ];
 

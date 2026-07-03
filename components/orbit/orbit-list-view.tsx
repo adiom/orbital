@@ -39,7 +39,7 @@ export function OrbitListView({
           const isOwner = orbit.ownerId === currentUserId;
 
           return (
-            <button
+            <div
               className={cn(
                 "group cursor-pointer rounded-xl border-2 bg-white p-4 shadow-sm transition-all",
                 "hover:border-blue-300 hover:shadow-md"
@@ -51,7 +51,8 @@ export function OrbitListView({
                   router.push(`/orbit/${orbit.id}`);
                 }
               }}
-              type="button"
+              role="button"
+              tabIndex={0}
             >
               <div className="flex items-center justify-between gap-4">
                 {/* Left: Title and description */}
@@ -117,7 +118,7 @@ export function OrbitListView({
                   )}
                 </div>
               </div>
-            </button>
+            </div>
           );
         })}
       </div>

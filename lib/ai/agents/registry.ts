@@ -5,12 +5,13 @@
 
 import { avroraAgent } from "./instances/avrora";
 import { kristinaAgent } from "./instances/kristina";
+import { cfKristinaAgent } from "./instances/cf-kristina";
 import type { AIAgent } from "./types";
 
 /**
  * All registered AI agents
  */
-export const aiAgents: AIAgent[] = [avroraAgent, kristinaAgent];
+export const aiAgents: AIAgent[] = [avroraAgent, kristinaAgent, cfKristinaAgent];
 
 /**
  * Get agent by ID

@@ -10,9 +10,17 @@ export const AVRORA_EMAIL = "avrora@avrora.click";
 export const CLAUDE_CODE_USER_ID = "00000000-0000-0000-0000-000000000002";
 export const CLAUDE_CODE_EMAIL = "claude-code@avrora.click";
 
+// cf-kristina - external MCP agent
+export const CF_KRISTINA_USER_ID = "00000000-0000-0000-0000-000000000003";
+export const CF_KRISTINA_EMAIL = "cf-kristina@avrora.click";
+
 // Helper function to check if user is a system bot
 export function isSystemUser(userId: string): boolean {
-  return userId === AVRORA_USER_ID || userId === CLAUDE_CODE_USER_ID;
+  return (
+    userId === AVRORA_USER_ID ||
+    userId === CLAUDE_CODE_USER_ID ||
+    userId === CF_KRISTINA_USER_ID
+  );
 }
 
 // Helper function to check if user is Claude Code
@@ -23,4 +31,9 @@ export function isClaudeCodeUser(userId: string): boolean {
 // Helper function to check if user is Avrora AI
 export function isAvroraUser(userId: string): boolean {
   return userId === AVRORA_USER_ID;
+}
+
+// Helper function to check if user is cf-kristina
+export function isCfKristinaUser(userId: string): boolean {
+  return userId === CF_KRISTINA_USER_ID;
 }

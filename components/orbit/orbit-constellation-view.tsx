@@ -30,7 +30,7 @@ type ConstellationProps = {
  // ─── Subtle reference grid (barely visible for alignment) ────────────────────
 
 // Create a very subtle grid reference - only visible on close inspection
-const referencePoints = [];
+const referencePoints: { id: number; x: number; y: number; size: number; color: string; opacity: number }[] = [];
 for (let x = 50; x <= 750; x += 100) {
   for (let y = 50; y <= 550; y += 100) {
     referencePoints.push({

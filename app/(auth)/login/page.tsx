@@ -4,32 +4,16 @@ import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import type { JSX } from "react";
-import { Suspense, useActionState, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { MagicLinkForm } from "@/components/magic-link-form";
 import { Button } from "@/components/ui/button";
-import { type LoginActionState, login, loginWithMagicLink } from "../actions";
 
 function LoginContent(): JSX.Element {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [state, _formAction] = useActionState<LoginActionState, FormData>(
-    login,
-    {
-      status: "idle",
-    }
-  );
-
-  const [magicState, _magicFormAction] = useActionState<
-    LoginActionState,
-    FormData
-  >(loginWithMagicLink, {
-    status: "idle",
-  });
-
   const { update: updateSession } = useSession();
   const [loginTriggered, setLoginTriggered] = useState(false);
-  const [successHandled, setSuccessHandled] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
@@ -74,22 +58,6 @@ function LoginContent(): JSX.Element {
         });
     }
   }, [searchParams, loginTriggered, updateSession, router]);
-
-  useEffect(() => {
-    if (state.status === "success" && !successHandled) {
-      setSuccessHandled(true);
-      updateSession();
-      router.push("/orbits");
-    }
-  }, [state.status, updateSession, router, successHandled]);
-
-  useEffect(() => {
-    if (magicState.status === "success" && !successHandled) {
-      setSuccessHandled(true);
-      updateSession();
-      router.push("/orbits");
-    }
-  }, [magicState.status, updateSession, router, successHandled]);
 
   return (
     <div className="relative flex h-dvh w-screen items-start justify-center overflow-hidden bg-background pt-12 md:items-center md:pt-0">
