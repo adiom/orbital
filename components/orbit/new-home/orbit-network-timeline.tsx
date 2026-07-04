@@ -150,7 +150,10 @@ function getConstellationPositions(
   const roots = orbits
     .filter((orbit) => !parentMap.has(orbit.id) && !hiddenIds.has(orbit.id))
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  const fallbackRoots = roots.length > 0 ? roots : orbits.filter((o) => !hiddenIds.has(o.id)).slice(0, 1);
+
+  const rootsWithForks = roots.filter((r) => (childrenMap.get(r.id) || []).length > 0);
+  const rootsAlone = roots.filter((r) => (childrenMap.get(r.id) || []).length === 0);
+
   const positions = new Map<string, { x: number; y: number }>();
   const visited = new Set<string>();
 
@@ -184,18 +187,34 @@ function getConstellationPositions(
     });
   };
 
+  // Place roots that have forks — centered constellation
   const rootMaxColumns = 2;
-  fallbackRoots.forEach((root, index) => {
+  rootsWithForks.forEach((root, index) => {
     const row = Math.floor(index / rootMaxColumns);
     const columnOffset = getCenteredColumnOffset(
       index,
-      fallbackRoots.length,
+      rootsWithForks.length,
       rootMaxColumns
     );
     const rootX = CANVAS_CENTER_X + columnOffset * 360;
     const rootY = ROOT_Y + row * 380;
 
     placeBranch(root.id, rootX, rootY);
+  });
+
+  // Place lone roots — compact stack on the right side
+  const STACK_X = 1150;
+  const STACK_Y_START = ROOT_Y;
+  const STACK_OFFSET_X = 6;
+  const STACK_OFFSET_Y = 38;
+
+  rootsAlone.forEach((root, index) => {
+    if (visited.has(root.id)) return;
+    visited.add(root.id);
+    positions.set(root.id, {
+      x: STACK_X + index * STACK_OFFSET_X,
+      y: STACK_Y_START + index * STACK_OFFSET_Y,
+    });
   });
 
   const unplacedOrbits = orbits.filter(
