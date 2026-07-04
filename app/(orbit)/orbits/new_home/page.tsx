@@ -5,6 +5,7 @@ import { redirect, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
 import { OrbitNetworkTimeline } from "@/components/orbit/new-home/orbit-network-timeline";
+import { OrbitCreatePrompt } from "@/components/orbit/new-home/orbit-create-prompt";
 import { OrbitErrorState } from "@/components/orbit/orbit-error-state";
 import { OrbitSkeleton } from "@/components/orbit/orbit-skeleton";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ export default function OrbitsNewHomePage() {
   const { orbits, forkRelationships, isLoading, error, refetch } = useOrbits();
   const [isRetrying, setIsRetrying] = useState(false);
   const [selectedOrbitId, setSelectedOrbitId] = useState<string | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   const handleRetryFetch = async () => {
     setIsRetrying(true);
@@ -67,12 +69,17 @@ export default function OrbitsNewHomePage() {
 
       <Button
         className="fixed right-5 top-5 z-30 rounded-full border border-white/70 bg-white/75 px-5 text-neutral-800 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all hover:bg-white hover:shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
-        onClick={() => router.push("/orbits/new")}
+        onClick={() => setIsCreateOpen(true)}
         variant="ghost"
       >
         <Plus className="mr-2 h-4 w-4" />
         Создать...
       </Button>
+
+      <OrbitCreatePrompt
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+      />
 
       <OrbitNetworkTimeline
         currentUserId={session?.user?.id}

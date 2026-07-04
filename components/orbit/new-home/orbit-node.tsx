@@ -13,11 +13,13 @@ export type OrbitNodeData = {
   role: string;
   ownerId: string;
   childCount: number;
+  messageCount: number;
   createdAt: Date;
   updatedAt: Date;
   activityLabel: string;
   lifeState: "born" | "alive" | "settled" | "quiet";
   density: number;
+  isSleeping: boolean;
   recentParticipants?: Array<{
     id: string;
     name: string;
@@ -35,7 +37,11 @@ type OrbitNodeProps = {
   selected?: boolean;
 };
 
-function getScale(childCount: number, density: number): number {
+function getScale(childCount: number, density: number, messageCount: number): number {
+  // Very inactive: no messages, no forks → small
+  if (messageCount === 0 && childCount === 0) return 0.82;
+  if (messageCount <= 2 && childCount === 0) return 0.90;
+  // Active
   if (childCount >= 5 || density > 0.8) return 1.32;
   if (childCount >= 3 || density > 0.55) return 1.18;
   if (childCount >= 1 || density > 0.3) return 1.07;
@@ -92,7 +98,7 @@ function getDisplayDescription(description: string | null) {
 }
 
 export function OrbitNode({ data, selected }: OrbitNodeProps) {
-  const scale = getScale(data.childCount, data.density);
+  const scale = getScale(data.childCount, data.density, data.messageCount);
   const tone = getLifeTone(data.lifeState);
   const hasParticipants = Boolean(data.recentParticipants?.length);
   const displayDescription = getDisplayDescription(data.description);
@@ -103,20 +109,35 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
 
   const isOwner = data.currentUserId === data.ownerId;
 
+  let opacity = 1;
+  if (data.isSleeping) {
+    opacity = 0.3;
+  }
+
+  let effectiveScale = scale;
+  if (data.isSleeping) {
+    effectiveScale = 0.8;
+  }
+
   return (
     <div
       className={cn(
-        "orbital-living-node pointer-events-auto group relative rounded-[28px] bg-white/72 px-4 py-3 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all duration-500 hover:-translate-y-1 hover:bg-white/88 hover:shadow-[0_30px_100px_rgba(15,23,42,0.14)]",
+        "orbital-living-node pointer-events-auto group relative rounded-[28px] bg-white/72 px-4 py-3 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all duration-500",
+        !data.isSleeping && "hover:-translate-y-1 hover:bg-white/88 hover:shadow-[0_30px_100px_rgba(15,23,42,0.14)]",
         selected
           ? "ring-1 ring-blue-300/70"
-          : "ring-1 ring-white/70 hover:ring-neutral-200/80"
+          : "ring-1 ring-white/70 hover:ring-neutral-200/80",
+        data.isSleeping && "pointer-events-none"
       )}
       style={{
-        width: 230 * scale,
-        minHeight: 148 * scale,
-        padding: `${15 * scale}px ${17 * scale}px`,
-        boxShadow: `0 22px ${54 * scale}px rgba(15, 23, 42, 0.10), 0 0 ${42 * scale}px ${tone.glow}`,
+        width: 230 * effectiveScale,
+        minHeight: 148 * effectiveScale,
+        padding: `${15 * effectiveScale}px ${17 * effectiveScale}px`,
+        boxShadow: `0 22px ${54 * effectiveScale}px rgba(15, 23, 42, 0.10), 0 0 ${42 * effectiveScale}px ${tone.glow}`,
         animationDelay: `${data.id.charCodeAt(0) % 7}s`,
+        opacity,
+        transform: data.isSleeping ? "scale(0.8)" : undefined,
+        transition: "opacity 0.5s ease, transform 0.5s ease, width 0.5s ease, min-height 0.5s ease, padding 0.5s ease, box-shadow 0.5s ease",
       }}
     >
       <div
@@ -135,9 +156,6 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
       <div className="mb-4 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="relative flex h-2.5 w-2.5">
-            {data.lifeState === "alive" && (
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-60" />
-            )}
             <span
               className={cn(
                 "relative inline-flex h-2.5 w-2.5 rounded-full",
@@ -172,14 +190,14 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
       >
         <h3
           className="mb-2 line-clamp-2 font-medium leading-tight text-neutral-950 tracking-[-0.01em]"
-          style={{ fontSize: 16 * scale }}
+          style={{ fontSize: 16 * effectiveScale }}
         >
           {data.title}
         </h3>
 
         <p
           className="line-clamp-2 leading-snug text-neutral-500"
-          style={{ fontSize: 11.5 * scale }}
+          style={{ fontSize: 11.5 * effectiveScale }}
         >
           {displayDescription}
         </p>

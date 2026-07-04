@@ -1,5 +1,7 @@
 import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { auth } from "@/app/(auth)/auth";
+import { detectMentionedAgents } from "@/lib/ai/agents/detector";
+import { streamAgentResponse } from "@/lib/ai/agents/base-streamer";
 import { db } from "@/lib/db";
 import {
   sfera,
@@ -8,6 +10,7 @@ import {
   sferaMessage,
   user,
 } from "@/lib/db/schema";
+import { checkAvroraRateLimit } from "@/lib/redis/rate-limiter";
 
 // GET /api/sfera - List all Sferas for current user with fork relationships and activity
 export async function GET(_request: Request) {
@@ -139,7 +142,7 @@ export async function GET(_request: Request) {
   }
 }
 
-// POST /api/sfera - Create new Sfera
+// POST /api/sfera - Create new Sfera, optionally with first message
 export async function POST(request: Request) {
   const session = await auth();
 
@@ -149,7 +152,19 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { title, description, visibility = "private" } = body;
+    const {
+      title,
+      description,
+      visibility = "private",
+      content,
+      attachments = [],
+    } = body as {
+      title?: string;
+      description?: string;
+      visibility?: string;
+      content?: string;
+      attachments?: Array<{ name: string; url: string; contentType: string }>;
+    };
 
     const DEFAULT_MEMBER_EMAIL = "avrora@avrora.click";
     const orbitTitle =
@@ -190,7 +205,141 @@ export async function POST(request: Request) {
       });
     }
 
-    return Response.json({ sfera: newSfera }, { status: 201 });
+    // If first message content is provided, create it and trigger AI agents
+    let firstMessage: unknown = null;
+    let agentMessages: Array<{ agentId: string; messageId: string }> = [];
+
+    const hasContent = content && content.trim().length > 0;
+    const hasAttachments = attachments && attachments.length > 0;
+
+    if (hasContent || hasAttachments) {
+      const [message] = await db
+        .insert(sferaMessage)
+        .values({
+          sferaId: newSfera.id,
+          userId: session.user.id,
+          content: content?.trim() || "",
+          parentMessageId: null,
+          attachments,
+          isForked: false,
+          forkCount: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      firstMessage = message;
+
+      // Detect and trigger AI agents
+      if (hasContent) {
+        const mentionedAgents = detectMentionedAgents(content);
+
+        for (const agent of mentionedAgents) {
+          // Rate limit check
+          if (agent.rateLimit) {
+            const rateLimitResult = await checkAvroraRateLimit(
+              session.user.id,
+              newSfera.id
+            );
+            if (!rateLimitResult.allowed) continue;
+          }
+
+          // Ensure agent user exists
+          const [agentUser] = await db
+            .select()
+            .from(user)
+            .where(eq(user.id, agent.userId))
+            .limit(1);
+
+          if (!agentUser) {
+            await db.insert(user).values({
+              id: agent.userId,
+              email: agent.email,
+            });
+          }
+
+          // Ensure agent is member
+          const [agentMembership] = await db
+            .select()
+            .from(sferaMember)
+            .where(
+              and(
+                eq(sferaMember.sferaId, newSfera.id),
+                eq(sferaMember.userId, agent.userId)
+              )
+            )
+            .limit(1);
+
+          if (!agentMembership) {
+            await db.insert(sferaMember).values({
+              sferaId: newSfera.id,
+              userId: agent.userId,
+              role: "member",
+              joinedAt: new Date(),
+            });
+          }
+
+          // Create empty agent message
+          const [agentMessage] = await db
+            .insert(sferaMessage)
+            .values({
+              sferaId: newSfera.id,
+              userId: agent.userId,
+              content: "",
+              parentMessageId: message.id,
+              isForked: false,
+              forkCount: 0,
+              isGenerating: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .returning();
+
+          agentMessages.push({
+            agentId: agent.id,
+            messageId: agentMessage.id,
+          });
+
+          // Stream agent response in background (fire-and-forget)
+          setTimeout(async () => {
+            try {
+              const agentContext = {
+                sferaId: newSfera.id,
+                triggerMessageId: message.id,
+                targetMessageId: agentMessage.id,
+                requestingUserId: session.user.id,
+                agent,
+              };
+              if (agent.runtime === "external-mcp") {
+                const { streamExternalMcpAgentResponse } = await import(
+                  "@/lib/ai/agents/external-mcp-streamer"
+                );
+                await streamExternalMcpAgentResponse(agentContext);
+              } else {
+                await streamAgentResponse(agentContext);
+              }
+            } catch (err) {
+              console.error(`Agent ${agent.name} streaming failed:`, err);
+            }
+          }, 0);
+        }
+      }
+
+      // Update orbit's updatedAt
+      await db
+        .update(sfera)
+        .set({ updatedAt: new Date() })
+        .where(eq(sfera.id, newSfera.id));
+    }
+
+    return Response.json(
+      {
+        sfera: newSfera,
+        message: firstMessage,
+        agentMessages,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Failed to create sfera:", error);
     return Response.json({ error: "Failed to create sfera" }, { status: 500 });

@@ -35,6 +35,11 @@ export const user = pgTable("User", {
     tier: "free" | "pro" | "enterprise";
   }>(), // MCP rate limit quotas
 
+  // User preferences
+  settings: jsonb("settings").$type<{
+    autoArchive?: boolean;
+  }>().default({}),
+
   // Timestamps
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),

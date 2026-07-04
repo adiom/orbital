@@ -8,9 +8,9 @@ import {
   useEdgesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Loader2 } from "lucide-react";
+import { Archive, ArchiveRestore, Loader2, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -22,7 +22,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import type { ForkRelationship, Orbit } from "@/hooks/use-orbit-layout";
+import { useUserSettings } from "@/hooks/use-user-settings";
 import { OrbitSettings } from "../orbit-settings";
 import { OrbitChatPanel } from "../orbit-chat-panel";
 import { OrbitNode, type OrbitNodeData } from "./orbit-node";
@@ -49,7 +51,7 @@ const nodeTypes = {
 const NODE_WIDTH = 280;
 const NODE_HEIGHT = 210;
 const CANVAS_CENTER_X = 720;
-const ROOT_Y = 220;
+const ROOT_Y = 100;
 const CHILD_Y_GAP = 330;
 const ROW_Y_GAP = 245;
 
@@ -174,7 +176,7 @@ function getConstellationPositions(
       rootMaxColumns
     );
     const rootX = CANVAS_CENTER_X + columnOffset * 440;
-    const rootY = ROOT_Y + row * 720;
+    const rootY = ROOT_Y + row * 600;
 
     placeBranch(root.id, rootX, rootY);
   });
@@ -185,7 +187,7 @@ function getConstellationPositions(
     const columnOffset = getCenteredColumnOffset(index, unplacedOrbits.length, 3);
     positions.set(orbit.id, {
       x: CANVAS_CENTER_X + columnOffset * 360 - NODE_WIDTH / 2,
-      y: ROOT_Y + 720 + row * 280 - NODE_HEIGHT / 2,
+      y: ROOT_Y + 500 + row * 280 - NODE_HEIGHT / 2,
     });
   });
 
@@ -196,6 +198,7 @@ function buildGraph(
   orbits: Orbit[],
   forkRelationships: ForkRelationship[],
   currentUserId?: string,
+  sleepingIds?: Set<string>,
   onSettingsClick?: (orbit: Orbit) => void,
   onDeleteClick?: (orbit: Orbit) => void,
   onSelectOrbit?: (id: string) => void
@@ -208,6 +211,8 @@ function buildGraph(
     const density = getDensity(orbit, childCount);
     const lifeState = getLifeState(orbit, childCount);
     const offset = getOrganicOffset(index);
+    const messageCount = orbit.messageCount || 0;
+    const isSleeping = sleepingIds?.has(orbit.id) ?? false;
 
     return {
       id: orbit.id,
@@ -224,11 +229,13 @@ function buildGraph(
         role: orbit.role,
         ownerId: orbit.ownerId,
         childCount,
+        messageCount,
         createdAt: orbit.createdAt,
         updatedAt: orbit.updatedAt,
         activityLabel: getActivityLabel(orbit, childCount),
         lifeState,
         density,
+        isSleeping,
         recentParticipants: orbit.recentParticipants || [],
         insightBadges: [],
         currentUserId,
@@ -264,12 +271,16 @@ export function OrbitNetworkTimeline({
   onSelectOrbit,
 }: OrbitNetworkTimelineProps) {
   const router = useRouter();
+  const { autoArchive, updateSettings } = useUserSettings();
   const [selectedOrbitForSettings, setSelectedOrbitForSettings] =
     useState<Orbit | null>(null);
   const [orbitMembers, setOrbitMembers] = useState<Member[]>([]);
   const [, setIsLoadingMembers] = useState(false);
   const [orbitToDelete, setOrbitToDelete] = useState<Orbit | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [sleepingIds, setSleepingIds] = useState<Set<string>>(new Set());
+  const [awakeningIds, setAwakeningIds] = useState<Set<string>>(new Set());
+  const graphRef = useRef<HTMLDivElement>(null);
 
   const handleSelectOrbit = useCallback(
     (id: string) => {
@@ -293,7 +304,7 @@ export function OrbitNetworkTimeline({
 
   // URL restore on mount
   useEffect(() => {
-    if (selectedOrbitId) return; // Already set from parent
+    if (selectedOrbitId) return;
     const path = window.location.pathname;
     const uuid = path.replace(/^\//, "");
     if (uuid && uuid.length > 10) {
@@ -311,6 +322,72 @@ export function OrbitNetworkTimeline({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedOrbitId, handleCloseOrbit]);
+
+  // Auto-archive: detect off-screen cards
+  useEffect(() => {
+    if (!autoArchive || orbits.length < 20) {
+      setSleepingIds((prev) => (prev.size > 0 ? new Set() : prev));
+      return;
+    }
+
+    const checkVisibility = () => {
+      const viewportHeight = window.innerHeight;
+      const scrollY = window.scrollY;
+      const topThreshold = scrollY - 300;
+      const bottomThreshold = scrollY + viewportHeight + 300;
+
+      const newSleeping = new Set<string>();
+      for (const orbit of orbits) {
+        const el = document.querySelector(`[data-id="${orbit.id}"]`);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          const absoluteTop = rect.top + scrollY;
+          const absoluteBottom = rect.top + scrollY + rect.height;
+
+          if (absoluteBottom < topThreshold || absoluteTop > bottomThreshold) {
+            newSleeping.add(orbit.id);
+          }
+        }
+      }
+
+      setSleepingIds((prev) => {
+        if (prev.size === newSleeping.size && [...newSleeping].every((id) => prev.has(id))) {
+          return prev;
+        }
+        return newSleeping;
+      });
+    };
+
+    checkVisibility();
+    const interval = setInterval(checkVisibility, 3000);
+    window.addEventListener("scroll", checkVisibility, { passive: true });
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("scroll", checkVisibility);
+    };
+  }, [autoArchive, orbits]);
+
+  // Awaken sleeping cards
+  const handleAwaken = useCallback(() => {
+    const sleeping = [...sleepingIds];
+    if (sleeping.length === 0) return;
+
+    const count = Math.min(4, sleeping.length);
+    const shuffled = sleeping.sort(() => Math.random() - 0.5);
+    const toAwaken = shuffled.slice(0, count);
+
+    setAwakeningIds(new Set(toAwaken));
+
+    setTimeout(() => {
+      setSleepingIds((prev) => {
+        const next = new Set(prev);
+        for (const id of toAwaken) next.delete(id);
+        return next;
+      });
+      setAwakeningIds(new Set());
+    }, 700);
+  }, [sleepingIds]);
 
   const handleOpenSettings = async (orbit: Orbit) => {
     setSelectedOrbitForSettings(orbit);
@@ -370,6 +447,7 @@ export function OrbitNetworkTimeline({
       orbits,
       forkRelationships,
       currentUserId,
+      undefined,
       handleOpenSettings,
       setOrbitToDelete,
       handleSelectOrbit
@@ -381,9 +459,30 @@ export function OrbitNetworkTimeline({
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   useEffect(() => {
-    setNodes(initialNodes);
+    setNodes((prev) => {
+      const needsSleepingPatch = prev.some((n) => {
+        const isSleeping = sleepingIds.has(n.id);
+        return n.data.isSleeping !== isSleeping;
+      });
+
+      if (prev.length !== initialNodes.length) {
+        return initialNodes.map((n) => ({
+          ...n,
+          data: { ...n.data, isSleeping: autoArchive && sleepingIds.has(n.id) },
+        }));
+      }
+
+      if (needsSleepingPatch) {
+        return prev.map((n) => ({
+          ...n,
+          data: { ...n.data, isSleeping: autoArchive && sleepingIds.has(n.id) },
+        }));
+      }
+
+      return prev;
+    });
     setEdges(initialEdges);
-  }, [initialNodes, initialEdges, setNodes, setEdges]);
+  }, [initialNodes, initialEdges, sleepingIds, autoArchive, setNodes, setEdges]);
 
   if (orbits.length === 0) {
     return (
@@ -414,17 +513,48 @@ export function OrbitNetworkTimeline({
     maxY = Math.max(maxY, node.position.y + NODE_HEIGHT);
   }
   const graphHeight = Math.max(760, maxY - minY + 280);
+  const sleepingCount = autoArchive ? sleepingIds.size : 0;
 
   return (
     <>
       <div className="pointer-events-none absolute left-[12%] top-32 h-2 w-2 rounded-full bg-sky-200/80 blur-[1px] orbital-drift" />
       <div className="pointer-events-none absolute right-[18%] top-[38rem] h-1.5 w-1.5 rounded-full bg-violet-200/80 blur-[1px] orbital-drift-slow" />
       <div className="pointer-events-none absolute left-[68%] top-[18rem] h-1 w-1 rounded-full bg-emerald-200/80 blur-[1px] orbital-drift" />
-      <div className="pointer-events-none fixed bottom-6 left-6 z-20 hidden max-w-xs rounded-full border border-white/70 bg-white/55 px-4 py-2 text-[11px] text-neutral-400 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl md:block">
-        {orbits.length} {orbits.length === 1 ? "мысль" : "живых точек"} · {forkRelationships.length} связей · {orbits.reduce((sum, o) => sum + (o.messageCount || 0), 0)} сообщений
+
+      {/* Stats bar */}
+      <div className="pointer-events-auto fixed bottom-6 left-6 z-20 hidden items-center gap-2 md:flex">
+        <div className="max-w-xs rounded-full border border-white/70 bg-white/55 px-4 py-2 text-[11px] text-neutral-400 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
+          {orbits.length} {orbits.length === 1 ? "мысль" : "живых точек"} · {forkRelationships.length} связей · {orbits.reduce((sum, o) => sum + (o.messageCount || 0), 0)} сообщений
+        </div>
+        <button
+          className="flex items-center gap-1.5 rounded-full border border-white/70 bg-white/55 px-3 py-2 text-[11px] text-neutral-400 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-all hover:bg-white/70 hover:text-neutral-600"
+          onClick={() => updateSettings({ autoArchive: !autoArchive })}
+          title={autoArchive ? "Само-архивация включена" : "Само-архивация выключена"}
+        >
+          {autoArchive ? (
+            <Archive className="h-3 w-3" />
+          ) : (
+            <ArchiveRestore className="h-3 w-3" />
+          )}
+          {autoArchive ? "архив" : "все видно"}
+        </button>
       </div>
 
-      <div className="relative w-full" style={{ height: graphHeight }}>
+      {/* Awaken button */}
+      {sleepingCount > 0 && (
+        <div className="pointer-events-auto fixed bottom-6 left-1/2 z-20 -translate-x-1/2">
+          <Button
+            className="gap-2 rounded-full border border-white/70 bg-white/75 px-5 text-[12px] text-neutral-600 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all hover:bg-white hover:shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
+            onClick={handleAwaken}
+            variant="ghost"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-violet-400" />
+            Разбудить ещё {sleepingCount}
+          </Button>
+        </div>
+      )}
+
+      <div className="relative w-full" ref={graphRef} style={{ height: graphHeight }}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -445,7 +575,7 @@ export function OrbitNetworkTimeline({
           proOptions={{ hideAttribution: true }}
           className="pointer-events-none"
           style={{ background: "transparent" }}
-          defaultViewport={{ x: 90, y: 120, zoom: 0.82 }}
+          defaultViewport={{ x: 90, y: 50, zoom: 0.82 }}
         />
       </div>
 
