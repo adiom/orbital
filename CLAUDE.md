@@ -6,16 +6,98 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Avrora Area** is an AI‑enhanced collaboration platform built with **Next.js (App Router)**, **React 19**, **TypeScript**, **PostgreSQL + Drizzle ORM**, **Redis**, and **Vercel AI SDK**.  It supports:
+**Orbital** is an AI-enhanced collaboration and knowledge platform built with **Next.js (App Router)**, **React 19**, **TypeScript**, **PostgreSQL + Drizzle ORM**, **Redis**, and **Vercel AI SDK**.
 
-- **Sfera spaces** – public, private and DAO‑style collaborative workspaces with role‑based access.
-- **AI agents** – Avrora AI, Claude Code, and multi‑provider agents (Anthropic, OpenAI, Google, xAI).
-- **Message threading & forking** – conversations can be branched into new Sferas.
-- **Artifacts** – generated content types (text, code, images, charts, mini‑apps, games, sheets).
-- **Magic‑link authentication** – password‑less sign‑in via email tokens.
-- **MCP (Model Context Protocol) integration** – external tools (Claude Desktop) can read/write Sferas.
+The old name **Avrora Area** was a prototype name and must not be used as the public product name. The product is **Orbital**. **Avrora** may remain as the AI agent/persona inside the product, but not as the platform name.
 
-The system is organized into a clear separation of concerns: UI components, core business logic (`lib/`), database layer, AI integration, and real‑time WebSocket services.
+Orbital is not intended to feel like another chat app, file explorer, board, UML graph, mind map, or diagram editor. The product direction is:
+
+```text
+Orbital is where conversations become knowledge.
+```
+
+The core product idea is that users create something that may become an idea, discussion, note, research thread, project, document, hypothesis, decision log, or knowledge cell. The UI should not force one universal noun on this object. Internally the code still uses historical terms like `orbit`, `sfera`, `Sfera`, and routes such as `/orbit/[id]` and `/api/sfera`; do not rename those casually. Public UI language should avoid exposing these internal names unless there is no reasonable alternative.
+
+Orbital supports:
+
+- **Living knowledge cells** – internally still represented by Sfera/Orbit models, but publicly unnamed and user-defined.
+- **AI agents** – Avrora AI, Claude Code, and multi-provider agents (Anthropic, OpenAI, Google, xAI).
+- **Message threading and branching** – conversations can branch into new related cells.
+- **Artifacts** – generated content types (text, code, images, charts, mini-apps, games, sheets).
+- **Magic-link authentication** – passwordless sign-in via email tokens.
+- **MCP (Model Context Protocol) integration** – external tools (Claude Desktop, Claude Code clients) can read/write Orbital data.
+
+The system is organized into a clear separation of concerns: UI components, core business logic (`lib/`), database layer, AI integration, and real-time WebSocket services.
+
+---
+
+## Current Development Direction
+
+The active product work is a redesign of Orbital from a chat/container interface into a **living knowledge universe**.
+
+### Product Language
+
+- Public product name: **Orbital**.
+- Prototype name **Avrora Area** is deprecated and should not appear in user-facing copy.
+- AI name/persona: **Avrora**.
+- The main user-created object should not have a fixed public noun like Orbit, Sfera, Space, Board, Folder, or Chat.
+- Prefer verbs and states in UI copy: `Создать...`, `Открыть`, `Продолжить`, `Развить`, `Настройки`, `Удалить`, `живет`, `созревает`, `тихо`.
+- Primary create CTA should be mysterious and open-ended: `Создать...`.
+- Avoid public labels like `Create Orbit`, `New Orbit`, `All Orbits`, `Orbit Settings`, `Sfera`, `Forked from`.
+- For branching language, prefer `Продолжение:` or action-oriented wording over `Forked from:`.
+
+### Living Map
+
+The main page (`/`) now points to the new living map experience from `app/(orbit)/orbits/new_home/page.tsx`.
+
+The map should feel like a calm, premium, organic constellation of active thoughts:
+
+- Encourage exploration rather than navigation.
+- Feel like walking through ideas, not browsing folders.
+- Use white/off-white space intentionally.
+- Avoid diagram-editor aesthetics: no Miro, draw.io, XMind, UML, org charts, Trello, file explorers.
+- Take inspiration from Apple Freeform, Figma canvas, Arc Browser, Linear, Notion, and modern macOS UI.
+- Cards should feel lightweight and floating, with soft depth and subtle motion.
+- Connections should feel like natural growth, not engineering arrows.
+- Motion should be slow, elegant, and meaningful.
+
+Current implementation details:
+
+- `components/orbit/new-home/orbit-network-timeline.tsx` uses React Flow for rendering but hides diagram affordances.
+- `components/orbit/new-home/orbit-node.tsx` renders the new floating living object UI.
+- Layout is a custom compact constellation layout, not a strict DAG/org chart.
+- Public graph objects show life signals from available data: state (`живет`, `созревает`, `тихо`), density bar, fork gravity, recency/activity label, glow, and subtle floating animation.
+- Future data slots already exist conceptually for participants, AI insights, lifecycle, decisions, summaries, and knowledge state. Do not fake those data in UI; show them only when real data exists.
+- `app/globals.css` contains `orbital-*` animation classes for slow floating/drift behavior.
+
+### Knowledge Model Direction
+
+The desired future model is not just messages. Messages are raw material for knowledge. Orbital should evolve toward semantic objects and events:
+
+- Ideas
+- Decisions
+- Discoveries
+- Mistakes
+- Hypotheses
+- Experiments
+- Documents
+- Knowledge
+
+The long-term search direction is semantic search over thoughts, not raw message search. A query should return decisions, ideas, hypotheses, mistakes, documents, and knowledge with source messages as evidence.
+
+The desired lifecycle for ideas:
+
+```text
+appeared -> discussing -> validated -> implementing -> implemented -> knowledge
+```
+
+The desired event stream direction:
+
+```text
+message -> idea_created -> document_created -> related_discussion_found -> experiment_started -> decision_made -> knowledge_promoted
+```
+
+Do not implement broad schema changes without checking current DB constraints and migration workflow. For now, keep UI changes compatible with existing Sfera/Orbit tables unless explicitly asked to add migrations.
 
 ---
 
