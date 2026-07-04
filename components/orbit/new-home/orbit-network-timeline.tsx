@@ -49,7 +49,7 @@ const nodeTypes = {
 const NODE_WIDTH = 340;
 const NODE_HEIGHT = 260;
 const CANVAS_CENTER_X = 720;
-const ROOT_Y = 100;
+const ROOT_Y = 160;
 const CHILD_Y_GAP = 370;
 const ROW_Y_GAP = 280;
 
@@ -147,7 +147,9 @@ function getConstellationPositions(
 ) {
   const { childrenMap, parentMap } = buildRelationshipMaps(forkRelationships);
   const orbitIds = new Set(orbits.map((orbit) => orbit.id));
-  const roots = orbits.filter((orbit) => !parentMap.has(orbit.id) && !hiddenIds.has(orbit.id));
+  const roots = orbits
+    .filter((orbit) => !parentMap.has(orbit.id) && !hiddenIds.has(orbit.id))
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   const fallbackRoots = roots.length > 0 ? roots : orbits.filter((o) => !hiddenIds.has(o.id)).slice(0, 1);
   const positions = new Map<string, { x: number; y: number }>();
   const visited = new Set<string>();
@@ -506,7 +508,7 @@ export function OrbitNetworkTimeline({
     <>
       {/* Stats bar */}
       <div className="pointer-events-auto fixed bottom-6 left-6 z-20 hidden items-center gap-2 md:flex">
-        <div className="max-w-xs rounded-full border border-white/70 bg-white/55 px-4 py-2 text-[11px] text-neutral-400 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
+        <div className="whitespace-nowrap rounded-full border border-white/70 bg-white/55 px-4 py-2 text-[11px] text-neutral-400 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
           {nodes.length} {nodes.length === 1 ? "мысль" : "живых точек"} · {edges.length} связей · {orbits.reduce((sum, o) => sum + (o.messageCount || 0), 0)} сообщений
           {archiveCount > 0 && (
             <span className="ml-1.5 text-neutral-300">· {archiveCount} в архиве</span>
@@ -568,7 +570,7 @@ export function OrbitNetworkTimeline({
           proOptions={{ hideAttribution: true }}
           className="pointer-events-none"
           style={{ background: "transparent" }}
-          defaultViewport={{ x: 90, y: 5, zoom: 0.82 }}
+          defaultViewport={{ x: 90, y: 0, zoom: 0.82 }}
         />
       </div>
 
