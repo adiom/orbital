@@ -2,7 +2,6 @@
 
 import { Brain, GitBranch, Settings, Sparkles, Trash2 } from "lucide-react";
 import { Handle, Position } from "@xyflow/react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -28,6 +27,7 @@ export type OrbitNodeData = {
   currentUserId?: string;
   onSettingsClick?: () => void;
   onDeleteClick?: () => void;
+  onSelectOrbit?: (id: string) => void;
 };
 
 type OrbitNodeProps = {
@@ -92,14 +92,13 @@ function getDisplayDescription(description: string | null) {
 }
 
 export function OrbitNode({ data, selected }: OrbitNodeProps) {
-  const router = useRouter();
   const scale = getScale(data.childCount, data.density);
   const tone = getLifeTone(data.lifeState);
   const hasParticipants = Boolean(data.recentParticipants?.length);
   const displayDescription = getDisplayDescription(data.description);
 
   const handleOrbitClick = () => {
-    router.push(`/orbit/${data.id}`);
+    data.onSelectOrbit?.(data.id);
   };
 
   const isOwner = data.currentUserId === data.ownerId;

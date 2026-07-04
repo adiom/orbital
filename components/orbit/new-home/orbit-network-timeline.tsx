@@ -9,7 +9,8 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Loader2 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { ForkRelationship, Orbit } from "@/hooks/use-orbit-layout";
 import { OrbitSettings } from "../orbit-settings";
+import { OrbitChatPanel } from "../orbit-chat-panel";
 import { OrbitNode, type OrbitNodeData } from "./orbit-node";
 
 type Member = {
@@ -36,6 +38,8 @@ type OrbitNetworkTimelineProps = {
   forkRelationships: ForkRelationship[];
   currentUserId?: string;
   onUpdate?: () => void;
+  selectedOrbitId?: string | null;
+  onSelectOrbit?: (id: string | null) => void;
 };
 
 const nodeTypes = {
@@ -64,23 +68,32 @@ function getLifeState(orbit: Orbit, childCount: number): OrbitNodeData["lifeStat
 }
 
 function getActivityLabel(orbit: Orbit, childCount: number) {
-  const updatedAt = new Date(orbit.updatedAt).getTime();
-  const ageInMinutes = Math.max(1, Math.floor((Date.now() - updatedAt) / 60_000));
+  const msgCount = orbit.messageCount || 0;
+  const memberCount = orbit.memberCount || 0;
+  const lastMsg = orbit.lastMessageAt
+    ? new Date(orbit.lastMessageAt).getTime()
+    : null;
+  const ageInMinutes = lastMsg
+    ? Math.max(1, Math.floor((Date.now() - lastMsg) / 60_000))
+    : Infinity;
 
   if (ageInMinutes < 60) return "ожило недавно";
   if (ageInMinutes < 60 * 24) return "обсуждалось сегодня";
+  if (msgCount > 50) return `${msgCount} сообщений`;
+  if (memberCount > 1) return `${memberCount} участников`;
   if (childCount > 0) return "есть новые ветви";
   return "ждет продолжения";
 }
 
 function getDensity(orbit: Orbit, childCount: number) {
-  const hasDescription = orbit.description ? 0.16 : 0;
-  const forkDensity = Math.min(childCount * 0.16, 0.48);
-  const updatedAt = new Date(orbit.updatedAt).getTime();
-  const ageInHours = (Date.now() - updatedAt) / (1000 * 60 * 60);
-  const recencyDensity = Math.max(0, 0.36 - ageInHours / 240);
+  const msgCount = orbit.messageCount || 0;
+  const memberCount = orbit.memberCount || 0;
+  const hasDescription = orbit.description ? 0.12 : 0;
+  const forkDensity = Math.min(childCount * 0.14, 0.42);
+  const messageDensity = Math.min(msgCount * 0.01, 0.30);
+  const memberDensity = Math.min(memberCount * 0.06, 0.16);
 
-  return Math.min(1, 0.18 + hasDescription + forkDensity + recencyDensity);
+  return Math.min(1, 0.10 + hasDescription + forkDensity + messageDensity + memberDensity);
 }
 
 function getOrganicOffset(index: number) {
@@ -184,7 +197,8 @@ function buildGraph(
   forkRelationships: ForkRelationship[],
   currentUserId?: string,
   onSettingsClick?: (orbit: Orbit) => void,
-  onDeleteClick?: (orbit: Orbit) => void
+  onDeleteClick?: (orbit: Orbit) => void,
+  onSelectOrbit?: (id: string) => void
 ) {
   const positions = getConstellationPositions(orbits, forkRelationships);
 
@@ -215,11 +229,12 @@ function buildGraph(
         activityLabel: getActivityLabel(orbit, childCount),
         lifeState,
         density,
-        recentParticipants: [],
+        recentParticipants: orbit.recentParticipants || [],
         insightBadges: [],
         currentUserId,
         onSettingsClick: () => onSettingsClick?.(orbit),
         onDeleteClick: () => onDeleteClick?.(orbit),
+        onSelectOrbit: () => onSelectOrbit?.(orbit.id),
       },
     };
   });
@@ -245,13 +260,57 @@ export function OrbitNetworkTimeline({
   forkRelationships,
   currentUserId,
   onUpdate,
+  selectedOrbitId,
+  onSelectOrbit,
 }: OrbitNetworkTimelineProps) {
+  const router = useRouter();
   const [selectedOrbitForSettings, setSelectedOrbitForSettings] =
     useState<Orbit | null>(null);
   const [orbitMembers, setOrbitMembers] = useState<Member[]>([]);
   const [, setIsLoadingMembers] = useState(false);
   const [orbitToDelete, setOrbitToDelete] = useState<Orbit | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleSelectOrbit = useCallback(
+    (id: string) => {
+      onSelectOrbit?.(id);
+      window.history.pushState({ orbitId: id }, "", `/${id}`);
+    },
+    [onSelectOrbit]
+  );
+
+  const handleCloseOrbit = useCallback(() => {
+    onSelectOrbit?.(null);
+    window.history.pushState({}, "", "/");
+  }, [onSelectOrbit]);
+
+  const handleGoFullScreen = useCallback(
+    (id: string) => {
+      router.push(`/${id}`);
+    },
+    [router]
+  );
+
+  // URL restore on mount
+  useEffect(() => {
+    if (selectedOrbitId) return; // Already set from parent
+    const path = window.location.pathname;
+    const uuid = path.replace(/^\//, "");
+    if (uuid && uuid.length > 10) {
+      onSelectOrbit?.(uuid);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Escape key handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && selectedOrbitId) {
+        handleCloseOrbit();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedOrbitId, handleCloseOrbit]);
 
   const handleOpenSettings = async (orbit: Orbit) => {
     setSelectedOrbitForSettings(orbit);
@@ -312,10 +371,11 @@ export function OrbitNetworkTimeline({
       forkRelationships,
       currentUserId,
       handleOpenSettings,
-      setOrbitToDelete
+      setOrbitToDelete,
+      handleSelectOrbit
     );
     return { initialNodes: nodes, initialEdges: edges };
-  }, [orbits, forkRelationships, currentUserId]);
+  }, [orbits, forkRelationships, currentUserId, handleSelectOrbit]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -361,7 +421,7 @@ export function OrbitNetworkTimeline({
       <div className="pointer-events-none absolute right-[18%] top-[38rem] h-1.5 w-1.5 rounded-full bg-violet-200/80 blur-[1px] orbital-drift-slow" />
       <div className="pointer-events-none absolute left-[68%] top-[18rem] h-1 w-1 rounded-full bg-emerald-200/80 blur-[1px] orbital-drift" />
       <div className="pointer-events-none fixed bottom-6 left-6 z-20 hidden max-w-xs rounded-full border border-white/70 bg-white/55 px-4 py-2 text-[11px] text-neutral-400 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl md:block">
-        {orbits.length} {orbits.length === 1 ? "мысль" : "живых точек"} · {forkRelationships.length} связей
+        {orbits.length} {orbits.length === 1 ? "мысль" : "живых точек"} · {forkRelationships.length} связей · {orbits.reduce((sum, o) => sum + (o.messageCount || 0), 0)} сообщений
       </div>
 
       <div className="relative w-full" style={{ height: graphHeight }}>
@@ -433,6 +493,15 @@ export function OrbitNetworkTimeline({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {selectedOrbitId && (
+        <OrbitChatPanel
+          orbitId={selectedOrbitId}
+          currentUserId={currentUserId}
+          onClose={handleCloseOrbit}
+          onGoFullScreen={handleGoFullScreen}
+        />
+      )}
     </>
   );
 }

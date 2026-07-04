@@ -20,6 +20,7 @@ export default function OrbitsNewHomePage() {
   const router = useRouter();
   const { orbits, forkRelationships, isLoading, error, refetch } = useOrbits();
   const [isRetrying, setIsRetrying] = useState(false);
+  const [selectedOrbitId, setSelectedOrbitId] = useState<string | null>(null);
 
   const handleRetryFetch = async () => {
     setIsRetrying(true);
@@ -78,6 +79,8 @@ export default function OrbitsNewHomePage() {
         forkRelationships={forkRelationships}
         onUpdate={refetch}
         orbits={sortedGraphOrbits}
+        selectedOrbitId={selectedOrbitId}
+        onSelectOrbit={setSelectedOrbitId}
       />
     </main>
   );

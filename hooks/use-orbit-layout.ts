@@ -9,6 +9,14 @@ export type Orbit = {
   createdAt: Date;
   updatedAt: Date;
   ownerId: string;
+  messageCount?: number;
+  memberCount?: number;
+  lastMessageAt?: Date | null;
+  recentParticipants?: Array<{
+    id: string;
+    name: string;
+    image?: string | null;
+  }>;
 };
 
 export type ForkRelationship = {

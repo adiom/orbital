@@ -1,9 +1,15 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { auth } from "@/app/(auth)/auth";
 import { db } from "@/lib/db";
-import { sfera, sferaForkedSfera, sferaMember, user } from "@/lib/db/schema";
+import {
+  sfera,
+  sferaForkedSfera,
+  sferaMember,
+  sferaMessage,
+  user,
+} from "@/lib/db/schema";
 
-// GET /api/sfera - List all Sferas for current user with fork relationships
+// GET /api/sfera - List all Sferas for current user with fork relationships and activity
 export async function GET(_request: Request) {
   const session = await auth();
 
@@ -12,7 +18,6 @@ export async function GET(_request: Request) {
   }
 
   try {
-    // Get all Sferas where user is a member
     const userSferas = await db
       .select({
         id: sfera.id,
@@ -29,7 +34,6 @@ export async function GET(_request: Request) {
       .where(eq(sferaMember.userId, session.user.id))
       .orderBy(desc(sfera.updatedAt));
 
-    // Get fork relationships for these Sferas
     const sferaIds = userSferas.map((s) => s.id);
 
     let forkRelationships: {
@@ -53,8 +57,80 @@ export async function GET(_request: Request) {
         );
     }
 
+    // Activity data
+    const messageCountsMap = new Map<string, number>();
+    const lastMessageAtMap = new Map<string, Date | null>();
+    const memberCountsMap = new Map<string, number>();
+    const participantsMap = new Map<
+      string,
+      Array<{ id: string; name: string; image: string | null }>
+    >();
+
+    if (sferaIds.length > 0) {
+      const messageStats = await db
+        .select({
+          sferaId: sferaMessage.sferaId,
+          messageCount: count(),
+          lastMessageAt: sql<Date>`max(${sferaMessage.createdAt})`,
+        })
+        .from(sferaMessage)
+        .where(inArray(sferaMessage.sferaId, sferaIds))
+        .groupBy(sferaMessage.sferaId);
+
+      for (const row of messageStats) {
+        messageCountsMap.set(row.sferaId, row.messageCount);
+        lastMessageAtMap.set(row.sferaId, row.lastMessageAt);
+      }
+
+      const memberStats = await db
+        .select({
+          sferaId: sferaMember.sferaId,
+          memberCount: count(),
+        })
+        .from(sferaMember)
+        .where(inArray(sferaMember.sferaId, sferaIds))
+        .groupBy(sferaMember.sferaId);
+
+      for (const row of memberStats) {
+        memberCountsMap.set(row.sferaId, row.memberCount);
+      }
+
+      const recentAuthorRows = await db
+        .select({
+          sferaId: sferaMessage.sferaId,
+          userId: sferaMessage.userId,
+          userName: user.name,
+          userAvatar: user.avatarUrl,
+        })
+        .from(sferaMessage)
+        .innerJoin(user, eq(sferaMessage.userId, user.id))
+        .where(inArray(sferaMessage.sferaId, sferaIds))
+        .orderBy(desc(sferaMessage.createdAt))
+        .limit(sferaIds.length * 3);
+
+      for (const row of recentAuthorRows) {
+        const existing = participantsMap.get(row.sferaId) || [];
+        if (existing.length < 3 && !existing.some((p) => p.id === row.userId)) {
+          existing.push({
+            id: row.userId,
+            name: row.userName || "Unknown",
+            image: row.userAvatar,
+          });
+        }
+        participantsMap.set(row.sferaId, existing);
+      }
+    }
+
+    const sferasWithActivity = userSferas.map((sfera) => ({
+      ...sfera,
+      messageCount: messageCountsMap.get(sfera.id) || 0,
+      memberCount: memberCountsMap.get(sfera.id) || 0,
+      lastMessageAt: lastMessageAtMap.get(sfera.id) || null,
+      recentParticipants: participantsMap.get(sfera.id) || [],
+    }));
+
     return Response.json({
-      sferas: userSferas,
+      sferas: sferasWithActivity,
       forkRelationships,
     });
   } catch (error) {
