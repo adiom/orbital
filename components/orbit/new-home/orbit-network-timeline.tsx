@@ -46,12 +46,12 @@ const nodeTypes = {
   orbit: OrbitNode,
 };
 
-const NODE_WIDTH = 340;
-const NODE_HEIGHT = 260;
+const NODE_WIDTH = 280;
+const NODE_HEIGHT = 200;
 const CANVAS_CENTER_X = 720;
-const ROOT_Y = 160;
-const CHILD_Y_GAP = 370;
-const ROW_Y_GAP = 280;
+const ROOT_Y = 80;
+const CHILD_Y_GAP = 300;
+const ROW_Y_GAP = 240;
 
 const LIFE_STATE_COLORS: Record<string, string> = {
   born: "96,165,250",
@@ -114,8 +114,8 @@ function isDeadCard(orbit: Orbit, childCount: number): boolean {
 
 function getOrganicOffset(index: number) {
   return {
-    x: Math.sin(index * 1.73) * 15,
-    y: Math.cos(index * 1.17) * 10,
+    x: Math.sin(index * 1.73) * 8,
+    y: Math.cos(index * 1.17) * 6,
   };
 }
 
@@ -167,7 +167,7 @@ function getConstellationPositions(
       (childId) => orbitIds.has(childId) && !hiddenIds.has(childId)
     );
     const maxColumns = children.length > 6 ? 4 : 3;
-    const horizontalGap = children.length > 6 ? 370 : 410;
+    const horizontalGap = children.length > 6 ? 310 : 340;
 
     children.forEach((childId, index) => {
       const row = Math.floor(index / maxColumns);
@@ -184,7 +184,7 @@ function getConstellationPositions(
     });
   };
 
-  const rootMaxColumns = fallbackRoots.length > 4 ? 3 : 2;
+  const rootMaxColumns = 2;
   fallbackRoots.forEach((root, index) => {
     const row = Math.floor(index / rootMaxColumns);
     const columnOffset = getCenteredColumnOffset(
@@ -192,8 +192,8 @@ function getConstellationPositions(
       fallbackRoots.length,
       rootMaxColumns
     );
-    const rootX = CANVAS_CENTER_X + columnOffset * 460;
-    const rootY = ROOT_Y + row * 640;
+    const rootX = CANVAS_CENTER_X + columnOffset * 360;
+    const rootY = ROOT_Y + row * 380;
 
     placeBranch(root.id, rootX, rootY);
   });
@@ -205,8 +205,8 @@ function getConstellationPositions(
     const row = Math.floor(index / 3);
     const columnOffset = getCenteredColumnOffset(index, unplacedOrbits.length, 3);
     positions.set(orbit.id, {
-      x: CANVAS_CENTER_X + columnOffset * 380 - NODE_WIDTH / 2,
-      y: ROOT_Y + 600 + row * 300 - NODE_HEIGHT / 2,
+      x: CANVAS_CENTER_X + columnOffset * 320 - NODE_WIDTH / 2,
+      y: ROOT_Y + 500 + row * 260 - NODE_HEIGHT / 2,
     });
   });
 
@@ -570,7 +570,7 @@ export function OrbitNetworkTimeline({
           proOptions={{ hideAttribution: true }}
           className="pointer-events-none"
           style={{ background: "transparent" }}
-          defaultViewport={{ x: 90, y: 0, zoom: 0.82 }}
+          defaultViewport={{ x: 90, y: 10, zoom: 0.85 }}
         />
       </div>
 
