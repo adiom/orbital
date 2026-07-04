@@ -73,63 +73,23 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const {
-      title,
-      description,
-      visibility = "private",
-      memberIds = [],
-      memberEmails = [],
-    } = body;
+    const { title, description, visibility = "private" } = body;
 
     const DEFAULT_MEMBER_EMAIL = "avrora@avrora.click";
+    const orbitTitle =
+      title || `Orbit ${Math.floor(1000 + Math.random() * 9000)}`;
 
-    const normalizedMemberIds = Array.isArray(memberIds) ? memberIds : [];
-    const normalizedMemberEmails = Array.isArray(memberEmails)
-      ? memberEmails
-      : [];
+    const users = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(inArray(user.email, [DEFAULT_MEMBER_EMAIL]));
 
-    const memberEmailsWithDefault = Array.from(
-      new Set([...normalizedMemberEmails, DEFAULT_MEMBER_EMAIL])
-    );
+    const avroraUserId = users[0]?.id;
 
-    if (!title) {
-      return Response.json({ error: "Title is required" }, { status: 400 });
-    }
-
-    // At least one member must be added (besides owner)
-    if (
-      normalizedMemberIds.length === 0 &&
-      memberEmailsWithDefault.length === 0
-    ) {
-      return Response.json(
-        { error: "At least one member must be added to create a Sfera" },
-        { status: 400 }
-      );
-    }
-
-    // Resolve emails to user IDs if provided
-    let resolvedMemberIds = [...normalizedMemberIds];
-    if (memberEmailsWithDefault.length > 0) {
-      const users = await db
-        .select({ id: user.id })
-        .from(user)
-        .where(inArray(user.email, memberEmailsWithDefault));
-
-      if (users.length === 0) {
-        return Response.json(
-          { error: "No users found with provided emails" },
-          { status: 400 }
-        );
-      }
-
-      resolvedMemberIds = [...resolvedMemberIds, ...users.map((u) => u.id)];
-    }
-
-    // Create Sfera
     const [newSfera] = await db
       .insert(sfera)
       .values({
-        title,
+        title: orbitTitle,
         description: description || null,
         ownerId: session.user.id,
         visibility,
@@ -138,7 +98,6 @@ export async function POST(request: Request) {
       })
       .returning();
 
-    // Add owner as member
     await db.insert(sferaMember).values({
       sferaId: newSfera.id,
       userId: session.user.id,
@@ -146,23 +105,13 @@ export async function POST(request: Request) {
       joinedAt: new Date(),
     });
 
-    // Add other members
-    if (resolvedMemberIds.length > 0) {
-      // Remove duplicates and owner
-      const uniqueMemberIds = [...new Set(resolvedMemberIds)].filter(
-        (id) => id !== session.user.id
-      );
-
-      if (uniqueMemberIds.length > 0) {
-        const memberValues = uniqueMemberIds.map((userId: string) => ({
-          sferaId: newSfera.id,
-          userId,
-          role: "member" as const,
-          joinedAt: new Date(),
-        }));
-
-        await db.insert(sferaMember).values(memberValues);
-      }
+    if (avroraUserId && avroraUserId !== session.user.id) {
+      await db.insert(sferaMember).values({
+        sferaId: newSfera.id,
+        userId: avroraUserId,
+        role: "member",
+        joinedAt: new Date(),
+      });
     }
 
     return Response.json({ sfera: newSfera }, { status: 201 });

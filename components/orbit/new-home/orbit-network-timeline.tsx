@@ -1,8 +1,15 @@
 "use client";
 
+import {
+  type Edge,
+  type Node,
+  ReactFlow,
+  useNodesState,
+  useEdgesState,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -14,24 +21,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useOrbitCanvas } from "@/hooks/use-orbit-canvas";
-import { useOrbitInteractions } from "@/hooks/use-orbit-interactions";
 import type { ForkRelationship, Orbit } from "@/hooks/use-orbit-layout";
-import { useOrbitZoom } from "@/hooks/use-orbit-zoom";
 import { OrbitSettings } from "../orbit-settings";
-import { OrbitZoomControls } from "../orbit-zoom-controls";
-import { OrbitContainerTimeline } from "./orbit-container-timeline";
+import { OrbitNode, type OrbitNodeData } from "./orbit-node";
 
 type Member = {
   userId: string;
   email: string;
   role: string;
-};
-
-export type NodePosition = {
-  x: number;
-  y: number;
-  id: string;
 };
 
 type OrbitNetworkTimelineProps = {
@@ -41,95 +38,206 @@ type OrbitNetworkTimelineProps = {
   onUpdate?: () => void;
 };
 
-// Простейший layout по времени создания: ось X = createdAt, ось Y = уровень форка
-function useTimelineLayout(
+const nodeTypes = {
+  orbit: OrbitNode,
+};
+
+const NODE_WIDTH = 280;
+const NODE_HEIGHT = 210;
+const CANVAS_CENTER_X = 720;
+const ROOT_Y = 220;
+const CHILD_Y_GAP = 330;
+const ROW_Y_GAP = 245;
+
+function getChildCount(orbitId: string, forkRelationships: ForkRelationship[]) {
+  return forkRelationships.filter((r) => r.parentSferaId === orbitId).length;
+}
+
+function getLifeState(orbit: Orbit, childCount: number): OrbitNodeData["lifeState"] {
+  const updatedAt = new Date(orbit.updatedAt).getTime();
+  const ageInHours = (Date.now() - updatedAt) / (1000 * 60 * 60);
+
+  if (ageInHours < 12) return "alive";
+  if (ageInHours < 72 || childCount > 0) return "settled";
+  if (ageInHours < 168) return "born";
+  return "quiet";
+}
+
+function getActivityLabel(orbit: Orbit, childCount: number) {
+  const updatedAt = new Date(orbit.updatedAt).getTime();
+  const ageInMinutes = Math.max(1, Math.floor((Date.now() - updatedAt) / 60_000));
+
+  if (ageInMinutes < 60) return "ожило недавно";
+  if (ageInMinutes < 60 * 24) return "обсуждалось сегодня";
+  if (childCount > 0) return "есть новые ветви";
+  return "ждет продолжения";
+}
+
+function getDensity(orbit: Orbit, childCount: number) {
+  const hasDescription = orbit.description ? 0.16 : 0;
+  const forkDensity = Math.min(childCount * 0.16, 0.48);
+  const updatedAt = new Date(orbit.updatedAt).getTime();
+  const ageInHours = (Date.now() - updatedAt) / (1000 * 60 * 60);
+  const recencyDensity = Math.max(0, 0.36 - ageInHours / 240);
+
+  return Math.min(1, 0.18 + hasDescription + forkDensity + recencyDensity);
+}
+
+function getOrganicOffset(index: number) {
+  return {
+    x: Math.sin(index * 1.73) * 38,
+    y: Math.cos(index * 1.17) * 28,
+  };
+}
+
+function buildRelationshipMaps(forkRelationships: ForkRelationship[]) {
+  const childrenMap = new Map<string, string[]>();
+  const parentMap = new Map<string, string>();
+
+  for (const rel of forkRelationships) {
+    const existingChildren = childrenMap.get(rel.parentSferaId) || [];
+    childrenMap.set(rel.parentSferaId, [...existingChildren, rel.forkedSferaId]);
+    parentMap.set(rel.forkedSferaId, rel.parentSferaId);
+  }
+
+  return { childrenMap, parentMap };
+}
+
+function getCenteredColumnOffset(index: number, total: number, maxColumns: number) {
+  const row = Math.floor(index / maxColumns);
+  const column = index % maxColumns;
+  const itemsInRow = Math.min(maxColumns, total - row * maxColumns);
+
+  return column - (itemsInRow - 1) / 2;
+}
+
+function getConstellationPositions(
   orbits: Orbit[],
   forkRelationships: ForkRelationship[]
 ) {
-  const nodePositions = useMemo(() => {
-    if (orbits.length === 0) {
-      return new Map<string, NodePosition>();
-    }
+  const { childrenMap, parentMap } = buildRelationshipMaps(forkRelationships);
+  const orbitIds = new Set(orbits.map((orbit) => orbit.id));
+  const roots = orbits.filter((orbit) => !parentMap.has(orbit.id));
+  const fallbackRoots = roots.length > 0 ? roots : orbits.slice(0, 1);
+  const positions = new Map<string, { x: number; y: number }>();
+  const visited = new Set<string>();
 
-    const positions = new Map<string, NodePosition>();
+  const placeBranch = (id: string, centerX: number, centerY: number) => {
+    if (visited.has(id) || !orbitIds.has(id)) return;
 
-    // parent map по forkRelationships
-    const parentMap = new Map<string, string>();
-    for (const rel of forkRelationships) {
-      parentMap.set(rel.forkedSferaId, rel.parentSferaId);
-    }
-
-    // уровень по цепочке родителей
-    const levels = new Map<string, number>();
-    const getLevel = (id: string): number => {
-      const cached = levels.get(id);
-      if (cached !== undefined) return cached;
-      const parent = parentMap.get(id);
-      const level = parent ? getLevel(parent) + 1 : 0;
-      levels.set(id, level);
-      return level;
-    };
-
-    // сортируем по времени создания
-    const sorted = [...orbits].sort((a, b) => {
-      const aTime = new Date(a.createdAt).getTime();
-      const bTime = new Date(b.createdAt).getTime();
-      return aTime - bTime;
+    visited.add(id);
+    positions.set(id, {
+      x: centerX - NODE_WIDTH / 2,
+      y: centerY - NODE_HEIGHT / 2,
     });
 
-    const minTime = new Date(sorted[0].createdAt).getTime();
-    const maxTime = new Date(sorted[sorted.length - 1].createdAt).getTime();
-    const timeSpan = Math.max(maxTime - minTime, 1);
-
-    // Сетка по времени: делим ось X на равные слоты
-    const maxSlots = Math.min(sorted.length, 12); // до 12 колонок
-    const slotWidth = 1 / Math.max(maxSlots, 1);
-
-    // ширину/высоту берём от окна; это client-only компонент
-    const width = window.innerWidth - 160;
-    const height = window.innerHeight - 260;
-
-    const maxLevel = Math.max(
-      0,
-      ...sorted.map((orbit) => {
-        return getLevel(orbit.id);
-      })
+    const children = (childrenMap.get(id) || []).filter((childId) =>
+      orbitIds.has(childId)
     );
+    const maxColumns = children.length > 6 ? 4 : 3;
+    const horizontalGap = children.length > 6 ? 315 : 365;
 
-    sorted.forEach((orbit, index) => {
-      const time = new Date(orbit.createdAt).getTime();
-      const tNorm = (time - minTime) / timeSpan; // 0..1
-
-      // дискретный индекс слота по времени
-      const slotIndex = Math.min(
-        maxSlots - 1,
-        Math.floor(tNorm * maxSlots + 0.0001)
+    children.forEach((childId, index) => {
+      const row = Math.floor(index / maxColumns);
+      const columnOffset = getCenteredColumnOffset(
+        index,
+        children.length,
+        maxColumns
       );
+      const stagger = row % 2 === 0 ? 0 : horizontalGap * 0.2;
+      const childX = centerX + columnOffset * horizontalGap + stagger;
+      const childY = centerY + CHILD_Y_GAP + row * ROW_Y_GAP;
 
-      const level = getLevel(orbit.id);
-
-      const xPadding = 80;
-      const usableWidth = Math.max(width - xPadding * 2, 400);
-      const slotCenter = xPadding + slotWidth * usableWidth * (slotIndex + 0.5);
-
-      // фиксированные ряды по уровню форка
-      const rowCount = Math.max(maxLevel + 1, 1);
-      const topPadding = 80;
-      const bottomPadding = 80;
-      const usableHeight = Math.max(height - topPadding - bottomPadding, 240);
-      const rowSpacing = rowCount > 1 ? usableHeight / (rowCount - 1) : 0;
-      const y =
-        rowCount === 1
-          ? height / 2
-          : topPadding + rowSpacing * Math.min(level, rowCount - 1);
-
-      positions.set(orbit.id, { id: orbit.id, x: slotCenter, y });
+      placeBranch(childId, Math.max(170, Math.min(1270, childX)), childY);
     });
+  };
 
-    return positions;
-  }, [orbits, forkRelationships]);
+  const rootMaxColumns = fallbackRoots.length > 4 ? 3 : 2;
+  fallbackRoots.forEach((root, index) => {
+    const row = Math.floor(index / rootMaxColumns);
+    const columnOffset = getCenteredColumnOffset(
+      index,
+      fallbackRoots.length,
+      rootMaxColumns
+    );
+    const rootX = CANVAS_CENTER_X + columnOffset * 440;
+    const rootY = ROOT_Y + row * 720;
 
-  return { nodePositions };
+    placeBranch(root.id, rootX, rootY);
+  });
+
+  const unplacedOrbits = orbits.filter((orbit) => !positions.has(orbit.id));
+  unplacedOrbits.forEach((orbit, index) => {
+    const row = Math.floor(index / 3);
+    const columnOffset = getCenteredColumnOffset(index, unplacedOrbits.length, 3);
+    positions.set(orbit.id, {
+      x: CANVAS_CENTER_X + columnOffset * 360 - NODE_WIDTH / 2,
+      y: ROOT_Y + 720 + row * 280 - NODE_HEIGHT / 2,
+    });
+  });
+
+  return positions;
+}
+
+function buildGraph(
+  orbits: Orbit[],
+  forkRelationships: ForkRelationship[],
+  currentUserId?: string,
+  onSettingsClick?: (orbit: Orbit) => void,
+  onDeleteClick?: (orbit: Orbit) => void
+) {
+  const positions = getConstellationPositions(orbits, forkRelationships);
+
+  const nodes: Node<OrbitNodeData>[] = orbits.map((orbit, index) => {
+    const pos = positions.get(orbit.id) || { x: CANVAS_CENTER_X, y: ROOT_Y };
+    const childCount = getChildCount(orbit.id, forkRelationships);
+    const density = getDensity(orbit, childCount);
+    const lifeState = getLifeState(orbit, childCount);
+    const offset = getOrganicOffset(index);
+
+    return {
+      id: orbit.id,
+      type: "orbit",
+      position: {
+        x: pos.x + offset.x,
+        y: pos.y + offset.y,
+      },
+      data: {
+        id: orbit.id,
+        title: orbit.title,
+        description: orbit.description,
+        visibility: orbit.visibility,
+        role: orbit.role,
+        ownerId: orbit.ownerId,
+        childCount,
+        createdAt: orbit.createdAt,
+        updatedAt: orbit.updatedAt,
+        activityLabel: getActivityLabel(orbit, childCount),
+        lifeState,
+        density,
+        recentParticipants: [],
+        insightBadges: [],
+        currentUserId,
+        onSettingsClick: () => onSettingsClick?.(orbit),
+        onDeleteClick: () => onDeleteClick?.(orbit),
+      },
+    };
+  });
+
+  const edges: Edge[] = forkRelationships.map((rel) => ({
+    id: `${rel.parentSferaId}-${rel.forkedSferaId}`,
+    source: rel.parentSferaId,
+    target: rel.forkedSferaId,
+    type: "default",
+    animated: false,
+    style: {
+      stroke: "rgba(120, 113, 108, 0.22)",
+      strokeLinecap: "round",
+      strokeWidth: 1.4,
+    },
+  }));
+
+  return { nodes, edges };
 }
 
 export function OrbitNetworkTimeline({
@@ -138,25 +246,12 @@ export function OrbitNetworkTimeline({
   currentUserId,
   onUpdate,
 }: OrbitNetworkTimelineProps) {
-  const router = useRouter();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
   const [selectedOrbitForSettings, setSelectedOrbitForSettings] =
     useState<Orbit | null>(null);
   const [orbitMembers, setOrbitMembers] = useState<Member[]>([]);
-  const [_isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [, setIsLoadingMembers] = useState(false);
   const [orbitToDelete, setOrbitToDelete] = useState<Orbit | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const { nodePositions } = useTimelineLayout(orbits, forkRelationships);
-  const { zoom, zoomIn, zoomOut, resetZoom, fitToView } = useOrbitZoom();
-
-  const { hoveredNode, handleCanvasClick, handleCanvasMove } =
-    useOrbitInteractions(canvasRef, nodePositions, (nodeId) =>
-      router.push(`/orbit/${nodeId}`)
-    );
-
-  useOrbitCanvas(canvasRef, nodePositions, forkRelationships);
 
   const handleOpenSettings = async (orbit: Orbit) => {
     setSelectedOrbitForSettings(orbit);
@@ -195,72 +290,102 @@ export function OrbitNetworkTimeline({
 
       if (!response.ok) {
         const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.error || "Failed to delete Orbit");
+        throw new Error(payload.error || "Не удалось удалить");
       }
 
-      toast.success("Orbit deleted successfully");
+      toast.success("Удалено");
       setOrbitToDelete(null);
       onUpdate?.();
     } catch (error) {
       console.error("Error deleting Orbit:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to delete Orbit"
+        error instanceof Error ? error.message : "Не удалось удалить"
       );
     } finally {
       setIsDeleting(false);
     }
   };
 
+  const { initialNodes, initialEdges } = useMemo(() => {
+    const { nodes, edges } = buildGraph(
+      orbits,
+      forkRelationships,
+      currentUserId,
+      handleOpenSettings,
+      setOrbitToDelete
+    );
+    return { initialNodes: nodes, initialEdges: edges };
+  }, [orbits, forkRelationships, currentUserId]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  useEffect(() => {
+    setNodes(initialNodes);
+    setEdges(initialEdges);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
+
+  if (orbits.length === 0) {
+    return (
+      <div className="relative flex min-h-screen items-center justify-center px-6">
+        <div className="pointer-events-none absolute h-72 w-72 rounded-full bg-violet-200/20 blur-3xl" />
+        <div className="relative max-w-sm text-center">
+          <div className="mx-auto mb-8 h-3 w-3 rounded-full bg-violet-300 shadow-[0_0_40px_rgba(168,85,247,0.45)] orbital-drift" />
+          <p className="mb-3 text-[11px] uppercase tracking-[0.34em] text-neutral-400">
+            Пустая вселенная
+          </p>
+          <h1 className="font-medium text-3xl text-neutral-900 tracking-[-0.04em]">
+            Создайте то, что еще не имеет формы.
+          </h1>
+        </div>
+      </div>
+    );
+  }
+
+  // The canvas grows with the constellation, leaving quiet space around ideas.
+  let minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
+  for (const node of nodes) {
+    minX = Math.min(minX, node.position.x);
+    maxX = Math.max(maxX, node.position.x + NODE_WIDTH);
+    minY = Math.min(minY, node.position.y);
+    maxY = Math.max(maxY, node.position.y + NODE_HEIGHT);
+  }
+  const graphHeight = Math.max(760, maxY - minY + 280);
+
   return (
     <>
-      <div className="relative h-full">
-        <canvas
-          className="absolute inset-0 h-full w-full"
-          onClick={handleCanvasClick}
-          onMouseMove={handleCanvasMove}
-          ref={canvasRef}
-          style={{
-            transform: `scale(${zoom})`,
-            transformOrigin: "center",
-          }}
-        />
+      <div className="pointer-events-none absolute left-[12%] top-32 h-2 w-2 rounded-full bg-sky-200/80 blur-[1px] orbital-drift" />
+      <div className="pointer-events-none absolute right-[18%] top-[38rem] h-1.5 w-1.5 rounded-full bg-violet-200/80 blur-[1px] orbital-drift-slow" />
+      <div className="pointer-events-none absolute left-[68%] top-[18rem] h-1 w-1 rounded-full bg-emerald-200/80 blur-[1px] orbital-drift" />
+      <div className="pointer-events-none fixed bottom-6 left-6 z-20 hidden max-w-xs rounded-full border border-white/70 bg-white/55 px-4 py-2 text-[11px] text-neutral-400 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl md:block">
+        {orbits.length} {orbits.length === 1 ? "мысль" : "живых точек"} · {forkRelationships.length} связей
+      </div>
 
-        <div
-          style={{
-            transform: `scale(${zoom})`,
-            transformOrigin: "center",
-          }}
-        >
-          {Array.from(nodePositions.entries()).map(([id, pos]) => {
-            const orbit = orbits.find((o) => o.id === id);
-            if (!orbit) return null;
-
-            const isHovered = hoveredNode === id;
-            const childCount = forkRelationships.filter(
-              (r) => r.parentSferaId === id
-            ).length;
-
-            return (
-              <OrbitContainerTimeline
-                childCount={childCount}
-                currentUserId={currentUserId}
-                isHovered={isHovered}
-                key={id}
-                onDeleteClick={() => setOrbitToDelete(orbit)}
-                onSettingsClick={() => handleOpenSettings(orbit)}
-                orbit={orbit}
-                position={pos}
-              />
-            );
-          })}
-        </div>
-
-        <OrbitZoomControls
-          onFitToView={fitToView}
-          onReset={resetZoom}
-          onZoomIn={zoomIn}
-          onZoomOut={zoomOut}
-          zoom={zoom}
+      <div className="relative w-full" style={{ height: graphHeight }}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          nodeTypes={nodeTypes}
+          fitView={false}
+          nodesDraggable={false}
+          nodesConnectable={false}
+          elementsSelectable={false}
+          zoomOnScroll={false}
+          zoomOnPinch={false}
+          panOnDrag={false}
+          panOnScroll={false}
+          preventScrolling={false}
+          minZoom={0.5}
+          maxZoom={2}
+          proOptions={{ hideAttribution: true }}
+          className="pointer-events-none"
+          style={{ background: "transparent" }}
+          defaultViewport={{ x: 90, y: 120, zoom: 0.82 }}
         />
       </div>
 
@@ -283,15 +408,14 @@ export function OrbitNetworkTimeline({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Orbit</AlertDialogTitle>
+            <AlertDialogTitle>Удалить?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete &ldquo;{orbitToDelete?.title}&rdquo;? This
-              action cannot be undone. All messages, members, and forks will be
-              removed.
+              &ldquo;{orbitToDelete?.title}&rdquo; исчезнет вместе с сообщениями,
+              участниками и ответвлениями. Это действие нельзя отменить.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting}>Отмена</AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 text-white hover:bg-red-700"
               disabled={isDeleting}
@@ -300,10 +424,10 @@ export function OrbitNetworkTimeline({
               {isDeleting ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Deleting...
+                  Удаляем...
                 </span>
               ) : (
-                "Delete"
+                "Удалить"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

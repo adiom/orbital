@@ -17,7 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { OrbitInput } from "./orbit-input";
 import { OrbitMessage } from "./orbit-message";
-import { OrbitSettings } from "./orbit-settings";
+import { OrbitPageHeader } from "./orbit-page-header";
 
 type Attachment = {
   name: string;
@@ -232,8 +232,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   const [orbit, setOrbit] = useState<OrbitData | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
-  const [_parentOrbit, setParentOrbit] = useState<ParentOrbit | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [parentOrbit, setParentOrbit] = useState<ParentOrbit | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -502,6 +501,23 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
+      {/* Header */}
+      <OrbitPageHeader
+        currentUserId={currentUserId}
+        isOwnerOrAdmin={Boolean(isOwnerOrAdmin)}
+        memberCount={members.length}
+        members={members}
+        onUpdate={handleSettingsUpdate}
+        parentSfera={parentOrbit}
+        sfera={{
+          id: orbit.id,
+          title: orbit.title,
+          description: orbit.description,
+          visibility: orbit.visibility as "public" | "private" | "dao",
+          ownerId: orbit.ownerId,
+        }}
+      />
+
       {/* Messages */}
       <div className="flex-grow overflow-y-auto px-4 pt-20 pb-40 md:px-8">
         <div className="mx-auto max-w-4xl">
@@ -578,54 +594,41 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
         </div>
       </div>
 
-      {/* Settings Dialog */}
+      {/* Delete Dialog */}
       {orbit && (
-        <>
-          <OrbitSettings
-            currentDescription={orbit.description}
-            currentMembers={members}
-            currentTitle={orbit.title}
-            isOpen={isSettingsOpen}
-            isOwner={orbit.ownerId === currentUserId}
-            onClose={() => setIsSettingsOpen(false)}
-            onUpdate={handleSettingsUpdate}
-            orbitId={orbitId}
-          />
-
-          <AlertDialog
-            onOpenChange={setIsDeleteDialogOpen}
-            open={isDeleteDialogOpen}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete Orbit</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This action cannot be undone. Deleting an Orbit removes all
-                  messages, members, and forks associated with it.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={isDeleting}>
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  className="bg-red-600 text-white hover:bg-red-700"
-                  disabled={isDeleting}
-                  onClick={handleDeleteOrbit}
-                >
-                  {isDeleting ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Deleting...
-                    </span>
-                  ) : (
-                    "Delete"
-                  )}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </>
+        <AlertDialog
+          onOpenChange={setIsDeleteDialogOpen}
+          open={isDeleteDialogOpen}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Orbit</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. Deleting an Orbit removes all
+                messages, members, and forks associated with it.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-red-600 text-white hover:bg-red-700"
+                disabled={isDeleting}
+                onClick={handleDeleteOrbit}
+              >
+                {isDeleting ? (
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Deleting...
+                  </span>
+                ) : (
+                  "Delete"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

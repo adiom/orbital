@@ -1,7 +1,7 @@
 "use client";
 
-import OrbitsPage from "./(orbit)/orbits/page";
+import OrbitsNewHomePage from "./(orbit)/orbits/new_home/page";
 
 export default function HomePage() {
-  return <OrbitsPage />;
+  return <OrbitsNewHomePage />;
 }

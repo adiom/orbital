@@ -103,7 +103,7 @@ export async function POST(request: Request, context: RouteContext) {
       .insert(sfera)
       .values({
         title: autoTitle,
-        description: `Forked from: ${parentSfera.title}`,
+        description: `Продолжение: ${parentSfera.title}`,
         ownerId: session.user.id,
         visibility: parentSfera.visibility,
         createdAt: new Date(),

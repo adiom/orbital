@@ -3,7 +3,6 @@ import { generateAvroraResponse } from "@/lib/ai/sfera-avrora";
 import { AVRORA_USER_ID } from "@/lib/constants/system-users";
 import { db } from "@/lib/db";
 import {
-  aiUsageLog,
   sfera,
   sferaMember,
   sferaMessage,
@@ -16,7 +15,7 @@ import {
 
 export interface McpToolResult {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: string;
 }
 
@@ -399,7 +398,7 @@ export async function forkSfera(
       .insert(sfera)
       .values({
         title,
-        description: description || `Forked from Sfera ${sourceSferaId}`,
+        description: description || `Продолжение: ${sourceSferaId}`,
         ownerId: userId,
         visibility: "private",
       })

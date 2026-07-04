@@ -29,6 +29,7 @@ type OrbitPageHeaderProps = {
   currentUserId: string | undefined;
   isOwnerOrAdmin: boolean;
   members: Member[];
+  onUpdate?: () => void;
 };
 
 export function OrbitPageHeader({
@@ -38,6 +39,7 @@ export function OrbitPageHeader({
   currentUserId,
   isOwnerOrAdmin,
   members,
+  onUpdate,
 }: OrbitPageHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -155,8 +157,8 @@ export function OrbitPageHeader({
           isOwner={sfera.ownerId === currentUserId}
           onClose={() => setIsSettingsOpen(false)}
           onUpdate={() => {
-            // Refresh will be handled by parent component
             setIsSettingsOpen(false);
+            onUpdate?.();
           }}
           orbitId={sfera.id}
         />

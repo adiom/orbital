@@ -221,6 +221,48 @@
   }
 }
 
+@keyframes orbital-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0) rotate(0.25deg);
+  }
+}
+
+@keyframes orbital-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    opacity: 0.42;
+  }
+  50% {
+    transform: translate3d(18px, -16px, 0);
+    opacity: 0.86;
+  }
+}
+
+.orbital-living-node {
+  animation: orbital-float 12s ease-in-out infinite;
+}
+
+.orbital-drift {
+  animation: orbital-drift 18s ease-in-out infinite;
+}
+
+.orbital-drift-slow {
+  animation: orbital-drift 26s ease-in-out infinite reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbital-living-node,
+  .orbital-drift,
+  .orbital-drift-slow {
+    animation: none;
+  }
+}
+
 @layer base {
   body {
     @apply text-foreground;
