@@ -519,7 +519,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
       />
 
       {/* Messages */}
-      <div className="flex-grow overflow-y-auto px-4 pt-20 pb-40 md:px-8">
+      <div className="flex-grow overflow-y-auto px-3 pt-14 pb-40 md:px-8 md:pt-20">
         <div className="mx-auto max-w-4xl">
           {messages.length === 0 ? (
             <div className="flex h-full min-h-[400px] items-center justify-center">

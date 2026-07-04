@@ -213,6 +213,27 @@
   }
 }
 
+@keyframes slide-in-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-up {
+  animation: slide-in-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-slide-in-up {
+    animation: none;
+  }
+}
+
 @layer base {
   body {
     @apply text-foreground;

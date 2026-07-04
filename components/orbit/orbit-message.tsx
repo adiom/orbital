@@ -184,7 +184,7 @@ export function OrbitMessage({
     <article className="group relative mb-2">
       <div
         className={cn(
-          "relative cursor-pointer overflow-hidden rounded-3xl border-2 p-5 shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2",
+          "relative cursor-pointer overflow-hidden rounded-2xl border p-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 md:rounded-3xl md:border-2 md:p-5",
           isAvroraMessage
             ? "border-gray-300 bg-gray-50"
             : isClaudeCodeMessage
@@ -211,7 +211,7 @@ export function OrbitMessage({
           </div>
         )}
 
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-1.5 flex items-center justify-between gap-3 md:mb-3">
           <div className="flex items-center gap-2 text-gray-500 text-xs">
             {isAvroraMessage && (
               <div className="flex items-center gap-1 rounded-full bg-gray-700 px-2.5 py-1">
@@ -253,7 +253,7 @@ export function OrbitMessage({
 
         <div
           className={cn(
-            "relative whitespace-pre-wrap text-[15px] text-gray-900 leading-relaxed",
+            "relative whitespace-pre-wrap text-sm text-gray-900 leading-relaxed md:text-[15px]",
             isOverflowing && !isExpanded && "max-h-[100px] overflow-hidden"
           )}
           ref={contentRef}

@@ -58,10 +58,10 @@ export function OrbitPageHeader({
   return (
     <>
       <div className="fixed top-0 right-0 left-0 z-10 border-gray-200/50 border-b bg-white/80 backdrop-blur-xl">
-        <div className="mx-auto max-w-4xl px-4 py-4 md:px-8">
+        <div className="mx-auto max-w-4xl px-3 py-2.5 md:px-8 md:py-4">
           {/* Breadcrumbs */}
           {parentSfera && (
-            <div className="mb-2 flex items-center gap-2 text-sm">
+            <div className="mb-1 hidden items-center gap-2 text-sm md:flex">
               <Link
                 className="text-gray-500 transition-colors hover:text-gray-700"
                 href={`/orbit/${parentSfera.id}`}
@@ -74,23 +74,22 @@ export function OrbitPageHeader({
           )}
 
           {/* Header Content */}
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               {/* Title */}
-              <h1 className="mb-2 font-semibold text-2xl text-gray-900 md:text-3xl">
+              <h1 className="mb-0.5 font-semibold text-base text-gray-900 md:mb-2 md:text-2xl">
                 {sfera.title}
               </h1>
 
-              {/* Description */}
+              {/* Description — hidden on mobile */}
               {sfera.description && (
-                <p className="mb-3 text-gray-600 text-sm md:text-base">
+                <p className="mb-2 hidden text-gray-600 text-sm md:mb-3 md:block md:text-base">
                   {sfera.description}
                 </p>
               )}
 
-              {/* Metadata Badges */}
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Member Count */}
+              {/* Metadata Badges — hidden on mobile */}
+              <div className="hidden flex-wrap items-center gap-2 md:flex">
                 <Badge
                   className="gap-1.5 bg-blue-100 text-blue-700"
                   variant="secondary"
@@ -98,8 +97,6 @@ export function OrbitPageHeader({
                   <Users className="h-3.5 w-3.5" />
                   {memberCount} {memberCount === 1 ? "member" : "members"}
                 </Badge>
-
-                {/* Visibility Status */}
                 <Badge
                   className={visibilityColors[sfera.visibility]}
                   variant="secondary"
