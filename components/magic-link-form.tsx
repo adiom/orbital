@@ -31,6 +31,7 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
   );
 
   const isSuccess = state.status === "success";
+  const isFailed = state.status === "failed";
   const isLoading = state.status === "in_progress";
   const magicLink = state.magicLink;
   const isDev = process.env.NODE_ENV === "development";
@@ -67,19 +68,28 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
       } else {
         console.error(data.error || "Неверный код");
       }
-    } catch (_error) {
+    } catch {
       console.error("Ошибка верификации кода");
     }
   };
 
   // Показываем ввод кода после создания magic link
-  if (isSuccess && magicLink && !showCodeInput) {
+  if ((isSuccess || isFailed) && magicLink && !showCodeInput) {
     return (
       <div className="space-y-4 px-4 text-center sm:px-16">
-        <div className="rounded-md bg-green-50 p-4 dark:bg-green-900/20">
-          <div className="text-green-700 text-sm dark:text-green-200">
-            ✅ Код создан для {email}
-            {isDev && (
+        <div
+          className={`rounded-md p-4 ${
+            isFailed ? "bg-amber-50 dark:bg-amber-900/20" : "bg-green-50 dark:bg-green-900/20"
+          }`}
+        >
+          <div
+            className={`text-sm ${
+              isFailed ? "text-amber-800 dark:text-amber-200" : "text-green-700 dark:text-green-200"
+            }`}
+          >
+            {isFailed ? "⚠️ " : "✅ "}
+            {state.message || `Код создан для ${email}`}
+            {(isDev || isFailed) && (
               <div className="mt-2 font-mono text-xs">
                 Код: {magicLink.split("magic_token=")[1]}
               </div>
@@ -159,29 +169,7 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
           </div>
         </div>
 
-        {magicLink ? (
-          <div className="space-y-3">
-            <Button className="w-full" onClick={() => setShowCodeInput(true)}>
-              Ввести код вручную
-            </Button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-gray-600 text-sm dark:text-gray-400">
-              Проверьте почту и перейдите по ссылке для входа
-            </p>
-            <Button
-              className="w-full"
-              disabled={!magicLink}
-              onClick={() => {
-                window.location.href = magicLink || "#";
-              }}
-              type="button"
-            >
-              Открыть Magic Link
-            </Button>
-          </div>
-        )}
+        
 
         <Button
           className="w-full"

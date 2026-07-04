@@ -29,12 +29,12 @@ async function sendMagicLinkEmail(params: {
   const subject = "Ваш Magic Link для входа";
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
-      <h1 style="font-size: 24px; margin: 0 0 16px;">Вход в Avrora Area</h1>
+      <h1 style="font-size: 24px; margin: 0 0 16px;">Вход в Orbital</h1>
       <p style="margin: 0 0 16px;">Нажмите на кнопку ниже, чтобы войти в аккаунт.</p>
       <p style="margin: 0 0 24px;">
         <a href="${params.magicLink}"
            style="display: inline-block; background: #111827; color: #ffffff; text-decoration: none; padding: 12px 20px; border-radius: 8px;">
-          Войти в Avrora Area
+          Войти в Orbital
         </a>
       </p>
       <p style="margin: 0 0 8px; font-size: 14px; color: #6b7280;">
@@ -50,7 +50,7 @@ async function sendMagicLinkEmail(params: {
   `.trim();
 
   const textBody = [
-    "Вход в Avrora Area",
+    "Вход в Orbital",
     "",
     `Ссылка для входа: ${params.magicLink}`,
     `Код входа: ${params.token}`,
@@ -146,8 +146,7 @@ export const createMagicLink = async (
 
     const baseUrl =
       process.env.NEXT_PUBLIC_SITE_URL ||
-      process.env.NEXTAUTH_URL ||
-      "http://localhost:3000";
+      process.env.NEXTAUTH_URL;
     const magicLink = `${baseUrl}/login?magic_token=${token}`;
 
     // В dev-режиме выводим код и ссылку в консоль для удобного тестирования
@@ -160,11 +159,21 @@ export const createMagicLink = async (
     }
 
     if (process.env.NODE_ENV !== "development") {
-      await sendMagicLinkEmail({
-        email: validatedData.email,
-        magicLink,
-        token,
-      });
+      try {
+        await sendMagicLinkEmail({
+          email: validatedData.email,
+          magicLink,
+          token,
+        });
+      } catch (emailError) {
+        console.error("Ошибка отправки magic link email:", emailError);
+
+        return {
+          status: "failed",
+          message: "Код создан, но письмо не удалось отправить",
+          magicLink,
+        };
+      }
     }
 
     return {

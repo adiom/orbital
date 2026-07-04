@@ -98,13 +98,6 @@ function LoginContent(): JSX.Element {
             onBlur={() => setIsFocused(false)}
             onFocus={() => setIsFocused(true)}
           />
-          <Button
-            className="mt-4 w-full"
-            onClick={() => signIn("yandex")}
-            variant="outline"
-          >
-            Войти через Яндекс
-          </Button>
         </motion.div>
       </motion.div>
     </div>
