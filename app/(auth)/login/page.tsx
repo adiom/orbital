@@ -45,10 +45,25 @@ function LoginContent(): JSX.Element {
         token: magicToken,
         redirect: false,
       })
-        .then((result) => {
+        .then(async (result) => {
           if (result?.ok) {
-            updateSession();
-            router.push("/orbits");
+            await updateSession();
+
+            // Try to start onboarding — if already completed, API returns error
+            try {
+              const res = await fetch("/api/onboarding/start", {
+                method: "POST",
+              });
+              const data = await res.json();
+
+              if (data.sferaId) {
+                router.push(`/${data.sferaId}`);
+              } else {
+                router.push("/");
+              }
+            } catch {
+              router.push("/");
+            }
           } else {
             console.error("Invalid magic token");
           }

@@ -1,6 +1,4 @@
 import type {
-  CoreAssistantMessage,
-  CoreToolMessage,
   UIMessage,
   UIMessagePart,
 } from 'ai';
@@ -63,9 +61,6 @@ export function generateUUID(): string {
   });
 }
 
-type ResponseMessageWithoutId = CoreToolMessage | CoreAssistantMessage;
-type ResponseMessage = ResponseMessageWithoutId & { id: string };
-
 export function getMostRecentUserMessage(messages: UIMessage[]) {
   const userMessages = messages.filter((message) => message.role === 'user');
   return userMessages.at(-1);
@@ -79,18 +74,6 @@ export function getDocumentTimestampByIndex(
   if (index > documents.length) { return new Date(); }
 
   return documents[index].createdAt;
-}
-
-export function getTrailingMessageId({
-  messages,
-}: {
-  messages: ResponseMessage[];
-}): string | null {
-  const trailingMessage = messages.at(-1);
-
-  if (!trailingMessage) { return null; }
-
-  return trailingMessage.id;
 }
 
 export function sanitizeText(text: string) {

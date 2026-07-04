@@ -6,12 +6,18 @@
 import { avroraAgent } from "./instances/avrora";
 import { kristinaAgent } from "./instances/kristina";
 import { cfKristinaAgent } from "./instances/cf-kristina";
+import { onboardingAgent } from "./instances/onboarding";
 import type { AIAgent } from "./types";
 
 /**
  * All registered AI agents
  */
-export const aiAgents: AIAgent[] = [avroraAgent, kristinaAgent, cfKristinaAgent];
+export const aiAgents: AIAgent[] = [
+  avroraAgent,
+  kristinaAgent,
+  cfKristinaAgent,
+  onboardingAgent,
+];
 
 /**
  * Get agent by ID

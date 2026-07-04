@@ -40,6 +40,7 @@ function detectAgentMention(text: string): string | null {
     return "cf-kristina";
   if (lower.includes("@kristina") || lower.includes("@кристина"))
     return "kristina";
+  if (lower.includes("@onboarding") || lower.includes("@гид")) return "Гид";
   return null;
 }
 
@@ -249,7 +250,7 @@ export function OrbitCreatePrompt({ isOpen, onClose }: OrbitCreatePromptProps) {
       const data = await response.json();
       toast.success("Создано");
       onClose();
-      router.push(`/orbit/${data.sfera.id}`);
+      router.push(`/${data.sfera.id}`);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Не удалось создать"

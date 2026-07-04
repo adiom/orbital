@@ -530,7 +530,7 @@ export function OrbitConstellationView({
               isDimmed={isDimmed}
               onHover={() => setHoveredId(node.id)}
               onLeave={() => setHoveredId(null)}
-              onClick={() => router.push(`/orbit/${node.id}`)}
+              onClick={() => router.push(`/${node.id}`)}
               onSettings={() => onSettingsClick?.(node)}
               onDelete={() => onDeleteClick?.(node)}
               isOwner={isOwner}

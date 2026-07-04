@@ -22,32 +22,15 @@ import {
   CLAUDE_CODE_USER_ID,
   CF_KRISTINA_USER_ID,
 } from "@/lib/constants/system-users";
-
 import { cn } from "@/lib/utils";
-import { ParentIndicators } from "./parent-message-indicators";
-import { ToolResultsList } from "./tool-result-display";
+import { ParentIndicators } from "../orbit/parent-message-indicators";
+import { ArtifactsRenderer } from "./artifacts-renderer";
+import { ToolCallsRenderer } from "./tool-calls-renderer";
+import { ToolResultsRenderer } from "./tool-results-renderer";
+import type { Message, ToolCallPart } from "./shared-message-type";
 
-type OrbitMessageProps = {
-  message: {
-    id: string;
-    content: string;
-    userId: string;
-    userEmail: string;
-    parentMessageId: string | null;
-    attachments?: Array<{
-      name: string;
-      url: string;
-      contentType: string;
-    }>;
-    toolResults?: Array<{
-      [key: string]: unknown;
-    }>;
-    isForked: boolean;
-    forkedSferaId: string | null;
-    isGenerating?: boolean;
-    isPending?: boolean;
-    createdAt: Date;
-  };
+type MessageRendererProps = {
+  message: Message;
   parentMessage?: {
     id: string;
     content: string;
@@ -62,10 +45,12 @@ type OrbitMessageProps = {
   onReply?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
-  indicatorVariant?: 1 | 2 | 3 | 4 | 5; // Для тестирования разных вариантов
+  onApproveTool?: (approvalId: string) => void;
+  onDenyTool?: (approvalId: string) => void;
+  indicatorVariant?: 1 | 2 | 3 | 4 | 5;
 };
 
-export function OrbitMessage({
+export function MessageRenderer({
   message,
   parentMessage,
   orbitId,
@@ -75,8 +60,10 @@ export function OrbitMessage({
   onReply,
   onEdit,
   onDelete,
-  indicatorVariant = 1, // По умолчанию вариант 1
-}: OrbitMessageProps) {
+  onApproveTool,
+  onDenyTool,
+  indicatorVariant = 1,
+}: MessageRendererProps) {
   const router = useRouter();
   const [isForking, setIsForking] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -169,7 +156,6 @@ export function OrbitMessage({
     message.userId === CF_KRISTINA_USER_ID ||
     message.userEmail === "cf-kristina@avrora.click";
 
-  // Выбираем компонент индикатора
   const IndicatorComponent = parentMessage
     ? {
         1: ParentIndicators.Variant1,
@@ -251,6 +237,7 @@ export function OrbitMessage({
           </div>
         </div>
 
+        {/* Text Content */}
         <div
           className={cn(
             "relative whitespace-pre-wrap text-sm text-gray-900 leading-relaxed md:text-[15px]",
@@ -274,6 +261,7 @@ export function OrbitMessage({
           )}
         </div>
 
+        {/* Attachments */}
         {message.attachments && message.attachments.length > 0 && (
           <div className="mt-4 flex flex-col gap-3">
             {message.attachments.map((attachment, index) => {
@@ -298,7 +286,6 @@ export function OrbitMessage({
                         </div>
                       </div>
                     </div>
-                    {/* biome-ignore lint/a11y/useMediaCaption: Generated audio without captions */}
                     <audio
                       className="w-full"
                       controls
@@ -334,17 +321,36 @@ export function OrbitMessage({
           </div>
         )}
 
-        {/* AI Tool Results */}
+        {/* Tool Calls (ai@7 streaming) */}
+        {message.toolCalls && message.toolCalls.length > 0 && (
+          <div className="mt-4">
+            <ToolCallsRenderer
+              onApprove={onApproveTool}
+              onDeny={onDenyTool}
+              toolCalls={message.toolCalls}
+            />
+          </div>
+        )}
+
+        {/* Tool Results (from DB) */}
         {message.toolResults && message.toolResults.length > 0 && (
           <div className="mt-4">
-            <ToolResultsList
+            <ToolResultsRenderer
               messageId={message.id}
               results={message.toolResults}
             />
           </div>
         )}
+
+        {/* Document Artifacts */}
+        {message.artifacts && message.artifacts.length > 0 && (
+          <div className="mt-4">
+            <ArtifactsRenderer artifacts={message.artifacts} />
+          </div>
+        )}
       </div>
 
+      {/* Interaction Toolbar */}
       {isSelected && (
         <div className="mt-2 flex flex-wrap items-center gap-2 px-2 opacity-100">
           <button
@@ -427,7 +433,6 @@ export function OrbitMessage({
     </article>
   );
 
-  // Оборачиваем в индикатор если есть parentMessage
   if (IndicatorComponent && parentMessage) {
     return (
       <IndicatorComponent

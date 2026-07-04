@@ -15,6 +15,11 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import type { Message } from "@/components/chat/shared-message-type";
+
+// Detect @Avrora mentions
+const AVRORA_MENTION_REGEX = /@avrora|@аврора/i;
+const isAvroraMention = (text: string) => AVRORA_MENTION_REGEX.test(text);
 
 // Client-side agent info (no server dependencies)
 const CLIENT_AGENTS = {
@@ -55,21 +60,6 @@ type EditingMessage = {
   id: string;
   content: string;
   attachments?: Attachment[];
-};
-
-type Message = {
-  id: string;
-  content: string;
-  userId: string;
-  userEmail: string;
-  parentMessageId: string | null;
-  attachments?: Attachment[];
-  toolResults?: Record<string, unknown>[];
-  isForked: boolean;
-  forkedSferaId: string | null;
-  isGenerating?: boolean;
-  isPending?: boolean;
-  createdAt: Date;
 };
 
 type OrbitInputProps = {
@@ -342,17 +332,50 @@ export function OrbitInput({
     setIsSending(true);
     try {
       const isEditing = Boolean(editingMessage);
+      const messageText = content.trim();
+      const isAvrora = !isEditing && isAvroraMention(messageText);
+
+      // Use panel-chat endpoint for @Avrora messages (streaming)
+      if (isAvrora) {
+        const response = await fetch(`/api/sfera/${orbitId}/panel-chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: messageText }],
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to send message to Avrora");
+        }
+
+        // Clear form
+        setContent("");
+        setHasTyped(false);
+        setAttachments([]);
+
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "48px";
+        }
+
+        // Refresh messages (panel-chat saves to DB, we poll for updates)
+        onMessageSent?.();
+        toast.success("Message sent to Avrora");
+        return;
+      }
+
+      // Regular message endpoint
       const endpoint = isEditing
         ? `/api/sfera/${orbitId}/messages/${editingMessage?.id}`
         : `/api/sfera/${orbitId}/messages`;
       const method = isEditing ? "PATCH" : "POST";
       const payload = isEditing
         ? {
-            content: content.trim(),
+            content: messageText,
             attachments,
           }
         : {
-            content: content.trim(),
+            content: messageText,
             parentMessageId: replyingTo?.id || null,
             attachments,
           };

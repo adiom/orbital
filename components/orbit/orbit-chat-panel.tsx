@@ -3,29 +3,9 @@
 import { Maximize2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { MessageRenderer } from "@/components/chat/message-renderer";
+import { parseMessages, type Message } from "@/components/chat/shared-message-type";
 import { OrbitInput } from "./orbit-input";
-import { OrbitMessage } from "./orbit-message";
-
-type Attachment = {
-  name: string;
-  url: string;
-  contentType: string;
-};
-
-type Message = {
-  id: string;
-  content: string;
-  userId: string;
-  userEmail: string;
-  parentMessageId: string | null;
-  attachments?: Attachment[];
-  toolResults?: Record<string, unknown>[];
-  isForked: boolean;
-  forkedSferaId: string | null;
-  isGenerating?: boolean;
-  isPending?: boolean;
-  createdAt: Date;
-};
 
 type OrbitData = {
   id: string;
@@ -76,11 +56,7 @@ export function OrbitChatPanel({
       } = rawData as Record<string, unknown>;
 
       setOrbit(rawOrbit as OrbitData);
-      setMessages(
-        Array.isArray(rawMessages)
-          ? (rawMessages as Message[]).reverse()
-          : []
-      );
+      setMessages(parseMessages(rawMessages));
     } catch (err) {
       if (signal?.aborted) return;
       console.error("Error fetching orbit:", err);
@@ -101,6 +77,22 @@ export function OrbitChatPanel({
     fetchData(controller.signal);
     return () => controller.abort();
   }, [fetchData]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages]);
+
+  useEffect(() => {
+    if (!messages.some((message) => message.isGenerating)) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void fetchData();
+    }, 1200);
+
+    return () => window.clearInterval(intervalId);
+  }, [fetchData, messages]);
 
   const handleFork = useCallback(() => {
     fetchData();
@@ -218,7 +210,7 @@ export function OrbitChatPanel({
                 : null;
 
               return (
-                <OrbitMessage
+                <MessageRenderer
                   key={message.id}
                   canModerate={
                     currentUserId === orbit?.ownerId

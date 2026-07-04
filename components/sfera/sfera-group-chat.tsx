@@ -180,14 +180,14 @@ export function SferaGroupChat({
       if (!response.ok) {
         const data = await response.json();
         if (data.forkedSferaId) {
-          router.push(`/orbit/${data.forkedSferaId}`);
+          router.push(`/${data.forkedSferaId}`);
           return;
         }
         throw new Error(data.error || "Failed to fork");
       }
 
       const data = await response.json();
-      router.push(`/orbit/${data.sfera.id}`);
+      router.push(`/${data.sfera.id}`);
       toast.success("Forked successfully!");
     } catch (error) {
       console.error("Error forking:", error);
@@ -222,7 +222,7 @@ export function SferaGroupChat({
 
   // Copy message link
   const handleCopy = (messageId: string) => {
-    router.push(`/m/${messageId}`);
+    router.push(`/${sferaId}/${messageId}`);
     toast.success("Message link copied");
   };
 
@@ -373,7 +373,7 @@ export function SferaGroupChat({
                             className="flex items-center gap-1 rounded-full bg-gray-700 px-2.5 py-1 text-white text-xs hover:bg-gray-800"
                             onClick={(e) => {
                               e.stopPropagation();
-                              router.push(`/orbit/${message.forkedSferaId}`);
+                              router.push(`/${message.forkedSferaId}`);
                             }}
                             type="button"
                           >

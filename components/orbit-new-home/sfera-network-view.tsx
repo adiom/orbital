@@ -160,7 +160,7 @@ export function SferaNetworkView({
   }, [positions, forkRelationships]);
 
   const handleNodeClick = (orbitId: string) => {
-    router.push(`/orbit/${orbitId}`);
+    router.push(`/${orbitId}`);
   };
 
   return (

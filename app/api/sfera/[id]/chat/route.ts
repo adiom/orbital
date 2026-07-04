@@ -6,10 +6,13 @@ import { auth } from "@/app/(auth)/auth";
 import { streamAgentResponse } from "@/lib/ai/agents/base-streamer";
 import { streamExternalMcpAgentResponse } from "@/lib/ai/agents/external-mcp-streamer";
 import { detectMentionedAgents } from "@/lib/ai/agents/detector";
+import { getAgentById } from "@/lib/ai/agents/registry";
 import { myProvider } from "@/lib/ai/providers";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { checkAvroraRateLimit } from "@/lib/redis/rate-limiter";
+
+const ONBOARDING_AGENT_ID = "00000000-0000-0000-0000-000000000009";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -147,6 +150,26 @@ export async function POST(request: Request, context: RouteContext) {
 
     // Detect mentioned AI agents
     const mentionedAgents = detectMentionedAgents(content);
+
+    // Auto-add onboarding agent if this is an onboarding sfera
+    // (onboarding agent is a member of the sfera)
+    const [onboardingMembership] = await db
+      .select()
+      .from(sferaMember)
+      .where(
+        and(
+          eq(sferaMember.sferaId, sferaId),
+          eq(sferaMember.userId, ONBOARDING_AGENT_ID)
+        )
+      )
+      .limit(1);
+
+    if (onboardingMembership) {
+      const onboardingAgent = getAgentById("onboarding");
+      if (onboardingAgent && !mentionedAgents.some((a) => a.id === "onboarding")) {
+        mentionedAgents.push(onboardingAgent);
+      }
+    }
 
     if (mentionedAgents.length === 0) {
       // No AI agents mentioned, return empty response

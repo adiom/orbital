@@ -38,6 +38,16 @@ export const user = pgTable("User", {
   // User preferences
   settings: jsonb("settings").$type<{
     autoArchive?: boolean;
+    onboarding?: {
+      completed: boolean;
+      sferaId?: string;
+      name?: string;
+      role?: string;
+      interests?: string;
+      goals?: string;
+      context?: string;
+      completedAt?: string;
+    };
   }>().default({}),
 
   // Timestamps

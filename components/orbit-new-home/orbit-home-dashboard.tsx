@@ -80,7 +80,7 @@ export function OrbitHomeDashboard() {
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 className="rounded-full bg-blue-600 px-3 text-white text-xs hover:bg-blue-700"
-                onClick={() => router.push("/orbits/new")}
+                onClick={() => router.push("/")}
                 size="sm"
               >
                 Создать Orbit
@@ -134,7 +134,7 @@ export function OrbitHomeDashboard() {
                     </p>
                     <Button
                       className="mt-2 rounded-full bg-blue-600 px-4 text-white text-xs hover:bg-blue-700"
-                      onClick={() => router.push("/orbits/new")}
+                onClick={() => router.push("/")}
                       size="sm"
                     >
                       Создать первую Сферу
@@ -193,7 +193,7 @@ export function OrbitHomeDashboard() {
                 {orbits.length > 4 && (
                   <Button
                     className="h-7 w-full px-2 text-[11px] text-slate-600 hover:text-slate-900"
-                    onClick={() => router.push("/orbits")}
+                    onClick={() => router.push("/")}
                     size="sm"
                     variant="ghost"
                   >
@@ -248,7 +248,7 @@ export function OrbitHomeDashboard() {
                 </Button>
                 <Button
                   className="w-full justify-start rounded-full border-slate-200 text-slate-700 text-xs hover:bg-slate-50"
-                  onClick={() => router.push("/orbits")}
+                  onClick={() => router.push("/")}
                   size="sm"
                   variant="outline"
                 >

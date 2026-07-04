@@ -79,6 +79,9 @@ export type AgentPromptContext = {
 
   /** User name for personalization */
   userName?: string;
+
+  /** ID of the user who triggered the agent */
+  requestingUserId?: string;
 };
 
 /**

@@ -152,9 +152,11 @@ export async function streamAgentResponse(
         description: sferaData.description,
       },
       userName,
+      requestingUserId: context.requestingUserId,
     });
 
     console.log(`🧠 ${agent.name}: Generating with model ${agent.model}...`);
+    console.log(`🧠 ${agent.name}: System prompt (first 500 chars):`, systemPrompt.substring(0, 500));
     const model = myProvider.languageModel(agent.model);
 
     // Track streaming state

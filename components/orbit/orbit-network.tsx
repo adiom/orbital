@@ -62,7 +62,7 @@ export function OrbitNetwork({
 
   const { hoveredNode, handleCanvasClick, handleCanvasMove } =
     useOrbitInteractions(canvasRef, nodePositions, (nodeId) =>
-      router.push(`/orbit/${nodeId}`)
+      router.push(`/${nodeId}`)
     );
 
   // Render canvas connections

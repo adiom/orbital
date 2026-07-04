@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { google } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
-import type { LanguageModelV2 } from "@ai-sdk/provider";
+import type { LanguageModelV4 } from "@ai-sdk/provider";
 import {
   customProvider,
   extractReasoningMiddleware,
@@ -64,7 +64,7 @@ const ollama = ollamaApiKey
 export const geminiProvider = google;
 
 // Build language model registry only with available providers (avoid undefined entries).
-const languageModels: Record<string, LanguageModelV2> = {};
+const languageModels: Record<string, LanguageModelV4> = {};
 
 if (ollama) {
   languageModels["chat-model"] = ollama.chat(MODEL.OLLAMA_CHAT);

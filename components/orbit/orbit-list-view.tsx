@@ -45,10 +45,10 @@ export function OrbitListView({
                 "hover:border-blue-300 hover:shadow-md"
               )}
               key={orbit.id}
-              onClick={() => router.push(`/orbit/${orbit.id}`)}
+              onClick={() => router.push(`/${orbit.id}`)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
-                  router.push(`/orbit/${orbit.id}`);
+                  router.push(`/${orbit.id}`);
                 }
               }}
               role="button"

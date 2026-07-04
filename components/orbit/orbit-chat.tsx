@@ -15,30 +15,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { MessageRenderer } from "@/components/chat/message-renderer";
+import { parseMessages, type Message } from "@/components/chat/shared-message-type";
 import { OrbitInput } from "./orbit-input";
-import { OrbitMessage } from "./orbit-message";
 import { OrbitPageHeader } from "./orbit-page-header";
-
-type Attachment = {
-  name: string;
-  url: string;
-  contentType: string;
-};
-
-type Message = {
-  id: string;
-  content: string;
-  userId: string;
-  userEmail: string;
-  parentMessageId: string | null;
-  attachments?: Attachment[];
-  toolResults?: Record<string, unknown>[];
-  isForked: boolean;
-  forkedSferaId: string | null;
-  isGenerating?: boolean;
-  isPending?: boolean;
-  createdAt: Date;
-};
 
 type Member = {
   userId: string;
@@ -68,85 +48,6 @@ type OrbitChatProps = {
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
-
-const parseAttachments = (value: unknown): Attachment[] => {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value
-    .map((item) => {
-      if (!item || typeof item !== "object") {
-        return null;
-      }
-
-      const record = item as Record<string, unknown>;
-      const name = record.name;
-      const url = record.url;
-      const contentType = record.contentType;
-
-      if (
-        typeof name !== "string" ||
-        typeof url !== "string" ||
-        typeof contentType !== "string"
-      ) {
-        return null;
-      }
-
-      return { name, url, contentType } satisfies Attachment;
-    })
-    .filter((attachment): attachment is Attachment => attachment !== null);
-};
-
-const parseMessage = (value: unknown): Message | null => {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const record = value as Record<string, unknown>;
-
-  const id = record.id;
-  const content = record.content;
-  const userId = record.userId;
-  const userEmail = record.userEmail;
-  const parentMessageId = record.parentMessageId;
-  const isForked = record.isForked;
-  const forkedSferaId = record.forkedSferaId;
-  const createdAt = record.createdAt;
-
-  if (
-    !isNonEmptyString(id) ||
-    typeof content !== "string" ||
-    !isNonEmptyString(userId) ||
-    typeof userEmail !== "string" ||
-    (parentMessageId !== null && !isNonEmptyString(parentMessageId)) ||
-    typeof isForked !== "boolean" ||
-    !(createdAt instanceof Date || typeof createdAt === "string")
-  ) {
-    return null;
-  }
-
-  return {
-    id,
-    content,
-    userId,
-    userEmail,
-    parentMessageId:
-      typeof parentMessageId === "string" ? parentMessageId : null,
-    attachments: parseAttachments(record.attachments),
-    toolResults: Array.isArray(record.toolResults)
-      ? (record.toolResults as Record<string, unknown>[])
-      : undefined,
-    isForked,
-    forkedSferaId: typeof forkedSferaId === "string" ? forkedSferaId : null,
-    isGenerating:
-      typeof record.isGenerating === "boolean" ? record.isGenerating : false,
-    createdAt:
-      createdAt instanceof Date && !Number.isNaN(createdAt.getTime())
-        ? createdAt
-        : new Date(createdAt as string),
-  } satisfies Message;
-};
 
 const parseMember = (value: unknown): Member | null => {
   if (!value || typeof value !== "object") {
@@ -265,13 +166,8 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
 
         setOrbit(parseOrbitData(rawOrbit));
         setMessages((prevMessages) => {
-          // Parse new messages from server
-          const newMessages = Array.isArray(rawMessages)
-            ? rawMessages
-                .map((message) => parseMessage(message))
-                .filter((message): message is Message => message !== null)
-                .reverse()
-            : [];
+          // Parse new messages from server using shared parser
+          const newMessages = parseMessages(rawMessages);
 
           // Find optimistic/generating messages that are not yet on server
           const newMessagesMap = new Map(newMessages.map((m) => [m.id, m]));
@@ -449,7 +345,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
 
       toast.success("Orbit deleted");
       setIsDeleteDialogOpen(false);
-      router.push("/orbits");
+      router.push("/");
     } catch (error) {
       console.error("Error deleting Orbit:", error);
       toast.error(
@@ -489,7 +385,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
           </p>
           <Button
             className="mt-6"
-            onClick={() => router.push("/orbits")}
+            onClick={() => router.push("/")}
             variant="outline"
           >
             Back to Orbits
@@ -541,7 +437,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
                   : null;
 
                 return (
-                  <OrbitMessage
+                  <MessageRenderer
                     canModerate={Boolean(isOwnerOrAdmin)}
                     currentUserId={currentUserId}
                     key={message.id}

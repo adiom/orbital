@@ -37,7 +37,7 @@ export function OrbitContainerTimeline({
   const router = useRouter();
 
   const handleOrbitClick = () => {
-    router.push(`/orbit/${orbit.id}`);
+    router.push(`/${orbit.id}`);
   };
 
   const handleSettingsClick = (e: React.MouseEvent) => {
