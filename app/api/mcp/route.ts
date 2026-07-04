@@ -54,6 +54,24 @@ const RESOURCE_METHODS = new Set([
 
 const TOOL_METHODS = new Set(["tools/list", "tools/call"]);
 
+// GET /api/mcp - Health check / SSE handshake
+export async function GET() {
+  return NextResponse.json({
+    jsonrpc: "2.0",
+    result: {
+      serverInfo: {
+        name: "Avrora MCP Server",
+        version: "1.0.0",
+      },
+      capabilities: {
+        resources: {},
+        tools: {},
+      },
+    },
+    id: null,
+  });
+}
+
 // POST /api/mcp - Main MCP endpoint
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
@@ -171,12 +189,23 @@ export async function POST(request: NextRequest) {
                 list: true,
                 call: true,
               },
+              logging: {},
             },
             serverInfo: {
               name: "Avrora MCP Server",
               version: "1.0.0",
             },
           };
+          break;
+
+        // Ping - keepalive
+        case "ping":
+          result = {};
+          break;
+
+        // Initialized notification - silently ignore
+        case "notifications/initialized":
+          result = {};
           break;
 
         // List available resources
@@ -436,14 +465,13 @@ export async function POST(request: NextRequest) {
       }
     } catch (error) {
       errorMessage = error instanceof Error ? error.message : "Internal error";
-      statusCode = 500;
 
       // Log the error
       await logMcpCall({
         apiKeyId: apiKey.id,
         userId: user.id,
         method: jsonRpcRequest.method,
-        statusCode,
+        statusCode: 200,
         responseTimeMs: Date.now() - startTime,
         errorMessage,
         ipAddress: getClientIp(request),
@@ -461,7 +489,7 @@ export async function POST(request: NextRequest) {
           id: jsonRpcRequest.id,
         } as JsonRpcResponse,
         {
-          status: statusCode,
+          status: 200,
           headers: getRateLimitHeaders(rateLimitResult, tier),
         }
       );
@@ -514,7 +542,7 @@ export async function OPTIONS() {
     status: 200,
     headers: {
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
       "Access-Control-Max-Age": "86400",
     },
