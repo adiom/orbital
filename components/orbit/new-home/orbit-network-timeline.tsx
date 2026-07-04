@@ -321,8 +321,8 @@ function buildGraph(
       const parentMsg = parentOrbit?.messageCount || 0;
       const childMsg = childOrbit?.messageCount || 0;
       const intensity = Math.min(1, (parentMsg + childMsg) / 30);
-      const opacity = 0.30 + intensity * 0.35;
-      const width = 1.8 + intensity * 1.2;
+      const opacity = 0.15 + intensity * 0.20;
+      const width = 1.5 + intensity * 0.8;
 
       return {
         id: `${rel.parentSferaId}-${rel.forkedSferaId}`,
@@ -334,7 +334,7 @@ function buildGraph(
           stroke: `rgba(${parentColor}, ${opacity})`,
           strokeWidth: width,
           strokeLinecap: "round" as const,
-          filter: `drop-shadow(0 0 ${4 + intensity * 6}px rgba(${childColor}, ${opacity * 0.7}))`,
+          filter: `drop-shadow(0 0 ${2 + intensity * 2}px rgba(${childColor}, ${opacity * 0.6}))`,
         },
       };
     });
@@ -568,7 +568,7 @@ export function OrbitNetworkTimeline({
           proOptions={{ hideAttribution: true }}
           className="pointer-events-none"
           style={{ background: "transparent" }}
-          defaultViewport={{ x: 90, y: 50, zoom: 0.82 }}
+          defaultViewport={{ x: 90, y: 5, zoom: 0.82 }}
         />
       </div>
 
