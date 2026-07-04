@@ -183,9 +183,7 @@ export async function POST(request: Request) {
         title: orbitTitle,
         description: description || null,
         ownerId: session.user.id,
-        visibility,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        visibility: (visibility as "public" | "private" | "dao") || "private",
       })
       .returning();
 

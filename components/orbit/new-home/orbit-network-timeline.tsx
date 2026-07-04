@@ -8,7 +8,7 @@ import {
   useEdgesState,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Archive, ArchiveRestore, Loader2, Sparkles } from "lucide-react";
+import { Archive, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -22,9 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
 import type { ForkRelationship, Orbit } from "@/hooks/use-orbit-layout";
-import { useUserSettings } from "@/hooks/use-user-settings";
 import { OrbitSettings } from "../orbit-settings";
 import { OrbitChatPanel } from "../orbit-chat-panel";
 import { OrbitNode, type OrbitNodeData } from "./orbit-node";
@@ -48,12 +46,19 @@ const nodeTypes = {
   orbit: OrbitNode,
 };
 
-const NODE_WIDTH = 280;
-const NODE_HEIGHT = 210;
+const NODE_WIDTH = 340;
+const NODE_HEIGHT = 260;
 const CANVAS_CENTER_X = 720;
 const ROOT_Y = 100;
-const CHILD_Y_GAP = 330;
-const ROW_Y_GAP = 245;
+const CHILD_Y_GAP = 370;
+const ROW_Y_GAP = 280;
+
+const LIFE_STATE_COLORS: Record<string, string> = {
+  born: "96,165,250",
+  alive: "16,185,129",
+  settled: "168,85,247",
+  quiet: "148,163,184",
+};
 
 function getChildCount(orbitId: string, forkRelationships: ForkRelationship[]) {
   return forkRelationships.filter((r) => r.parentSferaId === orbitId).length;
@@ -98,10 +103,19 @@ function getDensity(orbit: Orbit, childCount: number) {
   return Math.min(1, 0.10 + hasDescription + forkDensity + messageDensity + memberDensity);
 }
 
+function getDataScore(childCount: number, messageCount: number, density: number): number {
+  return messageCount + childCount * 8 + density * 10;
+}
+
+function isDeadCard(orbit: Orbit, childCount: number): boolean {
+  const msgCount = orbit.messageCount || 0;
+  return msgCount === 0 && !orbit.description && childCount === 0;
+}
+
 function getOrganicOffset(index: number) {
   return {
-    x: Math.sin(index * 1.73) * 38,
-    y: Math.cos(index * 1.17) * 28,
+    x: Math.sin(index * 1.73) * 15,
+    y: Math.cos(index * 1.17) * 10,
   };
 }
 
@@ -128,17 +142,18 @@ function getCenteredColumnOffset(index: number, total: number, maxColumns: numbe
 
 function getConstellationPositions(
   orbits: Orbit[],
-  forkRelationships: ForkRelationship[]
+  forkRelationships: ForkRelationship[],
+  hiddenIds: Set<string>
 ) {
   const { childrenMap, parentMap } = buildRelationshipMaps(forkRelationships);
   const orbitIds = new Set(orbits.map((orbit) => orbit.id));
-  const roots = orbits.filter((orbit) => !parentMap.has(orbit.id));
-  const fallbackRoots = roots.length > 0 ? roots : orbits.slice(0, 1);
+  const roots = orbits.filter((orbit) => !parentMap.has(orbit.id) && !hiddenIds.has(orbit.id));
+  const fallbackRoots = roots.length > 0 ? roots : orbits.filter((o) => !hiddenIds.has(o.id)).slice(0, 1);
   const positions = new Map<string, { x: number; y: number }>();
   const visited = new Set<string>();
 
   const placeBranch = (id: string, centerX: number, centerY: number) => {
-    if (visited.has(id) || !orbitIds.has(id)) return;
+    if (visited.has(id) || !orbitIds.has(id) || hiddenIds.has(id)) return;
 
     visited.add(id);
     positions.set(id, {
@@ -146,11 +161,11 @@ function getConstellationPositions(
       y: centerY - NODE_HEIGHT / 2,
     });
 
-    const children = (childrenMap.get(id) || []).filter((childId) =>
-      orbitIds.has(childId)
+    const children = (childrenMap.get(id) || []).filter(
+      (childId) => orbitIds.has(childId) && !hiddenIds.has(childId)
     );
     const maxColumns = children.length > 6 ? 4 : 3;
-    const horizontalGap = children.length > 6 ? 315 : 365;
+    const horizontalGap = children.length > 6 ? 370 : 410;
 
     children.forEach((childId, index) => {
       const row = Math.floor(index / maxColumns);
@@ -159,11 +174,11 @@ function getConstellationPositions(
         children.length,
         maxColumns
       );
-      const stagger = row % 2 === 0 ? 0 : horizontalGap * 0.2;
+      const stagger = row % 2 === 0 ? 0 : horizontalGap * 0.15;
       const childX = centerX + columnOffset * horizontalGap + stagger;
       const childY = centerY + CHILD_Y_GAP + row * ROW_Y_GAP;
 
-      placeBranch(childId, Math.max(170, Math.min(1270, childX)), childY);
+      placeBranch(childId, Math.max(140, Math.min(1300, childX)), childY);
     });
   };
 
@@ -175,19 +190,21 @@ function getConstellationPositions(
       fallbackRoots.length,
       rootMaxColumns
     );
-    const rootX = CANVAS_CENTER_X + columnOffset * 440;
-    const rootY = ROOT_Y + row * 600;
+    const rootX = CANVAS_CENTER_X + columnOffset * 460;
+    const rootY = ROOT_Y + row * 640;
 
     placeBranch(root.id, rootX, rootY);
   });
 
-  const unplacedOrbits = orbits.filter((orbit) => !positions.has(orbit.id));
+  const unplacedOrbits = orbits.filter(
+    (orbit) => !positions.has(orbit.id) && !hiddenIds.has(orbit.id)
+  );
   unplacedOrbits.forEach((orbit, index) => {
     const row = Math.floor(index / 3);
     const columnOffset = getCenteredColumnOffset(index, unplacedOrbits.length, 3);
     positions.set(orbit.id, {
-      x: CANVAS_CENTER_X + columnOffset * 360 - NODE_WIDTH / 2,
-      y: ROOT_Y + 500 + row * 280 - NODE_HEIGHT / 2,
+      x: CANVAS_CENTER_X + columnOffset * 380 - NODE_WIDTH / 2,
+      y: ROOT_Y + 600 + row * 300 - NODE_HEIGHT / 2,
     });
   });
 
@@ -198,21 +215,63 @@ function buildGraph(
   orbits: Orbit[],
   forkRelationships: ForkRelationship[],
   currentUserId?: string,
-  sleepingIds?: Set<string>,
   onSettingsClick?: (orbit: Orbit) => void,
   onDeleteClick?: (orbit: Orbit) => void,
   onSelectOrbit?: (id: string) => void
 ) {
-  const positions = getConstellationPositions(orbits, forkRelationships);
+  const childCountMap = new Map<string, number>();
+  for (const orbit of orbits) {
+    childCountMap.set(orbit.id, getChildCount(orbit.id, forkRelationships));
+  }
 
-  const nodes: Node<OrbitNodeData>[] = orbits.map((orbit, index) => {
+  const deadIds = new Set<string>();
+  const hiddenForkIds = new Set<string>();
+
+  for (const orbit of orbits) {
+    const cc = childCountMap.get(orbit.id) || 0;
+    if (isDeadCard(orbit, cc)) {
+      deadIds.add(orbit.id);
+    }
+  }
+
+  for (const orbit of orbits) {
+    const cc = childCountMap.get(orbit.id) || 0;
+    if (cc >= 4) {
+      const children = forkRelationships
+        .filter((r) => r.parentSferaId === orbit.id)
+        .map((r) => orbits.find((o) => o.id === r.forkedSferaId))
+        .filter(Boolean) as Orbit[];
+
+      const scored = children
+        .map((c) => ({
+          orbit: c,
+          score: getDataScore(
+            childCountMap.get(c.id) || 0,
+            c.messageCount || 0,
+            getDensity(c, childCountMap.get(c.id) || 0)
+          ),
+        }))
+        .sort((a, b) => b.score - a.score);
+
+      const visibleCount = Math.ceil(cc / 2);
+      for (let i = visibleCount; i < scored.length; i++) {
+        hiddenForkIds.add(scored[i].orbit.id);
+      }
+    }
+  }
+
+  const allHidden = new Set<string>([...deadIds, ...hiddenForkIds]);
+  const positions = getConstellationPositions(orbits, forkRelationships, allHidden);
+
+  const visibleOrbits = orbits.filter((o) => !allHidden.has(o.id));
+
+  const nodes: Node<OrbitNodeData>[] = visibleOrbits.map((orbit, index) => {
     const pos = positions.get(orbit.id) || { x: CANVAS_CENTER_X, y: ROOT_Y };
-    const childCount = getChildCount(orbit.id, forkRelationships);
+    const childCount = childCountMap.get(orbit.id) || 0;
     const density = getDensity(orbit, childCount);
     const lifeState = getLifeState(orbit, childCount);
     const offset = getOrganicOffset(index);
     const messageCount = orbit.messageCount || 0;
-    const isSleeping = sleepingIds?.has(orbit.id) ?? false;
 
     return {
       id: orbit.id,
@@ -235,7 +294,7 @@ function buildGraph(
         activityLabel: getActivityLabel(orbit, childCount),
         lifeState,
         density,
-        isSleeping,
+        isSleeping: false,
         recentParticipants: orbit.recentParticipants || [],
         insightBadges: [],
         currentUserId,
@@ -246,20 +305,43 @@ function buildGraph(
     };
   });
 
-  const edges: Edge[] = forkRelationships.map((rel) => ({
-    id: `${rel.parentSferaId}-${rel.forkedSferaId}`,
-    source: rel.parentSferaId,
-    target: rel.forkedSferaId,
-    type: "default",
-    animated: false,
-    style: {
-      stroke: "rgba(120, 113, 108, 0.22)",
-      strokeLinecap: "round",
-      strokeWidth: 1.4,
-    },
-  }));
+  const visibleIds = new Set(visibleOrbits.map((o) => o.id));
 
-  return { nodes, edges };
+  const edges: Edge[] = forkRelationships
+    .filter((rel) => visibleIds.has(rel.parentSferaId) && visibleIds.has(rel.forkedSferaId))
+    .map((rel) => {
+      const parentOrbit = orbits.find((o) => o.id === rel.parentSferaId);
+      const childOrbit = orbits.find((o) => o.id === rel.forkedSferaId);
+      const parentCC = childCountMap.get(rel.parentSferaId) || 0;
+      const childCC = childCountMap.get(rel.forkedSferaId) || 0;
+      const parentLife = parentOrbit ? getLifeState(parentOrbit, parentCC) : "quiet";
+      const childLife = childOrbit ? getLifeState(childOrbit, childCC) : "quiet";
+      const parentColor = LIFE_STATE_COLORS[parentLife] || LIFE_STATE_COLORS.quiet;
+      const childColor = LIFE_STATE_COLORS[childLife] || LIFE_STATE_COLORS.quiet;
+      const parentMsg = parentOrbit?.messageCount || 0;
+      const childMsg = childOrbit?.messageCount || 0;
+      const intensity = Math.min(1, (parentMsg + childMsg) / 30);
+      const opacity = 0.30 + intensity * 0.35;
+      const width = 1.8 + intensity * 1.2;
+
+      return {
+        id: `${rel.parentSferaId}-${rel.forkedSferaId}`,
+        source: rel.parentSferaId,
+        target: rel.forkedSferaId,
+        type: "default",
+        animated: false,
+        style: {
+          stroke: `rgba(${parentColor}, ${opacity})`,
+          strokeWidth: width,
+          strokeLinecap: "round" as const,
+          filter: `drop-shadow(0 0 ${4 + intensity * 6}px rgba(${childColor}, ${opacity * 0.7}))`,
+        },
+      };
+    });
+
+  const archiveCount = deadIds.size + hiddenForkIds.size;
+
+  return { nodes, edges, archiveCount, archiveOrbits: orbits.filter((o) => allHidden.has(o.id)) };
 }
 
 export function OrbitNetworkTimeline({
@@ -271,15 +353,13 @@ export function OrbitNetworkTimeline({
   onSelectOrbit,
 }: OrbitNetworkTimelineProps) {
   const router = useRouter();
-  const { autoArchive, updateSettings } = useUserSettings();
   const [selectedOrbitForSettings, setSelectedOrbitForSettings] =
     useState<Orbit | null>(null);
   const [orbitMembers, setOrbitMembers] = useState<Member[]>([]);
   const [, setIsLoadingMembers] = useState(false);
   const [orbitToDelete, setOrbitToDelete] = useState<Orbit | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [sleepingIds, setSleepingIds] = useState<Set<string>>(new Set());
-  const [awakeningIds, setAwakeningIds] = useState<Set<string>>(new Set());
+  const [showArchive, setShowArchive] = useState(false);
   const graphRef = useRef<HTMLDivElement>(null);
 
   const handleSelectOrbit = useCallback(
@@ -302,7 +382,6 @@ export function OrbitNetworkTimeline({
     [router]
   );
 
-  // URL restore on mount
   useEffect(() => {
     if (selectedOrbitId) return;
     const path = window.location.pathname;
@@ -312,7 +391,6 @@ export function OrbitNetworkTimeline({
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Escape key handler
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && selectedOrbitId) {
@@ -322,72 +400,6 @@ export function OrbitNetworkTimeline({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedOrbitId, handleCloseOrbit]);
-
-  // Auto-archive: detect off-screen cards
-  useEffect(() => {
-    if (!autoArchive || orbits.length < 20) {
-      setSleepingIds((prev) => (prev.size > 0 ? new Set() : prev));
-      return;
-    }
-
-    const checkVisibility = () => {
-      const viewportHeight = window.innerHeight;
-      const scrollY = window.scrollY;
-      const topThreshold = scrollY - 300;
-      const bottomThreshold = scrollY + viewportHeight + 300;
-
-      const newSleeping = new Set<string>();
-      for (const orbit of orbits) {
-        const el = document.querySelector(`[data-id="${orbit.id}"]`);
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          const absoluteTop = rect.top + scrollY;
-          const absoluteBottom = rect.top + scrollY + rect.height;
-
-          if (absoluteBottom < topThreshold || absoluteTop > bottomThreshold) {
-            newSleeping.add(orbit.id);
-          }
-        }
-      }
-
-      setSleepingIds((prev) => {
-        if (prev.size === newSleeping.size && [...newSleeping].every((id) => prev.has(id))) {
-          return prev;
-        }
-        return newSleeping;
-      });
-    };
-
-    checkVisibility();
-    const interval = setInterval(checkVisibility, 3000);
-    window.addEventListener("scroll", checkVisibility, { passive: true });
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("scroll", checkVisibility);
-    };
-  }, [autoArchive, orbits]);
-
-  // Awaken sleeping cards
-  const handleAwaken = useCallback(() => {
-    const sleeping = [...sleepingIds];
-    if (sleeping.length === 0) return;
-
-    const count = Math.min(4, sleeping.length);
-    const shuffled = sleeping.sort(() => Math.random() - 0.5);
-    const toAwaken = shuffled.slice(0, count);
-
-    setAwakeningIds(new Set(toAwaken));
-
-    setTimeout(() => {
-      setSleepingIds((prev) => {
-        const next = new Set(prev);
-        for (const id of toAwaken) next.delete(id);
-        return next;
-      });
-      setAwakeningIds(new Set());
-    }, 700);
-  }, [sleepingIds]);
 
   const handleOpenSettings = async (orbit: Orbit) => {
     setSelectedOrbitForSettings(orbit);
@@ -442,54 +454,31 @@ export function OrbitNetworkTimeline({
     }
   };
 
-  const { initialNodes, initialEdges } = useMemo(() => {
-    const { nodes, edges } = buildGraph(
+  const { nodes: initialNodes, edges: initialEdges, archiveCount, archiveOrbits } = useMemo(() => {
+    return buildGraph(
       orbits,
       forkRelationships,
       currentUserId,
-      undefined,
       handleOpenSettings,
       setOrbitToDelete,
       handleSelectOrbit
     );
-    return { initialNodes: nodes, initialEdges: edges };
   }, [orbits, forkRelationships, currentUserId, handleSelectOrbit]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
   useEffect(() => {
-    setNodes((prev) => {
-      const needsSleepingPatch = prev.some((n) => {
-        const isSleeping = sleepingIds.has(n.id);
-        return n.data.isSleeping !== isSleeping;
-      });
-
-      if (prev.length !== initialNodes.length) {
-        return initialNodes.map((n) => ({
-          ...n,
-          data: { ...n.data, isSleeping: autoArchive && sleepingIds.has(n.id) },
-        }));
-      }
-
-      if (needsSleepingPatch) {
-        return prev.map((n) => ({
-          ...n,
-          data: { ...n.data, isSleeping: autoArchive && sleepingIds.has(n.id) },
-        }));
-      }
-
-      return prev;
-    });
+    setNodes(initialNodes);
     setEdges(initialEdges);
-  }, [initialNodes, initialEdges, sleepingIds, autoArchive, setNodes, setEdges]);
+  }, [initialNodes, initialEdges, setNodes, setEdges]);
 
   if (orbits.length === 0) {
     return (
       <div className="relative flex min-h-screen items-center justify-center px-6">
         <div className="pointer-events-none absolute h-72 w-72 rounded-full bg-violet-200/20 blur-3xl" />
         <div className="relative max-w-sm text-center">
-          <div className="mx-auto mb-8 h-3 w-3 rounded-full bg-violet-300 shadow-[0_0_40px_rgba(168,85,247,0.45)] orbital-drift" />
+          <div className="mx-auto mb-8 h-3 w-3 rounded-full bg-violet-300 shadow-[0_0_40px_rgba(168,85,247,0.45)]" />
           <p className="mb-3 text-[11px] uppercase tracking-[0.34em] text-neutral-400">
             Пустая вселенная
           </p>
@@ -501,7 +490,6 @@ export function OrbitNetworkTimeline({
     );
   }
 
-  // The canvas grows with the constellation, leaving quiet space around ideas.
   let minX = Infinity,
     maxX = -Infinity,
     minY = Infinity,
@@ -512,45 +500,50 @@ export function OrbitNetworkTimeline({
     minY = Math.min(minY, node.position.y);
     maxY = Math.max(maxY, node.position.y + NODE_HEIGHT);
   }
-  const graphHeight = Math.max(760, maxY - minY + 280);
-  const sleepingCount = autoArchive ? sleepingIds.size : 0;
+  const graphHeight = Math.max(760, maxY - minY + 320);
 
   return (
     <>
-      <div className="pointer-events-none absolute left-[12%] top-32 h-2 w-2 rounded-full bg-sky-200/80 blur-[1px] orbital-drift" />
-      <div className="pointer-events-none absolute right-[18%] top-[38rem] h-1.5 w-1.5 rounded-full bg-violet-200/80 blur-[1px] orbital-drift-slow" />
-      <div className="pointer-events-none absolute left-[68%] top-[18rem] h-1 w-1 rounded-full bg-emerald-200/80 blur-[1px] orbital-drift" />
-
       {/* Stats bar */}
       <div className="pointer-events-auto fixed bottom-6 left-6 z-20 hidden items-center gap-2 md:flex">
         <div className="max-w-xs rounded-full border border-white/70 bg-white/55 px-4 py-2 text-[11px] text-neutral-400 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
-          {orbits.length} {orbits.length === 1 ? "мысль" : "живых точек"} · {forkRelationships.length} связей · {orbits.reduce((sum, o) => sum + (o.messageCount || 0), 0)} сообщений
-        </div>
-        <button
-          className="flex items-center gap-1.5 rounded-full border border-white/70 bg-white/55 px-3 py-2 text-[11px] text-neutral-400 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl transition-all hover:bg-white/70 hover:text-neutral-600"
-          onClick={() => updateSettings({ autoArchive: !autoArchive })}
-          title={autoArchive ? "Само-архивация включена" : "Само-архивация выключена"}
-        >
-          {autoArchive ? (
-            <Archive className="h-3 w-3" />
-          ) : (
-            <ArchiveRestore className="h-3 w-3" />
+          {nodes.length} {nodes.length === 1 ? "мысль" : "живых точек"} · {edges.length} связей · {orbits.reduce((sum, o) => sum + (o.messageCount || 0), 0)} сообщений
+          {archiveCount > 0 && (
+            <span className="ml-1.5 text-neutral-300">· {archiveCount} в архиве</span>
           )}
-          {autoArchive ? "архив" : "все видно"}
-        </button>
+        </div>
       </div>
 
-      {/* Awaken button */}
-      {sleepingCount > 0 && (
-        <div className="pointer-events-auto fixed bottom-6 left-1/2 z-20 -translate-x-1/2">
-          <Button
-            className="gap-2 rounded-full border border-white/70 bg-white/75 px-5 text-[12px] text-neutral-600 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all hover:bg-white hover:shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
-            onClick={handleAwaken}
-            variant="ghost"
+      {/* Archive card */}
+      {archiveCount > 0 && (
+        <div className="pointer-events-auto fixed bottom-6 right-6 z-20">
+          <button
+            className="flex items-center gap-2 rounded-[18px] border border-white/50 bg-white/45 px-4 py-3 text-[12px] text-neutral-500 shadow-[0_14px_40px_rgba(15,23,42,0.07)] backdrop-blur-2xl"
+            onClick={() => setShowArchive(!showArchive)}
           >
-            <Sparkles className="h-3.5 w-3.5 text-violet-400" />
-            Разбудить ещё {sleepingCount}
-          </Button>
+            <Archive className="h-3.5 w-3.5" />
+            {showArchive ? "Скрыть архив" : `${archiveCount} в архиве`}
+          </button>
+        </div>
+      )}
+
+      {/* Expanded archive panel */}
+      {showArchive && archiveOrbits.length > 0 && (
+        <div className="pointer-events-auto fixed inset-x-6 bottom-20 z-20 max-h-[40vh] overflow-y-auto rounded-[20px] border border-white/50 bg-white/60 p-4 shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-2xl">
+          <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-neutral-400">
+            Архив · {archiveOrbits.length} карточек
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {archiveOrbits.map((orbit) => (
+              <button
+                key={orbit.id}
+                className="rounded-[14px] border border-white/40 bg-white/50 px-3 py-2 text-left text-[12px] text-neutral-600 backdrop-blur-xl"
+                onClick={() => handleSelectOrbit(orbit.id)}
+              >
+                {orbit.title}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
