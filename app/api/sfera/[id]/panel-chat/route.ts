@@ -81,7 +81,7 @@ function getLastUserText(messages: UIMessage[]) {
     return "";
   }
 
-  return lastMessage.parts
+  return (lastMessage.parts ?? [])
     .filter((part) => part.type === "text")
     .map((part) => part.text)
     .join("\n")
