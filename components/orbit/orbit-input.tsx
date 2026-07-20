@@ -341,12 +341,21 @@ export function OrbitInput({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            messages: [{ role: "user", content: messageText }],
+            messages: [
+              {
+                role: "user",
+                parts: [{ type: "text", text: messageText }],
+              },
+            ],
           }),
         });
 
         if (!response.ok) {
-          throw new Error("Failed to send message to Avrora");
+          const errorPayload = await response.json().catch(() => ({}));
+          throw new Error(
+            (errorPayload as { error?: string }).error ||
+              "Failed to send message to Avrora",
+          );
         }
 
         // Clear form

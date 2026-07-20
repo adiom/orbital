@@ -22,7 +22,7 @@ export const cfKristinaAgent: AIAgent = {
   buildSystemPrompt: () => "", // not used for external agents
 
   externalMcp: {
-    endpoint: "http://localhost:31337/api/mcp",
+    endpoint: "https://kristina-black.vercel.app/api/mcp",
   },
 
   rateLimit: {
