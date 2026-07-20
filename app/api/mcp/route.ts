@@ -170,7 +170,7 @@ export async function POST(request: NextRequest) {
 
     // Process the request based on method
     let result: any;
-    let statusCode = 200;
+    const statusCode = 200;
     let errorMessage: string | undefined;
 
     try {

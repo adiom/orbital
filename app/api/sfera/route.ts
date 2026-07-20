@@ -207,7 +207,7 @@ export async function POST(request: Request) {
 
     // If first message content is provided, create it and trigger AI agents
     let firstMessage: unknown = null;
-    let agentMessages: Array<{ agentId: string; messageId: string }> = [];
+    const agentMessages: Array<{ agentId: string; messageId: string }> = [];
 
     const hasContent = content && content.trim().length > 0;
     const hasAttachments = attachments && attachments.length > 0;

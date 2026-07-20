@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Plus, User } from "lucide-react";
+import Link from "next/link";
 import { redirect, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
@@ -86,14 +87,26 @@ export default function HomePage() {
             Orbital
           </div>
 
-          <Button
-            className="fixed right-5 top-5 z-30 rounded-full border border-white/70 bg-white/75 px-5 text-neutral-800 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all hover:bg-white hover:shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
-            onClick={() => setIsCreateOpen(true)}
-            variant="ghost"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Создать...
-          </Button>
+          <div className="fixed right-5 top-5 z-30 flex items-center gap-2">
+            <Button
+              className="rounded-full border border-white/70 bg-white/75 px-5 text-neutral-800 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all hover:bg-white hover:shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
+              onClick={() => setIsCreateOpen(true)}
+              variant="ghost"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Создать...
+            </Button>
+
+            {session?.user?.id ? (
+              <Link
+                aria-label="Мой профиль"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/75 text-neutral-600 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all hover:bg-white hover:text-neutral-900"
+                href={`/u/${session.user.id}`}
+              >
+                <User className="h-4 w-4" />
+              </Link>
+            ) : null}
+          </div>
 
           <OrbitCreatePrompt
             isOpen={isCreateOpen}

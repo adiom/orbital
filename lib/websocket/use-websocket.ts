@@ -172,7 +172,7 @@ export function useWebSocket({
     return () => {
       disconnect();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [connect, disconnect]);
 
   // Ping/pong heartbeat

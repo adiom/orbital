@@ -398,3 +398,73 @@
     transition: none;
   }
 }
+
+/* Profile — personal gravitational field.
+   The signature element: a person as the center of their constellation.
+   Motion is slow and ambient; the page assembles itself once on load. */
+@keyframes profile-orbit-drift {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(6px, -5px);
+  }
+  50% {
+    transform: translate(-4px, 5px);
+  }
+  75% {
+    transform: translate(-6px, -3px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes profile-star-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.96;
+  }
+}
+
+@keyframes profile-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.profile-orbit-dot {
+  animation: profile-orbit-drift 18s ease-in-out infinite;
+  will-change: transform;
+}
+
+.profile-star {
+  animation: profile-star-breathe 7s ease-in-out infinite;
+}
+
+.profile-enter {
+  animation: profile-rise 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.profile-enter-late {
+  animation: profile-rise 900ms cubic-bezier(0.22, 1, 0.36, 1) 260ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-orbit-dot,
+  .profile-star,
+  .profile-enter,
+  .profile-enter-late {
+    animation: none;
+  }
+}
