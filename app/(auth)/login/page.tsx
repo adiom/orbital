@@ -1,12 +1,12 @@
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import type { JSX } from "react";
 import { Suspense, useEffect, useState } from "react";
 import { MagicLinkForm } from "@/components/magic-link-form";
-import { Button } from "@/components/ui/button";
 
 function LoginContent(): JSX.Element {
   const router = useRouter();
@@ -15,6 +15,9 @@ function LoginContent(): JSX.Element {
   const { update: updateSession } = useSession();
   const [loginTriggered, setLoginTriggered] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+
+  const magicToken = searchParams.get("magic_token");
+  const isAutoLogin = Boolean(magicToken);
 
   useEffect(() => {
     const rawCookies = document.cookie.split(";");
@@ -35,12 +38,9 @@ function LoginContent(): JSX.Element {
   }, []);
 
   useEffect(() => {
-    const magicToken = searchParams.get("magic_token");
-
     if (magicToken && !loginTriggered) {
       setLoginTriggered(true);
 
-      // Верифицируем magic token через signIn
       signIn("credentials", {
         token: magicToken,
         redirect: false,
@@ -49,7 +49,6 @@ function LoginContent(): JSX.Element {
           if (result?.ok) {
             await updateSession();
 
-            // Try to start onboarding — if already completed, API returns error
             try {
               const res = await fetch("/api/onboarding/start", {
                 method: "POST",
@@ -72,11 +71,21 @@ function LoginContent(): JSX.Element {
           console.error("Error verifying magic token:", error);
         });
     }
-  }, [searchParams, loginTriggered, updateSession, router]);
+  }, [magicToken, loginTriggered, updateSession, router]);
+
+  if (isAutoLogin) {
+    return (
+      <div className="relative flex h-dvh w-screen items-center justify-center overflow-hidden bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Вход...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative flex h-dvh w-screen items-start justify-center overflow-hidden bg-background pt-12 md:items-center md:pt-0">
-      {/* Background animations around login form */}
       <motion.div
         animate={{ opacity: isFocused ? 1 : 0.3 }}
         className="absolute z-0 flex h-full w-full items-center justify-center"
@@ -94,7 +103,7 @@ function LoginContent(): JSX.Element {
       >
         <motion.div
           animate={{
-            borderColor: isFocused ? "#f97316" : "#fed7aa", // Orange-500 : Orange-200
+            borderColor: isFocused ? "#f97316" : "#fed7aa",
             boxShadow: isFocused
               ? "0 20px 25px -5px rgba(249, 115, 22, 0.1), 0 10px 10px -5px rgba(249, 115, 22, 0.04)"
               : "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",

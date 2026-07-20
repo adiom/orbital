@@ -150,5 +150,5 @@
     "typescript-eslint": "^8.60.1",
     "vitest": "^4.0.14"
   },
-  "packageManager": "pnpm@11.9.0"
+  "packageManager": "pnpm@11.15.1"
 }

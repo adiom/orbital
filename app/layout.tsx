@@ -1,4 +1,5 @@
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/next"
 
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
@@ -13,6 +14,7 @@ export default function RootLayout({
       <body className="antialiased">
         <Toaster position="top-center" />
         <SessionProvider>{children}</SessionProvider>
+        <Analytics/>
       </body>
     </html>
   );

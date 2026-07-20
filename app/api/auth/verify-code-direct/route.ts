@@ -12,7 +12,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Создать сессию через NextAuth - вся логика в auth.ts
     const result = await signIn("credentials", {
       token: code,
       email,
@@ -27,7 +26,13 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.type === "CredentialsSignin" || error?.code === "credentials") {
+      return NextResponse.json(
+        { success: false, error: "Неверный или просроченный код" },
+        { status: 401 }
+      );
+    }
     console.error("Error verifying code:", error);
     return NextResponse.json(
       { success: false, error: "Internal server error" },
