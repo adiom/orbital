@@ -37,53 +37,38 @@ export async function GET(_request: Request, context: RouteContext) {
   const { id } = await context.params;
 
   try {
-    // Check membership
+    // Check membership (must be first)
     const membership = await checkSferaMembership(id, session.user.id);
     if (!membership) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get Sfera details
-    const [sferaData] = await db
-      .select()
-      .from(sfera)
-      .where(eq(sfera.id, id))
-      .limit(1);
-
-    if (!sferaData) {
-      return Response.json({ error: "Sfera not found" }, { status: 404 });
-    }
-
-    // Check if this is a forked Sfera and get parent info
-    const [forkInfo] = await db
-      .select({
+    // Get Sfera details, fork info, members, and messages in parallel
+    const [sferaData, forkInfo, members, messages] = await Promise.all([
+      // Sfera details
+      db.select().from(sfera).where(eq(sfera.id, id)).limit(1).then((rows) => rows[0]),
+      // Fork info
+      db.select({
         parentSferaId: sferaForkedSfera.parentSferaId,
         parentSferaTitle: sfera.title,
       })
-      .from(sferaForkedSfera)
-      .innerJoin(sfera, eq(sferaForkedSfera.parentSferaId, sfera.id))
-      .where(eq(sferaForkedSfera.forkedSferaId, id))
-      .limit(1);
-
-    const parentSfera = forkInfo
-      ? { id: forkInfo.parentSferaId, title: forkInfo.parentSferaTitle }
-      : null;
-
-    // Get members
-    const members = await db
-      .select({
+        .from(sferaForkedSfera)
+        .innerJoin(sfera, eq(sferaForkedSfera.parentSferaId, sfera.id))
+        .where(eq(sferaForkedSfera.forkedSferaId, id))
+        .limit(1)
+        .then((rows) => rows[0] || null),
+      // Members
+      db.select({
         userId: sferaMember.userId,
         role: sferaMember.role,
         joinedAt: sferaMember.joinedAt,
         email: user.email,
       })
-      .from(sferaMember)
-      .innerJoin(user, eq(sferaMember.userId, user.id))
-      .where(eq(sferaMember.sferaId, id));
-
-    // Get messages with fork information
-    const messages = await db
-      .select({
+        .from(sferaMember)
+        .innerJoin(user, eq(sferaMember.userId, user.id))
+        .where(eq(sferaMember.sferaId, id)),
+      // Messages with fork information
+      db.select({
         id: sferaMessage.id,
         content: sferaMessage.content,
         userId: sferaMessage.userId,
@@ -96,15 +81,24 @@ export async function GET(_request: Request, context: RouteContext) {
         isGenerating: sferaMessage.isGenerating,
         createdAt: sferaMessage.createdAt,
       })
-      .from(sferaMessage)
-      .innerJoin(user, eq(sferaMessage.userId, user.id))
-      .leftJoin(
-        sferaForkedSfera,
-        eq(sferaMessage.id, sferaForkedSfera.parentMessageId)
-      )
-      .where(eq(sferaMessage.sferaId, id))
-      .orderBy(desc(sferaMessage.createdAt))
-      .limit(50);
+        .from(sferaMessage)
+        .innerJoin(user, eq(sferaMessage.userId, user.id))
+        .leftJoin(
+          sferaForkedSfera,
+          eq(sferaMessage.id, sferaForkedSfera.parentMessageId)
+        )
+        .where(eq(sferaMessage.sferaId, id))
+        .orderBy(desc(sferaMessage.createdAt))
+        .limit(50),
+    ]);
+
+    if (!sferaData) {
+      return Response.json({ error: "Sfera not found" }, { status: 404 });
+    }
+
+    const parentSfera = forkInfo
+      ? { id: forkInfo.parentSferaId, title: forkInfo.parentSferaTitle }
+      : null;
 
     return Response.json({
       sfera: sferaData,

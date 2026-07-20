@@ -10,30 +10,6 @@ type ArtifactsRendererProps = {
 };
 
 /**
- * Get icon for artifact kind
- */
-const getArtifactIcon = (kind: DocumentArtifact["kind"]) => {
-  switch (kind) {
-    case "text":
-      return FileText;
-    case "code":
-      return Code2;
-    case "sheet":
-      return Table;
-    case "image":
-      return Image;
-    case "mini-app":
-      return AppWindow;
-    case "chart":
-      return BarChart3;
-    case "game":
-      return Gamepad2;
-    default:
-      return FileText;
-  }
-};
-
-/**
  * Get color class for artifact kind
  */
 const getArtifactColor = (kind: DocumentArtifact["kind"]): string => {
@@ -81,6 +57,16 @@ const getArtifactName = (kind: DocumentArtifact["kind"]): string => {
   }
 };
 
+const ARTIFACT_ICONS: Record<DocumentArtifact["kind"], React.ComponentType<{ className?: string }>> = {
+  text: FileText,
+  code: Code2,
+  sheet: Table,
+  image: Image,
+  "mini-app": AppWindow,
+  chart: BarChart3,
+  game: Gamepad2,
+};
+
 /**
  * Single Artifact Card
  */
@@ -91,7 +77,7 @@ function ArtifactCard({
   artifact: DocumentArtifact;
   className?: string;
 }) {
-  const Icon = getArtifactIcon(artifact.kind);
+  const Icon = ARTIFACT_ICONS[artifact.kind] ?? FileText;
   const colorClass = getArtifactColor(artifact.kind);
   const displayName = getArtifactName(artifact.kind);
 

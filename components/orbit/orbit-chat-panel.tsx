@@ -87,11 +87,21 @@ export function OrbitChatPanel({
       return;
     }
 
-    const intervalId = window.setInterval(() => {
-      void fetchData();
-    }, 1200);
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let pollCount = 0;
+    const BASE_DELAY = 1200;
+    const MAX_DELAY = 5000;
 
-    return () => window.clearInterval(intervalId);
+    const poll = () => {
+      void fetchData();
+      pollCount++;
+      const delay = Math.min(BASE_DELAY * Math.pow(1.5, pollCount), MAX_DELAY);
+      timeoutId = setTimeout(poll, delay);
+    };
+
+    timeoutId = setTimeout(poll, BASE_DELAY);
+
+    return () => clearTimeout(timeoutId);
   }, [fetchData, messages]);
 
   const handleFork = useCallback(() => {
@@ -204,12 +214,17 @@ export function OrbitChatPanel({
           </div>
         ) : (
           <>
-            {messages.map((message) => {
-              const parentMessage = message.parentMessageId
-                ? messages.find((m) => m.id === message.parentMessageId)
-                : null;
+            {(() => {
+              const parentMessageMap = new Map(
+                messages
+                  .filter((m) => m.parentMessageId)
+                  .map((m) => [
+                    m.id,
+                    messages.find((p) => p.id === m.parentMessageId),
+                  ])
+              );
 
-              return (
+              return messages.map((message) => (
                 <MessageRenderer
                   key={message.id}
                   canModerate={
@@ -222,10 +237,10 @@ export function OrbitChatPanel({
                   onFork={handleFork}
                   onReply={handleReply}
                   orbitId={orbitId}
-                  parentMessage={parentMessage}
+                  parentMessage={parentMessageMap.get(message.id) ?? null}
                 />
-              );
-            })}
+              ));
+            })()}
             <div ref={messagesEndRef} />
           </>
         )}

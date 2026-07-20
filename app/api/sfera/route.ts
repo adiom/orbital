@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { auth } from "@/app/(auth)/auth";
 import { detectMentionedAgents } from "@/lib/ai/agents/detector";
 import { streamAgentResponse } from "@/lib/ai/agents/base-streamer";
@@ -13,15 +13,19 @@ import {
 import { checkAvroraRateLimit } from "@/lib/redis/rate-limiter";
 
 // GET /api/sfera - List all Sferas for current user with fork relationships and activity
-export async function GET(_request: Request) {
+export async function GET(request: Request) {
   const session = await auth();
 
   if (!session || !session.user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const url = new URL(request.url);
+  const limit = Math.min(parseInt(url.searchParams.get("limit") || "50"), 100);
+  const cursor = url.searchParams.get("cursor"); // sfera ID to paginate after
+
   try {
-    const userSferas = await db
+    let query = db
       .select({
         id: sfera.id,
         title: sfera.title,
@@ -37,7 +41,45 @@ export async function GET(_request: Request) {
       .from(sfera)
       .innerJoin(sferaMember, eq(sfera.id, sferaMember.sferaId))
       .where(eq(sferaMember.userId, session.user.id))
-      .orderBy(desc(sfera.updatedAt));
+      .orderBy(desc(sfera.updatedAt))
+      .limit(limit + 1); // Fetch one extra to determine hasMore
+
+    if (cursor) {
+      // Get cursor's updatedAt to paginate after it
+      const [cursorSfera] = await db
+        .select({ updatedAt: sfera.updatedAt })
+        .from(sfera)
+        .where(eq(sfera.id, cursor))
+        .limit(1);
+
+      if (cursorSfera) {
+        query = db
+          .select({
+            id: sfera.id,
+            title: sfera.title,
+            description: sfera.description,
+            ownerId: sfera.ownerId,
+            visibility: sfera.visibility,
+            createdAt: sfera.createdAt,
+            updatedAt: sfera.updatedAt,
+            positionX: sfera.positionX,
+            positionY: sfera.positionY,
+            role: sferaMember.role,
+          })
+          .from(sfera)
+          .innerJoin(sferaMember, eq(sfera.id, sferaMember.sferaId))
+          .where(
+            and(
+              eq(sferaMember.userId, session.user.id),
+              lt(sfera.updatedAt, cursorSfera.updatedAt)
+            )
+          )
+          .orderBy(desc(sfera.updatedAt))
+          .limit(limit + 1);
+      }
+    }
+
+    const userSferas = await query;
 
     const sferaIds = userSferas.map((s) => s.id);
 
@@ -134,9 +176,15 @@ export async function GET(_request: Request) {
       recentParticipants: participantsMap.get(sfera.id) || [],
     }));
 
+    const hasMore = sferasWithActivity.length > limit;
+    const items = hasMore ? sferasWithActivity.slice(0, limit) : sferasWithActivity;
+    const nextCursor = hasMore ? items[items.length - 1]?.id : null;
+
     return Response.json({
-      sferas: sferasWithActivity,
+      sferas: items,
       forkRelationships,
+      nextCursor,
+      hasMore,
     });
   } catch (error) {
     console.error("Failed to fetch sferas:", error);

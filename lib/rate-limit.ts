@@ -1,16 +1,38 @@
-// Простой in-memory rate limiter
+// Rate limiter with periodic cleanup to prevent memory leaks.
+// For production, use lib/redis/rate-limiter.ts instead.
+// This module is kept for backward compatibility with non-Redis endpoints.
+
 const attempts = new Map<string, { count: number; resetTime: number }>();
+
+const CLEANUP_INTERVAL_MS = 60_000; // Clean up every 60 seconds
+
+let lastCleanup = Date.now();
+
+function cleanup() {
+  const now = Date.now();
+  if (now - lastCleanup < CLEANUP_INTERVAL_MS) {
+    return;
+  }
+  lastCleanup = now;
+
+  for (const [key, record] of attempts) {
+    if (now > record.resetTime) {
+      attempts.delete(key);
+    }
+  }
+}
 
 export function checkRateLimit(
   key: string,
   maxAttempts = 5,
   windowMs: number = 15 * 60 * 1000 // 15 минут
 ): { allowed: boolean; remaining: number; resetTime: number } {
+  cleanup();
+
   const now = Date.now();
   const record = attempts.get(key);
 
   if (!record || now > record.resetTime) {
-    // Новое окно или первая попытка
     attempts.set(key, { count: 1, resetTime: now + windowMs });
     return {
       allowed: true,
@@ -23,7 +45,6 @@ export function checkRateLimit(
     return { allowed: false, remaining: 0, resetTime: record.resetTime };
   }
 
-  // Увеличиваем счетчик
   record.count++;
   attempts.set(key, record);
 

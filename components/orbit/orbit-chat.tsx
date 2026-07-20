@@ -229,7 +229,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     };
   }, [fetchOrbit]);
 
-  // Poll for message updates when there are generating messages
+  // Poll for message updates when there are generating messages (exponential backoff)
   useEffect(() => {
     const hasGeneratingMessages = messages.some(
       (m) => (m as any).isGenerating === true
@@ -239,13 +239,22 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
       return;
     }
 
-    // Poll every 500ms while messages are generating
-    const pollInterval = setInterval(() => {
+    let timeoutId: ReturnType<typeof setTimeout>;
+    let pollCount = 0;
+    const BASE_DELAY = 1000;
+    const MAX_DELAY = 5000;
+
+    const poll = () => {
       fetchOrbit();
-    }, 500);
+      pollCount++;
+      const delay = Math.min(BASE_DELAY * Math.pow(1.5, pollCount), MAX_DELAY);
+      timeoutId = setTimeout(poll, delay);
+    };
+
+    timeoutId = setTimeout(poll, BASE_DELAY);
 
     return () => {
-      clearInterval(pollInterval);
+      clearTimeout(timeoutId);
     };
   }, [messages, fetchOrbit]);
 
@@ -258,7 +267,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     // Small delay to ensure DOM is updated
     const timer = setTimeout(scrollToBottom, 100);
     return () => clearTimeout(timer);
-  });
+  }, [messages]);
 
   const handleMessageSent = (
     userMessage?: Message,
@@ -431,12 +440,17 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
             </div>
           ) : (
             <>
-              {messages.map((message) => {
-                const parentMessage = message.parentMessageId
-                  ? messages.find((m) => m.id === message.parentMessageId)
-                  : null;
+              {(() => {
+                const parentMessageMap = new Map(
+                  messages
+                    .filter((m) => m.parentMessageId)
+                    .map((m) => [
+                      m.id,
+                      messages.find((p) => p.id === m.parentMessageId),
+                    ])
+                );
 
-                return (
+                return messages.map((message) => (
                   <MessageRenderer
                     canModerate={Boolean(isOwnerOrAdmin)}
                     currentUserId={currentUserId}
@@ -447,10 +461,10 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
                     onFork={handleFork}
                     onReply={() => setReplyingTo(message)}
                     orbitId={orbitId}
-                    parentMessage={parentMessage}
+                    parentMessage={parentMessageMap.get(message.id) ?? null}
                   />
-                );
-              })}
+                ));
+              })()}
 
               {/* Invisible anchor for auto-scroll */}
               <div ref={messagesEndRef} />

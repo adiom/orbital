@@ -1,7 +1,7 @@
 import "server-only";
 
 import { streamText } from "ai";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { auth } from "@/app/(auth)/auth";
 import { streamAgentResponse } from "@/lib/ai/agents/base-streamer";
 import { streamExternalMcpAgentResponse } from "@/lib/ai/agents/external-mcp-streamer";
@@ -149,7 +149,7 @@ export async function POST(request: Request, context: RouteContext) {
       .where(eq(sfera.id, sferaId));
 
     // Detect mentioned AI agents
-    const mentionedAgents = detectMentionedAgents(content);
+    let mentionedAgents = detectMentionedAgents(content);
 
     // Auto-add onboarding agent if this is an onboarding sfera
     // (onboarding agent is a member of the sfera)
@@ -191,23 +191,15 @@ export async function POST(request: Request, context: RouteContext) {
     // Track agent messages for response
     const agentMessages: Array<{ agentId: string; messageId: string }> = [];
 
-    // Create empty messages for each mentioned agent
-    for (const agent of mentionedAgents) {
-      // Check rate limit (only for agents with rate limits)
-      if (agent.rateLimit) {
-        const rateLimitResult = await checkAvroraRateLimit(
-          session.user.id,
-          sferaId
-        );
-
-        if (!rateLimitResult.allowed) {
-          console.warn(`⚠️ Rate limit exceeded for ${agent.name}:`, {
-            userId: session.user.id,
-            sferaId,
-            error: rateLimitResult.error,
-          });
-
-          // Post rate limit message
+    // Batch: check rate limit once per user/sfera pair
+    const agentsWithRateLimit = mentionedAgents.filter((a) => a.rateLimit);
+    if (agentsWithRateLimit.length > 0) {
+      const rateLimitResult = await checkAvroraRateLimit(
+        session.user.id,
+        sferaId
+      );
+      if (!rateLimitResult.allowed) {
+        for (const agent of agentsWithRateLimit) {
           await db.insert(sferaMessage).values({
             sferaId,
             userId: agent.userId,
@@ -219,71 +211,81 @@ export async function POST(request: Request, context: RouteContext) {
             createdAt: new Date(),
             updatedAt: new Date(),
           });
-
-          continue; // Skip this agent
         }
+        mentionedAgents = mentionedAgents.filter((a) => !a.rateLimit);
       }
+    }
 
-      // Ensure agent user exists
-      const [agentUser] = await db
-        .select()
+    // Batch: ensure all agent users exist
+    const agentUserIds = mentionedAgents.map((a) => a.userId);
+    if (agentUserIds.length > 0) {
+      const existingUsers = await db
+        .select({ id: user.id })
         .from(user)
-        .where(eq(user.id, agent.userId))
-        .limit(1);
+        .where(inArray(user.id, agentUserIds));
+      const existingUserIds = new Set(existingUsers.map((u) => u.id));
 
-      if (!agentUser) {
-        console.log(`➕ Creating user for ${agent.name}...`);
-        await db.insert(user).values({
-          id: agent.userId,
-          email: agent.email,
-        });
+      const usersToCreate = mentionedAgents
+        .filter((a) => !existingUserIds.has(a.userId))
+        .map((a) => ({ id: a.userId, email: a.email }));
+
+      if (usersToCreate.length > 0) {
+        await db.insert(user).values(usersToCreate);
       }
+    }
 
-      // Ensure agent is member of Sfera
-      const [agentMembership] = await db
-        .select()
-        .from(sferaMember)
-        .where(
-          and(
-            eq(sferaMember.sferaId, sferaId),
-            eq(sferaMember.userId, agent.userId)
-          )
+    // Batch: ensure all agents are members
+    const existingMemberships = await db
+      .select({ userId: sferaMember.userId })
+      .from(sferaMember)
+      .where(
+        and(
+          eq(sferaMember.sferaId, sferaId),
+          inArray(sferaMember.userId, agentUserIds)
         )
-        .limit(1);
+      );
+    const existingMemberIds = new Set(
+      existingMemberships.map((m) => m.userId)
+    );
 
-      if (!agentMembership) {
-        console.log(`➕ Adding ${agent.name} to Sfera...`);
-        await db.insert(sferaMember).values({
-          sferaId,
-          userId: agent.userId,
-          role: "member",
-          joinedAt: new Date(),
-        });
-      }
+    const membershipsToCreate = mentionedAgents
+      .filter((a) => !existingMemberIds.has(a.userId))
+      .map((a) => ({
+        sferaId,
+        userId: a.userId,
+        role: "member" as const,
+        joinedAt: new Date(),
+      }));
 
-      // Create empty message for agent (will be filled by streaming)
-      const [agentMessage] = await db
-        .insert(sferaMessage)
-        .values({
-          sferaId,
-          userId: agent.userId,
-          content: "", // Empty initially
-          parentMessageId: userMessage.id,
-          isForked: false,
-          forkCount: 0,
-          isGenerating: true, // Mark as generating
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning();
+    if (membershipsToCreate.length > 0) {
+      await db.insert(sferaMember).values(membershipsToCreate);
+    }
 
+    // Create empty messages for each agent (batch insert)
+    const agentMessageInserts = mentionedAgents.map((agent) => ({
+      sferaId,
+      userId: agent.userId,
+      content: "",
+      parentMessageId: userMessage.id,
+      isForked: false,
+      forkCount: 0,
+      isGenerating: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+
+    const insertedAgentMessages = await db
+      .insert(sferaMessage)
+      .values(agentMessageInserts)
+      .returning();
+
+    for (let i = 0; i < insertedAgentMessages.length; i++) {
       agentMessages.push({
-        agentId: agent.id,
-        messageId: agentMessage.id,
+        agentId: mentionedAgents[i].id,
+        messageId: insertedAgentMessages[i].id,
       });
-
-      console.log(`📝 Created empty message for ${agent.name}:`, {
-        messageId: agentMessage.id,
+      console.log(`📝 Created empty message for ${mentionedAgents[i].name}:`, {
+        messageId: insertedAgentMessages[i].id,
         sferaId,
       });
     }
