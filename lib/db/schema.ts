@@ -2,6 +2,7 @@ import type { InferSelectModel } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  doublePrecision,
   foreignKey,
   index,
   integer,
@@ -243,6 +244,8 @@ export const sfera = pgTable("Sfera", {
     .default("private"),
   createdAt: timestamp("createdAt").notNull().defaultNow(),
   updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+  positionX: doublePrecision("positionX"),
+  positionY: doublePrecision("positionY"),
 });
 
 export type Sfera = InferSelectModel<typeof sfera>;

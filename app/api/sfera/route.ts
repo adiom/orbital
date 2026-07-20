@@ -30,6 +30,8 @@ export async function GET(_request: Request) {
         visibility: sfera.visibility,
         createdAt: sfera.createdAt,
         updatedAt: sfera.updatedAt,
+        positionX: sfera.positionX,
+        positionY: sfera.positionY,
         role: sferaMember.role,
       })
       .from(sfera)

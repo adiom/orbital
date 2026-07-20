@@ -9,6 +9,8 @@ export type Orbit = {
   createdAt: Date;
   updatedAt: Date;
   ownerId: string;
+  positionX?: number | null;
+  positionY?: number | null;
   messageCount?: number;
   memberCount?: number;
   lastMessageAt?: Date | null;

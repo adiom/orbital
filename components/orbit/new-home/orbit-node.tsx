@@ -27,6 +27,7 @@ export type OrbitNodeData = {
   }>;
   insightBadges?: string[];
   currentUserId?: string;
+  dimmed?: boolean;
   onSettingsClick?: () => void;
   onDeleteClick?: () => void;
   onSelectOrbit?: (id: string) => void;
@@ -128,8 +129,11 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
     return (
       <div
         className={cn(
-          "pointer-events-auto group relative cursor-pointer rounded-[20px] bg-white/65 backdrop-blur-xl",
-          selected ? "ring-1 ring-blue-300/70" : "ring-1 ring-white/60"
+          "pointer-events-auto group relative cursor-grab rounded-[20px] bg-white/65 backdrop-blur-xl transition-opacity active:cursor-grabbing",
+          selected
+            ? "ring-2 ring-violet-400/80"
+            : "ring-1 ring-white/60",
+          data.dimmed && "opacity-35"
         )}
         style={{
           width: 160,
@@ -163,16 +167,19 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
   return (
     <div
       className={cn(
-        "pointer-events-auto group relative rounded-[28px] bg-white/72 px-4 py-3 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur-2xl",
+        "pointer-events-auto group relative cursor-grab rounded-[28px] bg-white/72 px-4 py-3 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-opacity active:cursor-grabbing",
         selected
-          ? "ring-1 ring-blue-300/70"
-          : "ring-1 ring-white/70 hover:ring-neutral-200/80"
+          ? "ring-2 ring-violet-400/80"
+          : "ring-1 ring-white/70 hover:ring-neutral-200/80",
+        data.dimmed && "opacity-35"
       )}
       style={{
         width: 230 * scale,
         minHeight: 148 * scale,
         padding: `${15 * scale}px ${17 * scale}px`,
-        boxShadow: `0 22px ${54 * scale}px rgba(15, 23, 42, 0.10), 0 0 ${42 * scale}px ${tone.glow}`,
+        boxShadow: selected
+          ? `0 22px ${54 * scale}px rgba(15, 23, 42, 0.12), 0 0 0 6px rgba(168,85,247,0.10), 0 0 ${42 * scale}px ${tone.glow}`
+          : `0 22px ${54 * scale}px rgba(15, 23, 42, 0.10), 0 0 ${42 * scale}px ${tone.glow}`,
       }}
     >
       {/* Gradient glow ring */}
@@ -292,7 +299,7 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
           Открыть
         </div>
         {isOwner && (
-          <div className="flex items-center gap-1">
+          <div className="nodrag flex items-center gap-1">
             <Button
               className="h-6 w-6 rounded-full bg-white/60 text-neutral-400 hover:bg-white hover:text-neutral-700"
               onClick={(e) => {

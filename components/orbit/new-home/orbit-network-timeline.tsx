@@ -1,11 +1,18 @@
 "use client";
 
 import {
+  Background,
   type Edge,
   type Node,
+  type OnSelectionChangeParams,
+  Panel,
   ReactFlow,
-  useNodesState,
+  ReactFlowProvider,
+  SelectionMode,
   useEdgesState,
+  useNodesState,
+  useReactFlow,
+  type XYPosition,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { Archive, Loader2 } from "lucide-react";
@@ -23,9 +30,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { ForkRelationship, Orbit } from "@/hooks/use-orbit-layout";
+import { findClusters } from "@/lib/orbit/cluster-detection";
+import { computeForceLayout } from "@/lib/orbit/force-layout";
+import { ClusterOverlay } from "./cluster-overlay";
+import { OrbitEdge } from "./orbit-edge";
+import { OrbitNode, type OrbitNodeData } from "./orbit-node";
+import { OrbitToolbar } from "./orbit-toolbar";
 import { OrbitSettings } from "../orbit-settings";
 import { OrbitChatPanel } from "../orbit-chat-panel";
-import { OrbitNode, type OrbitNodeData } from "./orbit-node";
 
 type Member = {
   userId: string;
@@ -46,12 +58,14 @@ const nodeTypes = {
   orbit: OrbitNode,
 };
 
+const edgeTypes = {
+  orbit: OrbitEdge,
+};
+
 const NODE_WIDTH = 280;
 const NODE_HEIGHT = 200;
 const CANVAS_CENTER_X = 720;
 const ROOT_Y = 80;
-const CHILD_Y_GAP = 300;
-const ROW_Y_GAP = 240;
 
 const LIFE_STATE_COLORS: Record<string, string> = {
   born: "96,165,250",
@@ -119,116 +133,70 @@ function getOrganicOffset(index: number) {
   };
 }
 
-function buildRelationshipMaps(forkRelationships: ForkRelationship[]) {
-  const childrenMap = new Map<string, string[]>();
-  const parentMap = new Map<string, string>();
+/**
+ * Compute node positions (top-left corner, React Flow space) for the living map.
+ *
+ * Persisted coords (positionX/Y) are used as-is and pinned; orbits without a
+ * saved position are placed by a force simulation that settles them around the
+ * pinned ones. The simulation runs in "center space" (node midpoints) and the
+ * result is converted back to top-left so persisted nodes round-trip exactly.
+ */
+function computePositions(
+  visibleOrbits: Orbit[],
+  forkRelationships: ForkRelationship[],
+  ignorePersisted = false
+) {
+  const halfW = NODE_WIDTH / 2;
+  const halfH = NODE_HEIGHT / 2;
 
-  for (const rel of forkRelationships) {
-    const existingChildren = childrenMap.get(rel.parentSferaId) || [];
-    childrenMap.set(rel.parentSferaId, [...existingChildren, rel.forkedSferaId]);
-    parentMap.set(rel.forkedSferaId, rel.parentSferaId);
+  const existingPositions = new Map<string, { x: number; y: number }>();
+  const pinnedIds = new Set<string>();
+
+  if (!ignorePersisted) {
+    for (const orbit of visibleOrbits) {
+      if (
+        typeof orbit.positionX === "number" &&
+        typeof orbit.positionY === "number"
+      ) {
+        // Stored as top-left → seed the sim with the center point.
+        existingPositions.set(orbit.id, {
+          x: orbit.positionX + halfW,
+          y: orbit.positionY + halfH,
+        });
+        pinnedIds.add(orbit.id);
+      }
+    }
   }
 
-  return { childrenMap, parentMap };
-}
+  const visibleIds = new Set(visibleOrbits.map((o) => o.id));
+  const links = forkRelationships
+    .filter(
+      (rel) =>
+        visibleIds.has(rel.parentSferaId) && visibleIds.has(rel.forkedSferaId)
+    )
+    .map((rel) => ({ source: rel.parentSferaId, target: rel.forkedSferaId }));
 
-function getCenteredColumnOffset(index: number, total: number, maxColumns: number) {
-  const row = Math.floor(index / maxColumns);
-  const column = index % maxColumns;
-  const itemsInRow = Math.min(maxColumns, total - row * maxColumns);
+  const spread = Math.max(1200, Math.sqrt(visibleOrbits.length) * 460);
 
-  return column - (itemsInRow - 1) / 2;
-}
-
-function getConstellationPositions(
-  orbits: Orbit[],
-  forkRelationships: ForkRelationship[],
-  hiddenIds: Set<string>
-) {
-  const { childrenMap, parentMap } = buildRelationshipMaps(forkRelationships);
-  const orbitIds = new Set(orbits.map((orbit) => orbit.id));
-  const roots = orbits
-    .filter((orbit) => !parentMap.has(orbit.id) && !hiddenIds.has(orbit.id))
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-  const rootsWithForks = roots.filter((r) => (childrenMap.get(r.id) || []).length > 0);
-  const rootsAlone = roots.filter((r) => (childrenMap.get(r.id) || []).length === 0);
-
-  const positions = new Map<string, { x: number; y: number }>();
-  const visited = new Set<string>();
-
-  const placeBranch = (id: string, centerX: number, centerY: number) => {
-    if (visited.has(id) || !orbitIds.has(id) || hiddenIds.has(id)) return;
-
-    visited.add(id);
-    positions.set(id, {
-      x: centerX - NODE_WIDTH / 2,
-      y: centerY - NODE_HEIGHT / 2,
-    });
-
-    const children = (childrenMap.get(id) || []).filter(
-      (childId) => orbitIds.has(childId) && !hiddenIds.has(childId)
-    );
-    const maxColumns = children.length > 6 ? 4 : 3;
-    const horizontalGap = children.length > 6 ? 310 : 340;
-
-    children.forEach((childId, index) => {
-      const row = Math.floor(index / maxColumns);
-      const columnOffset = getCenteredColumnOffset(
-        index,
-        children.length,
-        maxColumns
-      );
-      const stagger = row % 2 === 0 ? 0 : horizontalGap * 0.15;
-      const childX = centerX + columnOffset * horizontalGap + stagger;
-      const childY = centerY + CHILD_Y_GAP + row * ROW_Y_GAP;
-
-      placeBranch(childId, Math.max(140, Math.min(1300, childX)), childY);
-    });
-  };
-
-  // Place roots that have forks — centered constellation
-  const rootMaxColumns = 2;
-  rootsWithForks.forEach((root, index) => {
-    const row = Math.floor(index / rootMaxColumns);
-    const columnOffset = getCenteredColumnOffset(
-      index,
-      rootsWithForks.length,
-      rootMaxColumns
-    );
-    const rootX = CANVAS_CENTER_X + columnOffset * 360;
-    const rootY = ROOT_Y + row * 380;
-
-    placeBranch(root.id, rootX, rootY);
-  });
-
-  // Place lone roots — compact stack on the right side
-  const STACK_X = 1150;
-  const STACK_Y_START = ROOT_Y;
-  const STACK_OFFSET_X = 6;
-  const STACK_OFFSET_Y = 38;
-
-  rootsAlone.forEach((root, index) => {
-    if (visited.has(root.id)) return;
-    visited.add(root.id);
-    positions.set(root.id, {
-      x: STACK_X + index * STACK_OFFSET_X,
-      y: STACK_Y_START + index * STACK_OFFSET_Y,
-    });
-  });
-
-  const unplacedOrbits = orbits.filter(
-    (orbit) => !positions.has(orbit.id) && !hiddenIds.has(orbit.id)
+  const centers = computeForceLayout(
+    visibleOrbits.map((o) => ({ id: o.id })),
+    links,
+    {
+      width: spread,
+      height: spread * 0.72,
+      nodeRadius: 165,
+      linkDistance: 280,
+      chargeStrength: -1500,
+      existingPositions,
+      pinnedIds,
+    }
   );
-  unplacedOrbits.forEach((orbit, index) => {
-    const row = Math.floor(index / 3);
-    const columnOffset = getCenteredColumnOffset(index, unplacedOrbits.length, 3);
-    positions.set(orbit.id, {
-      x: CANVAS_CENTER_X + columnOffset * 320 - NODE_WIDTH / 2,
-      y: ROOT_Y + 500 + row * 260 - NODE_HEIGHT / 2,
-    });
-  });
 
+  // Convert centers → top-left.
+  const positions = new Map<string, { x: number; y: number }>();
+  for (const [id, c] of centers) {
+    positions.set(id, { x: c.x - halfW, y: c.y - halfH });
+  }
   return positions;
 }
 
@@ -282,16 +250,25 @@ function buildGraph(
   }
 
   const allHidden = new Set<string>([...deadIds, ...hiddenForkIds]);
-  const positions = getConstellationPositions(orbits, forkRelationships, allHidden);
-
   const visibleOrbits = orbits.filter((o) => !allHidden.has(o.id));
+  const positions = computePositions(visibleOrbits, forkRelationships);
+
+  const clusterMap = findClusters(
+    visibleOrbits.map((o) => o.id),
+    forkRelationships
+  );
 
   const nodes: Node<OrbitNodeData>[] = visibleOrbits.map((orbit, index) => {
-    const pos = positions.get(orbit.id) || { x: CANVAS_CENTER_X, y: ROOT_Y };
+    const fallback = { x: CANVAS_CENTER_X, y: ROOT_Y };
+    const pos = positions.get(orbit.id) || fallback;
     const childCount = childCountMap.get(orbit.id) || 0;
     const density = getDensity(orbit, childCount);
     const lifeState = getLifeState(orbit, childCount);
-    const offset = getOrganicOffset(index);
+    // Only jitter unplaced (never-persisted) nodes; pinned ones keep exact coords.
+    const isPinned =
+      typeof orbit.positionX === "number" &&
+      typeof orbit.positionY === "number";
+    const offset = isPinned ? { x: 0, y: 0 } : getOrganicOffset(index);
     const messageCount = orbit.messageCount || 0;
 
     return {
@@ -349,8 +326,13 @@ function buildGraph(
         id: `${rel.parentSferaId}-${rel.forkedSferaId}`,
         source: rel.parentSferaId,
         target: rel.forkedSferaId,
-        type: "default",
+        type: "orbit",
         animated: false,
+        data: {
+          baseStroke: `rgba(${parentColor}, ${opacity})`,
+          glowColor: childColor,
+          intensity,
+        },
         style: {
           stroke: `rgba(${parentColor}, ${opacity})`,
           strokeWidth: width,
@@ -362,10 +344,16 @@ function buildGraph(
 
   const archiveCount = deadIds.size + hiddenForkIds.size;
 
-  return { nodes, edges, archiveCount, archiveOrbits: orbits.filter((o) => allHidden.has(o.id)) };
+  return {
+    nodes,
+    edges,
+    archiveCount,
+    archiveOrbits: orbits.filter((o) => allHidden.has(o.id)),
+    clusterMap,
+  };
 }
 
-export function OrbitNetworkTimeline({
+function OrbitNetworkTimelineInner({
   orbits,
   forkRelationships,
   currentUserId,
@@ -374,6 +362,7 @@ export function OrbitNetworkTimeline({
   onSelectOrbit,
 }: OrbitNetworkTimelineProps) {
   const router = useRouter();
+  const { fitView } = useReactFlow();
   const [selectedOrbitForSettings, setSelectedOrbitForSettings] =
     useState<Orbit | null>(null);
   const [orbitMembers, setOrbitMembers] = useState<Member[]>([]);
@@ -381,7 +370,10 @@ export function OrbitNetworkTimeline({
   const [orbitToDelete, setOrbitToDelete] = useState<Orbit | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const graphRef = useRef<HTMLDivElement>(null);
+  // Snapshot of positions at drag start, for group-drag deltas.
+  const dragStartRef = useRef<Map<string, XYPosition> | null>(null);
 
   const handleSelectOrbit = useCallback(
     (id: string) => {
@@ -475,7 +467,13 @@ export function OrbitNetworkTimeline({
     }
   };
 
-  const { nodes: initialNodes, edges: initialEdges, archiveCount, archiveOrbits } = useMemo(() => {
+  const {
+    nodes: initialNodes,
+    edges: initialEdges,
+    archiveCount,
+    archiveOrbits,
+    clusterMap,
+  } = useMemo(() => {
     return buildGraph(
       orbits,
       forkRelationships,
@@ -494,6 +492,153 @@ export function OrbitNetworkTimeline({
     setEdges(initialEdges);
   }, [initialNodes, initialEdges, setNodes, setEdges]);
 
+  // Reflect selection + dimming into node data without rebuilding the graph.
+  const decoratedNodes = useMemo(() => {
+    const hasSelection = selectedIds.size > 0;
+    return nodes.map((node) => {
+      const isSelected = selectedIds.has(node.id);
+      const dimmed = hasSelection && !isSelected;
+      if (node.data.dimmed === dimmed) return node;
+      return { ...node, data: { ...node.data, dimmed } };
+    });
+  }, [nodes, selectedIds]);
+
+  const persistPositions = useCallback(
+    async (updates: Array<{ id: string; positionX: number; positionY: number }>) => {
+      if (updates.length === 0) return;
+      try {
+        const res = await fetch("/api/sfera/positions", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ updates }),
+        });
+        if (!res.ok) throw new Error(`${res.status}`);
+      } catch {
+        toast.error("Не удалось сохранить позицию");
+        onUpdate?.(); // refetch → snap back to persisted positions
+      }
+    },
+    [onUpdate]
+  );
+
+  const handleNodeDragStart = useCallback(
+    (_: unknown, node: Node<OrbitNodeData>) => {
+      const isGroup = selectedIds.has(node.id) && selectedIds.size > 1;
+      const snapshot = new Map<string, XYPosition>();
+      const targets = isGroup
+        ? nodes.filter((n) => selectedIds.has(n.id))
+        : [node];
+      for (const n of targets) {
+        snapshot.set(n.id, { x: n.position.x, y: n.position.y });
+      }
+      dragStartRef.current = snapshot;
+    },
+    [nodes, selectedIds]
+  );
+
+  const handleNodeDrag = useCallback(
+    (_: unknown, node: Node<OrbitNodeData>) => {
+      const snapshot = dragStartRef.current;
+      if (!snapshot || snapshot.size <= 1) return;
+      const start = snapshot.get(node.id);
+      if (!start) return;
+      const dx = node.position.x - start.x;
+      const dy = node.position.y - start.y;
+      // Move the rest of the group by the same delta as the dragged node.
+      setNodes((prev) =>
+        prev.map((n) => {
+          if (n.id === node.id || !snapshot.has(n.id)) return n;
+          const s = snapshot.get(n.id) as XYPosition;
+          return { ...n, position: { x: s.x + dx, y: s.y + dy } };
+        })
+      );
+    },
+    [setNodes]
+  );
+
+  const handleNodeDragStop = useCallback(
+    (_: unknown, node: Node<OrbitNodeData>) => {
+      const snapshot = dragStartRef.current;
+      const ids =
+        snapshot && snapshot.size > 1 ? [...snapshot.keys()] : [node.id];
+      const byId = new Map(nodes.map((n) => [n.id, n]));
+      const updates = ids
+        .map((id) => byId.get(id))
+        .filter(Boolean)
+        .map((n) => ({
+          id: (n as Node).id,
+          positionX: (n as Node).position.x,
+          positionY: (n as Node).position.y,
+        }));
+      dragStartRef.current = null;
+      void persistPositions(updates);
+    },
+    [nodes, persistPositions]
+  );
+
+  const handleSelectionChange = useCallback(
+    (params: OnSelectionChangeParams) => {
+      const next = params.nodes.map((n) => n.id);
+      setSelectedIds((prev) => {
+        if (prev.size === next.length && next.every((id) => prev.has(id))) {
+          return prev; // unchanged — keep reference to avoid a render loop
+        }
+        return new Set(next);
+      });
+    },
+    []
+  );
+
+  const handleReshuffle = useCallback(() => {
+    // Recompute a fresh force layout ignoring persisted coords, apply it, and
+    // persist the result so it becomes the new baseline.
+    const nodeIds = new Set(nodes.map((n) => n.id));
+    const visible = orbits.filter((o) => nodeIds.has(o.id));
+    const positions = computePositions(visible, forkRelationships, true);
+    setNodes((prev) =>
+      prev.map((n) => {
+        const p = positions.get(n.id);
+        return p ? { ...n, position: p } : n;
+      })
+    );
+    const updates = [...positions.entries()].map(([id, p]) => ({
+      id,
+      positionX: p.x,
+      positionY: p.y,
+    }));
+    void persistPositions(updates);
+  }, [nodes, orbits, forkRelationships, setNodes, persistPositions]);
+
+  const handleResetPositions = useCallback(async () => {
+    const ids = nodes.map((n) => n.id);
+    try {
+      // Persisting null clears saved coords → force layout takes over on refetch.
+      const res = await fetch("/api/sfera/positions", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          updates: ids.map((id) => ({ id, positionX: null, positionY: null })),
+        }),
+      });
+      if (!res.ok) throw new Error(`${res.status}`);
+      onUpdate?.();
+      toast.success("Раскладка сброшена");
+    } catch {
+      toast.error("Не удалось сбросить раскладку");
+    }
+  }, [nodes, onUpdate]);
+
+  // Clear selection on Escape (independent of the orbit-close Escape below).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && selectedIds.size > 0) {
+        setSelectedIds(new Set());
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedIds]);
+
   if (orbits.length === 0) {
     return (
       <div className="relative flex min-h-screen items-center justify-center px-6">
@@ -510,18 +655,6 @@ export function OrbitNetworkTimeline({
       </div>
     );
   }
-
-  let minX = Infinity,
-    maxX = -Infinity,
-    minY = Infinity,
-    maxY = -Infinity;
-  for (const node of nodes) {
-    minX = Math.min(minX, node.position.x);
-    maxX = Math.max(maxX, node.position.x + NODE_WIDTH);
-    minY = Math.min(minY, node.position.y);
-    maxY = Math.max(maxY, node.position.y + NODE_HEIGHT);
-  }
-  const graphHeight = Math.max(760, maxY - minY + 320);
 
   return (
     <>
@@ -568,29 +701,54 @@ export function OrbitNetworkTimeline({
         </div>
       )}
 
-      <div className="relative w-full" ref={graphRef} style={{ height: graphHeight }}>
+      <div className="relative h-[100dvh] w-full" ref={graphRef}>
         <ReactFlow
-          nodes={nodes}
+          nodes={decoratedNodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodeDragStart={handleNodeDragStart}
+          onNodeDrag={handleNodeDrag}
+          onNodeDragStop={handleNodeDragStop}
+          onSelectionChange={handleSelectionChange}
           nodeTypes={nodeTypes}
-          fitView={false}
-          nodesDraggable={false}
+          edgeTypes={edgeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.25 }}
+          nodesDraggable
           nodesConnectable={false}
-          elementsSelectable={false}
-          zoomOnScroll={false}
-          zoomOnPinch={false}
+          elementsSelectable
+          selectionOnDrag
+          selectionMode={SelectionMode.Partial}
           panOnDrag={false}
-          panOnScroll={false}
-          preventScrolling={false}
-          minZoom={0.5}
+          panOnScroll
+          zoomOnScroll={false}
+          zoomOnPinch
+          zoomActivationKeyCode="Meta"
+          preventScrolling
+          minZoom={0.4}
           maxZoom={2}
+          nodeDragThreshold={4}
+          onlyRenderVisibleElements={orbits.length > 50}
           proOptions={{ hideAttribution: true }}
-          className="pointer-events-none"
+          className="orbital-flow"
           style={{ background: "transparent" }}
-          defaultViewport={{ x: 90, y: 10, zoom: 0.85 }}
-        />
+        >
+          <Background color="rgba(15,23,42,0.04)" gap={32} size={1} />
+          <ClusterOverlay
+            clusterMap={clusterMap}
+            nodeHeight={NODE_HEIGHT}
+            nodes={nodes}
+            nodeWidth={NODE_WIDTH}
+          />
+          <Panel className="!mt-16" position="top-right">
+            <OrbitToolbar
+              onFitView={() => fitView({ padding: 0.2, duration: 400 })}
+              onReset={handleResetPositions}
+              onReshuffle={handleReshuffle}
+            />
+          </Panel>
+        </ReactFlow>
       </div>
 
       {selectedOrbitForSettings && (
@@ -647,5 +805,14 @@ export function OrbitNetworkTimeline({
         />
       )}
     </>
+  );
+}
+
+export function OrbitNetworkTimeline(props: OrbitNetworkTimelineProps) {
+  // ReactFlowProvider is required so the toolbar/overlays can use useReactFlow.
+  return (
+    <ReactFlowProvider>
+      <OrbitNetworkTimelineInner {...props} />
+    </ReactFlowProvider>
   );
 }

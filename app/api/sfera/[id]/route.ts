@@ -136,7 +136,7 @@ export async function PUT(request: Request, context: RouteContext) {
     }
 
     const body = await request.json();
-    const { title, description, visibility } = body;
+    const { title, description, visibility, positionX, positionY } = body;
 
     const updateData: any = {
       updatedAt: new Date(),
@@ -150,6 +150,12 @@ export async function PUT(request: Request, context: RouteContext) {
     }
     if (visibility) {
       updateData.visibility = visibility;
+    }
+    if (positionX !== undefined && (positionX === null || Number.isFinite(positionX))) {
+      updateData.positionX = positionX;
+    }
+    if (positionY !== undefined && (positionY === null || Number.isFinite(positionY))) {
+      updateData.positionY = positionY;
     }
 
     const [updatedSfera] = await db

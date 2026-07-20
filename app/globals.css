@@ -373,3 +373,28 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Living map (Orbital) — smooth force-layout transitions & selection dimming */
+.orbital-flow .react-flow__node {
+  transition:
+    transform 500ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 300ms ease;
+}
+.orbital-flow .react-flow__node.dragging {
+  transition: none;
+  z-index: 10;
+}
+.orbital-flow .react-flow__pane.dragging {
+  cursor: grabbing;
+}
+.orbital-flow .react-flow__selection {
+  background: rgba(168, 85, 247, 0.08);
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbital-flow .react-flow__node {
+    transition: none;
+  }
+}
