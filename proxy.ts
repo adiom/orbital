@@ -13,8 +13,18 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Разрешить доступ к документации API без авторизации
-  if (pathname.startsWith("/docs") || pathname.startsWith("/api/docs")) {
+  // Dev-only sandbox/documentation pages must not be reachable in production.
+  // In dev they stay open; in prod they return 404.
+  const isDevOnlyPath =
+    pathname === "/test-artifact" ||
+    pathname.startsWith("/test-artifact/") ||
+    pathname.startsWith("/docs") ||
+    pathname.startsWith("/api/docs");
+  if (isDevOnlyPath) {
+    if (process.env.NODE_ENV === "production") {
+      return new NextResponse("Not found", { status: 404 });
+    }
+    // Разрешить доступ к документации API без авторизации (только вне прода)
     return NextResponse.next();
   }
 
