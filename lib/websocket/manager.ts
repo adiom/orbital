@@ -119,3 +119,86 @@ export function extractTokenFromRequest(req: IncomingMessage): string | null {
 
   return null;
 }
+
+/**
+ * Extract the NextAuth session cookie (JWE) from the upgrade request.
+ * Browser WebSocket clients can't set headers, but the browser DOES send
+ * cookies on the WS upgrade for a same-site host — so this is the primary
+ * auth path. Returns the raw encrypted token to be passed to next-auth decode().
+ */
+export function extractSessionCookie(req: IncomingMessage): string | null {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) {
+    return null;
+  }
+
+  const cookies = new Map<string, string>();
+  for (const part of cookieHeader.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq === -1) {
+      continue;
+    }
+    const name = part.slice(0, eq).trim();
+    const value = part.slice(eq + 1).trim();
+    if (name) {
+      cookies.set(name, decodeURIComponent(value));
+    }
+  }
+
+  // NextAuth v5 (Auth.js) chunks large cookies as .0/.1; try the common names.
+  // Secure prefix used when cookies are secure (prod / TEST_PRODUCTION_AUTH).
+  const candidates = [
+    "__Secure-authjs.session-token",
+    "authjs.session-token",
+    "__Secure-next-auth.session-token",
+    "next-auth.session-token",
+  ];
+  for (const name of candidates) {
+    const direct = cookies.get(name);
+    if (direct) {
+      return direct;
+    }
+    // Reassemble chunked cookie (name.0, name.1, ...)
+    const chunk0 = cookies.get(`${name}.0`);
+    if (chunk0) {
+      let assembled = "";
+      let i = 0;
+      let next = cookies.get(`${name}.${i}`);
+      while (next !== undefined) {
+        assembled += next;
+        i += 1;
+        next = cookies.get(`${name}.${i}`);
+      }
+      return assembled;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Which cookie name the token came from — needed as the decode `salt`.
+ * NextAuth derives the encryption key from (secret, salt=cookieName).
+ */
+export function detectSessionCookieName(req: IncomingMessage): string | null {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) {
+    return null;
+  }
+  const names = cookieHeader
+    .split(";")
+    .map((p) => p.split("=")[0]?.trim())
+    .filter(Boolean) as string[];
+  const candidates = [
+    "__Secure-authjs.session-token",
+    "authjs.session-token",
+    "__Secure-next-auth.session-token",
+    "next-auth.session-token",
+  ];
+  for (const name of candidates) {
+    if (names.includes(name) || names.includes(`${name}.0`)) {
+      return name;
+    }
+  }
+  return null;
+}

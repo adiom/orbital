@@ -7,7 +7,7 @@ import { streamAgentResponse } from "@/lib/ai/agents/base-streamer";
 import { streamExternalMcpAgentResponse } from "@/lib/ai/agents/external-mcp-streamer";
 import { detectMentionedAgents } from "@/lib/ai/agents/detector";
 import { getAgentById } from "@/lib/ai/agents/registry";
-import { myProvider } from "@/lib/ai/providers";
+import { isAiConfigured, myProvider } from "@/lib/ai/providers";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { checkAvroraRateLimit } from "@/lib/redis/rate-limiter";
@@ -187,6 +187,22 @@ export async function POST(request: Request, context: RouteContext) {
       `🔔 ${mentionedAgents.length} agent(s) mentioned:`,
       mentionedAgents.map((a) => a.name)
     );
+
+    // AI provider must be configured before we create agent messages / stream.
+    // Without it, myProvider.languageModel(...) throws deep inside streaming and
+    // the error leaks into a chat message. Fail fast with a clear 503 instead.
+    if (!isAiConfigured()) {
+      console.warn("[chat] AI not configured — rejecting agent request");
+      return Response.json(
+        {
+          message: userMessage,
+          agentMessages: [],
+          error:
+            "Avrora сейчас недоступна: AI-провайдер не настроен. Сообщение сохранено.",
+        },
+        { status: 503 }
+      );
+    }
 
     // Track agent messages for response
     const agentMessages: Array<{ agentId: string; messageId: string }> = [];

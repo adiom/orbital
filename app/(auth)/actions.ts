@@ -2,6 +2,7 @@
 
 import { and, eq, lt } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
+import { headers } from "next/headers";
 import postgres from "postgres";
 import { z } from "zod/v3";
 import { magicToken } from "@/lib/db/schema";
@@ -87,6 +88,49 @@ const createMagicLinkSchema = z.object({
   email: z.string().email(),
 });
 
+/**
+ * Same-origin check for the magic-link Server Action.
+ *
+ * Server Actions have no `request` object, so the old commented-out
+ * `validateCSRFToken(request)` could never work. Instead we compare the
+ * request Origin against the trusted host (Origin/Host header check) — the
+ * same technique Next.js uses internally for Action CSRF protection.
+ * A cross-site POST cannot forge the Origin header, so this blocks CSRF.
+ */
+async function isSameOrigin(): Promise<boolean> {
+  const h = await headers();
+  const origin = h.get("origin");
+
+  // Non-browser callers (no Origin) are rejected — the form always sends one.
+  if (!origin) {
+    return false;
+  }
+
+  const allowedHosts = new Set<string>();
+  const host = h.get("host");
+  if (host) {
+    allowedHosts.add(host);
+  }
+  for (const envUrl of [
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.NEXTAUTH_URL,
+  ]) {
+    if (envUrl) {
+      try {
+        allowedHosts.add(new URL(envUrl).host);
+      } catch {
+        // ignore malformed env URL
+      }
+    }
+  }
+
+  try {
+    return allowedHosts.has(new URL(origin).host);
+  } catch {
+    return false;
+  }
+}
+
 export type CreateMagicLinkState = {
   status: "idle" | "in_progress" | "success" | "failed" | "invalid_data";
   message?: string;
@@ -98,13 +142,13 @@ export const createMagicLink = async (
   formData: FormData
 ): Promise<CreateMagicLinkState> => {
   try {
-    // CSRF защита - временно убираем в разработке для устранения ошибки
-    // if (request && !(await validateCSRFToken(request))) {
-    //   return {
-    //     status: 'failed',
-    //     message: 'Неверный CSRF токен',
-    //   };
-    // }
+    // CSRF protection: reject cross-origin POSTs (a forged site cannot set Origin).
+    if (!(await isSameOrigin())) {
+      return {
+        status: "failed",
+        message: "Запрос отклонён: недопустимый источник",
+      };
+    }
 
     const validatedData = createMagicLinkSchema.parse({
       email: formData.get("email"),

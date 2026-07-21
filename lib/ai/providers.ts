@@ -87,3 +87,35 @@ export const myProvider = customProvider({ languageModels });
 export const myLanguageModels = languageModels;
 export type ModelKey = keyof typeof myLanguageModels;
 export const getModel = (key: ModelKey) => myLanguageModels[key];
+
+/**
+ * Whether any language-model provider is configured.
+ * The registry is empty when OLLAMA_API_KEY is missing — all AI chat/artifact
+ * features are dead in that case (the app still boots).
+ */
+export const isAiConfigured = (): boolean =>
+  Object.keys(languageModels).length > 0;
+
+/**
+ * Throw a clear, actionable error when AI is invoked but no provider is set up.
+ * Prevents the opaque "model not found" failure surfacing as a chat message.
+ */
+export function assertAiConfigured(): void {
+  if (!isAiConfigured()) {
+    throw new Error(
+      "AI-провайдер не настроен: не задан OLLAMA_API_KEY. " +
+        "Добавьте ключ в .env.local (см. .env.example) и перезапустите сервер."
+    );
+  }
+}
+
+// Log provider status once at module load so misconfiguration is visible in logs.
+if (isAiConfigured()) {
+  console.log(
+    `[providers] AI ready — Ollama Cloud (${process.env.OLLAMA_CLOUD_BASE_URL || "https://ollama.com/v1"})`
+  );
+} else {
+  console.warn(
+    "[providers] AI NOT configured — OLLAMA_API_KEY missing. Chat/artifact features will be unavailable."
+  );
+}

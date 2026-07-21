@@ -1,11 +1,14 @@
 import { createServer } from "node:http";
 import { parse } from "node:url";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { decode } from "next-auth/jwt";
 import { WebSocketServer } from "ws";
 import { db } from "@/lib/db";
-import { chat } from "@/lib/db/schema";
+import { sferaMember } from "@/lib/db/schema";
 import {
+  detectSessionCookieName,
+  extractSessionCookie,
   extractTokenFromRequest,
   type WebSocketClient,
   wsManager,
@@ -15,21 +18,67 @@ const WS_PORT = process.env.WS_PORT
   ? Number.parseInt(process.env.WS_PORT, 10)
   : 3001;
 
-// Простая проверка токена (в продакшене использовать NextAuth JWT verification)
-function verifyToken(token: string | null): string | null {
-  if (!token) {
+const AUTH_SECRET = process.env.AUTH_SECRET;
+if (!AUTH_SECRET) {
+  console.warn(
+    "[ws] AUTH_SECRET is not set — all WebSocket connections will be rejected."
+  );
+}
+
+/**
+ * Verify a NextAuth v5 (Auth.js) session and return the userId.
+ * Accepts either the encrypted session cookie (primary path for browsers) or a
+ * raw token via query/Authorization header. Returns null on any failure.
+ */
+async function verifySession(
+  cookieToken: string | null,
+  cookieSalt: string | null,
+  rawToken: string | null
+): Promise<string | null> {
+  if (!AUTH_SECRET) {
     return null;
   }
 
-  // TODO: Implement proper JWT verification using NextAuth
-  // For now, just return a mock userId for development
-  // In production, use: import { decode } from "next-auth/jwt"
-  // const decoded = await decode({ token, secret: process.env.AUTH_SECRET });
-  // return decoded?.sub || null;
+  // Preferred: decrypt the session cookie. salt must match the cookie name.
+  if (cookieToken && cookieSalt) {
+    try {
+      const decoded = await decode({
+        token: cookieToken,
+        secret: AUTH_SECRET,
+        salt: cookieSalt,
+      });
+      const userId = (decoded?.id as string | undefined) || decoded?.sub;
+      if (userId) {
+        return userId;
+      }
+    } catch (error) {
+      console.warn("[ws] Failed to decode session cookie:", error);
+    }
+  }
 
-  // Mock verification for development
-  if (token.startsWith("dev_")) {
-    return token.replace("dev_", "");
+  // Fallback: a raw token passed explicitly. Try common cookie salts.
+  if (rawToken) {
+    const salts = [
+      "authjs.session-token",
+      "__Secure-authjs.session-token",
+      "next-auth.session-token",
+      "__Secure-next-auth.session-token",
+    ];
+    for (const salt of salts) {
+      try {
+        const decoded = await decode({
+          token: rawToken,
+          secret: AUTH_SECRET,
+          salt,
+        });
+        const userId = (decoded?.id as string | undefined) || decoded?.sub;
+        if (userId) {
+          return userId;
+        }
+      } catch {
+        // try next salt
+      }
+    }
   }
 
   return null;
@@ -41,41 +90,43 @@ export function startWebSocketServer() {
 
   wss.on("connection", async (ws, req) => {
     const { query } = parse(req.url || "", true);
-    const chatId = query.chatId as string;
-    const token = extractTokenFromRequest(req);
+    // NOTE: the query param is historically named `chatId` but carries a Sfera id.
+    const sferaId = query.chatId as string;
 
-    // Verify authentication
-    const userId = await verifyToken(token);
+    // Verify authentication (cookie-first, raw-token fallback).
+    const cookieToken = extractSessionCookie(req);
+    const cookieSalt = detectSessionCookieName(req);
+    const rawToken = extractTokenFromRequest(req);
+    const userId = await verifySession(cookieToken, cookieSalt, rawToken);
     if (!userId) {
       ws.close(1008, "Unauthorized");
       return;
     }
 
-    if (!chatId) {
+    if (!sferaId) {
       ws.close(1008, "chatId is required");
       return;
     }
 
-    // Verify user has access to chat
+    // Verify the user is a member of the Sfera before letting them subscribe.
     try {
-      const [chatRecord] = await db
-        .select()
-        .from(chat)
-        .where(eq(chat.id, chatId));
+      const [membership] = await db
+        .select({ userId: sferaMember.userId })
+        .from(sferaMember)
+        .where(
+          and(
+            eq(sferaMember.sferaId, sferaId),
+            eq(sferaMember.userId, userId)
+          )
+        )
+        .limit(1);
 
-      if (!chatRecord) {
-        ws.close(1008, "Chat not found");
-        return;
-      }
-
-      // TODO: Check ChatMember table for group chats
-      // For now, just check if user is chat owner
-      if (chatRecord.userId !== userId) {
+      if (!membership) {
         ws.close(1008, "Forbidden");
         return;
       }
     } catch (error) {
-      console.error("Error verifying chat access:", error);
+      console.error("Error verifying sfera access:", error);
       ws.close(1011, "Internal error");
       return;
     }
@@ -85,7 +136,7 @@ export function startWebSocketServer() {
     const client: WebSocketClient = {
       ws,
       userId,
-      chatId,
+      chatId: sferaId,
     };
 
     wsManager.addClient(clientId, client);
@@ -95,7 +146,7 @@ export function startWebSocketServer() {
       JSON.stringify({
         type: "connected",
         clientId,
-        chatId,
+        chatId: sferaId,
       })
     );
 
@@ -108,7 +159,7 @@ export function startWebSocketServer() {
           case "chat_message":
             // Broadcast to all clients in the chat
             wsManager.broadcastToChat(
-              chatId,
+              sferaId,
               {
                 type: "chat_message",
                 messageId: message.messageId,
@@ -123,7 +174,7 @@ export function startWebSocketServer() {
           case "typing":
             // Broadcast typing indicator
             wsManager.broadcastToChat(
-              chatId,
+              sferaId,
               {
                 type: "typing",
                 userId,
@@ -136,7 +187,7 @@ export function startWebSocketServer() {
           case "message_update":
             // Broadcast message update (for streaming AI responses)
             wsManager.broadcastToChat(
-              chatId,
+              sferaId,
               {
                 type: "message_update",
                 messageId: message.messageId,

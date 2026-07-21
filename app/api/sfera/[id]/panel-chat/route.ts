@@ -5,7 +5,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { auth } from "@/app/(auth)/auth";
 import { getAgentById } from "@/lib/ai/agents/registry";
 import { logAiUsage } from "@/lib/ai/usage-logger";
-import { myProvider } from "@/lib/ai/providers";
+import { isAiConfigured, myProvider } from "@/lib/ai/providers";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { checkAvroraRateLimit } from "@/lib/redis/rate-limiter";
@@ -114,6 +114,15 @@ export async function POST(request: Request, context: RouteContext) {
 
   if (!membership) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // AI provider must be configured before streaming; fail fast with a clear 503.
+  if (!isAiConfigured()) {
+    console.warn("[panel-chat] AI not configured — rejecting request");
+    return Response.json(
+      { error: "Avrora сейчас недоступна: AI-провайдер не настроен." },
+      { status: 503 },
+    );
   }
 
   if (avroraAgent.rateLimit) {

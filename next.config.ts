@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
+// Dev-only cross-origin allowlist (LAN IP, tunnels). Set via env, not hardcoded.
+// Example: NEXT_DEV_ORIGINS="10.0.0.5,my-tunnel.ngrok-free.dev"
+const devOrigins = (process.env.NEXT_DEV_ORIGINS ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["10.37.180.52", "monitor-glade-porous.ngrok-free.dev"],
+  ...(devOrigins.length > 0 ? { allowedDevOrigins: devOrigins } : {}),
   images: {
     remotePatterns: [
       {

@@ -122,7 +122,11 @@ export async function POST(_request: Request) {
       throw new Error("Onboarding agent not found in registry");
     }
 
-    // Stream agent response in background (fire-and-forget)
+    // Stream agent response in background (fire-and-forget).
+    // On failure the empty agent message must NOT stay `isGenerating: true`,
+    // otherwise the user is stuck staring at a permanent spinner. Replace it
+    // with a friendly fallback so onboarding degrades gracefully (e.g. when the
+    // AI provider is unavailable).
     setTimeout(async () => {
       try {
         await streamAgentResponse({
@@ -134,6 +138,24 @@ export async function POST(_request: Request) {
         });
       } catch (err) {
         console.error("Onboarding agent streaming failed:", err);
+        try {
+          await db
+            .update(sferaMessage)
+            .set({
+              content:
+                "Привет! Рада, что ты здесь 🙂 Я — Аврора, твой проводник. " +
+                "Сейчас я немного не в форме и не могу ответить, но это не помешает тебе начать. " +
+                "Просто закрой это окно и создай свою первую мысль — я подключусь позже.",
+              isGenerating: false,
+              updatedAt: new Date(),
+            })
+            .where(eq(sferaMessage.id, agentMessage.id));
+        } catch (fallbackErr) {
+          console.error(
+            "Failed to write onboarding fallback message:",
+            fallbackErr
+          );
+        }
       }
     }, 0);
 

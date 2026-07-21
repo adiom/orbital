@@ -3,6 +3,7 @@ import { Analytics } from "@vercel/analytics/next"
 
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
+import { FeedbackWidget } from "@/components/feedback-widget";
 
 export default function RootLayout({
   children,
@@ -13,7 +14,10 @@ export default function RootLayout({
     <html lang="ru" suppressHydrationWarning>
       <body className="antialiased">
         <Toaster position="top-center" />
-        <SessionProvider>{children}</SessionProvider>
+        <SessionProvider>
+          {children}
+          <FeedbackWidget />
+        </SessionProvider>
         <Analytics/>
       </body>
     </html>
