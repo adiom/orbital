@@ -10,6 +10,24 @@ const MAX_PAGINATION_LIMIT = 100;
 const DEFAULT_PAGINATION_LIMIT = 50;
 
 /**
+ * Webhook URLs must be http(s) — z.string().url() alone accepts any URI
+ * scheme (e.g. "javascript:", "data:", "a:"), which is unsafe for webhooks.
+ */
+const webhookUrlSchema = z
+  .string()
+  .url()
+  .refine(
+    (url) => {
+      try {
+        return ["http:", "https:"].includes(new URL(url).protocol);
+      } catch {
+        return false;
+      }
+    },
+    { message: "webhookUrl must use http or https protocol" }
+  );
+
+/**
  * Helper for parsing boolean query parameters from strings
  */
 const booleanQueryParam = () =>
@@ -90,7 +108,7 @@ export const messageFilterSchema = z.object({
 export const agentRegistrationSchema = z.object({
   name: z.string().min(1).max(255),
   email: z.string().email().max(255),
-  webhookUrl: z.string().url(),
+  webhookUrl: webhookUrlSchema,
   webhookSecret: z.string().min(MIN_WEBHOOK_SECRET_LENGTH),
   metadata: agentMetadataSchema,
 });
@@ -115,7 +133,7 @@ export const updateMessageSchema = z.object({
  * Schema for agent update
  */
 export const agentUpdateSchema = z.object({
-  webhookUrl: z.string().url().optional(),
+  webhookUrl: webhookUrlSchema.optional(),
   webhookSecret: z.string().min(MIN_WEBHOOK_SECRET_LENGTH).optional(),
   metadata: agentMetadataSchema,
 });
