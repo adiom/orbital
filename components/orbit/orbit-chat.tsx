@@ -140,6 +140,9 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
+  const NEAR_BOTTOM_THRESHOLD = 120;
 
   const fetchOrbit = useCallback(
     async (signal?: AbortSignal) => {
@@ -258,8 +261,29 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     };
   }, [messages, fetchOrbit]);
 
-  // Auto-scroll to bottom when messages change
+  // Track whether the user is scrolled near the bottom, so background
+  // refetches (polling) don't yank them back down while they're reading
+  // older messages further up.
   useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+
+    const handleScroll = () => {
+      const distanceFromBottom =
+        container.scrollHeight - container.scrollTop - container.clientHeight;
+      isNearBottomRef.current = distanceFromBottom < NEAR_BOTTOM_THRESHOLD;
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Auto-scroll to bottom when messages change, but only if the user was
+  // already near the bottom (e.g. not while they've scrolled up to read
+  // earlier messages during background polling).
+  useEffect(() => {
+    if (!isNearBottomRef.current) return;
+
     const scrollToBottom = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
@@ -424,7 +448,10 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
       />
 
       {/* Messages */}
-      <div className="flex-grow overflow-y-auto px-3 pt-14 pb-40 md:px-8 md:pt-20">
+      <div
+        className="flex-grow overflow-y-auto px-3 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-40 md:px-8 md:pt-20"
+        ref={messagesContainerRef}
+      >
         <div className="mx-auto max-w-4xl">
           {messages.length === 0 ? (
             <div className="flex h-full min-h-[400px] items-center justify-center">
@@ -491,7 +518,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
 
         Комбинация этих классов делает панель ввода фиксированной снизу, с размытием и прозрачным белым фоном, визуально отделяя её от остальной части интерфейса.
       */}
-      <div className="fixed right-0 bottom-0 left-0 border-gray-200/50 border-t bg-white/80 p-0 backdrop-blur-xl md:p-1">
+      <div className="fixed right-0 bottom-0 left-0 border-gray-200/50 border-t bg-white/80 p-0 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:p-1">
         <div className="mx-auto max-w-4xl">
           <OrbitInput
             editingMessage={editingMessage}

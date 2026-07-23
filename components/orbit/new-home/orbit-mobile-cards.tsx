@@ -1,6 +1,7 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Plus, User } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
@@ -172,7 +173,7 @@ export function OrbitMobileCards({
         </div>
 
         {/* Bottom create button */}
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
+        <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2">
           <button
             className="flex h-14 w-14 items-center justify-center rounded-full bg-neutral-950 text-white shadow-[0_8px_32px_rgba(15,23,42,0.25)] transition-all active:scale-95"
             onClick={onCreateOpen}
@@ -188,17 +189,26 @@ export function OrbitMobileCards({
   return (
     <div className="fixed inset-0 flex flex-col bg-[#fbfaf8]">
       {/* Logo header */}
-      <header className="flex items-center justify-between px-5 pt-4 pb-2">
+      <header className="flex items-center justify-between px-5 pb-2 pt-[calc(1rem+env(safe-area-inset-top))]">
         <span className="text-[11px] uppercase tracking-[0.34em] text-neutral-400">
           Orbital
         </span>
+        {currentUserId ? (
+          <Link
+            aria-label="Мой профиль"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/75 text-neutral-500 shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all active:scale-95"
+            href={`/u/${currentUserId}`}
+          >
+            <User className="h-4 w-4" />
+          </Link>
+        ) : null}
       </header>
 
       {/* Stories row — NEW orbits (no forks) */}
       {sortedNew.length > 0 && (
         <div
           ref={storiesRef}
-          className="flex shrink-0 overflow-x-auto px-4 pb-2 pt-1"
+          className="flex shrink-0 snap-x snap-mandatory overflow-x-auto px-4 pb-2 pt-1"
           style={{
             WebkitOverflowScrolling: "touch",
             overscrollBehaviorX: "contain",
@@ -211,7 +221,7 @@ export function OrbitMobileCards({
             return (
               <button
                 key={orbit.id}
-                className="mr-3 flex w-[100px] shrink-0 flex-col items-center rounded-2xl bg-white/65 p-2.5 backdrop-blur-xl transition-all active:scale-95"
+                className="mr-3 flex w-[100px] shrink-0 snap-center flex-col items-center rounded-2xl bg-white/65 p-2.5 backdrop-blur-xl transition-all active:scale-95"
                 onClick={() => handleOpen(orbit.id)}
                 type="button"
                 style={{

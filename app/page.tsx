@@ -38,7 +38,7 @@ export default function HomePage() {
     }
   };
 
-  if (status === "loading" || isLoading) {
+  if (status === "loading" || isLoading || isMobile === undefined) {
     return <OrbitSkeleton />;
   }
 

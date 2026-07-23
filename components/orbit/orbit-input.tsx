@@ -593,11 +593,11 @@ export function OrbitInput({
                 />
                 {!isSending && (
                   <button
-                    className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-black/70 opacity-0 backdrop-blur-sm transition-all hover:bg-black/90 group-hover:opacity-100"
+                    className="absolute top-1 right-1 flex size-8 items-center justify-center rounded-full bg-black/70 backdrop-blur-sm transition-all hover:bg-black/90 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
                     onClick={() => removeAttachment(index)}
                     type="button"
                   >
-                    <X className="h-3.5 w-3.5 text-white" />
+                    <X className="h-4 w-4 text-white" />
                   </button>
                 )}
                 <div className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/90 via-black/50 to-transparent px-2 py-1 text-[11px] text-white">

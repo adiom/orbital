@@ -1,6 +1,8 @@
 "use client";
 
-export function OrbitSkeleton() {
+import { useIsMobile } from "@/hooks/use-is-mobile";
+
+function DesktopSkeleton() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-gray-50 via-blue-50/50 to-purple-50/50">
       {/* Header Skeleton */}
@@ -54,4 +56,55 @@ export function OrbitSkeleton() {
       </div>
     </div>
   );
+}
+
+function MobileSkeleton() {
+  return (
+    <div className="fixed inset-0 flex flex-col bg-[#fbfaf8]">
+      <header className="flex items-center justify-between px-5 pb-2 pt-[calc(1rem+env(safe-area-inset-top))]">
+        <div className="h-2.5 w-16 animate-pulse rounded-full bg-neutral-200" />
+        <div className="h-10 w-10 animate-pulse rounded-full bg-neutral-200" />
+      </header>
+
+      <div className="flex shrink-0 gap-3 overflow-hidden px-4 pb-2 pt-1">
+        {["mob-story-1", "mob-story-2", "mob-story-3"].map((key, i) => (
+          <div
+            className="h-[92px] w-[100px] shrink-0 animate-pulse rounded-2xl bg-white/70"
+            key={key}
+            style={{ animationDelay: `${i * 100}ms` }}
+          />
+        ))}
+      </div>
+
+      <div className="flex-1 space-y-4 overflow-hidden px-4 pb-24 pt-3">
+        {["mob-card-1", "mob-card-2"].map((key, i) => (
+          <div
+            className="h-40 w-full animate-pulse rounded-[28px] bg-white/70"
+            key={key}
+            style={{ animationDelay: `${i * 120}ms` }}
+          />
+        ))}
+      </div>
+
+      <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 z-50 h-14 w-14 -translate-x-1/2 animate-pulse rounded-full bg-neutral-200" />
+    </div>
+  );
+}
+
+function NeutralSkeleton() {
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-[#fbfaf8]">
+      <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-neutral-400" />
+    </div>
+  );
+}
+
+export function OrbitSkeleton() {
+  const isMobile = useIsMobile();
+
+  if (isMobile === undefined) {
+    return <NeutralSkeleton />;
+  }
+
+  return isMobile ? <MobileSkeleton /> : <DesktopSkeleton />;
 }
