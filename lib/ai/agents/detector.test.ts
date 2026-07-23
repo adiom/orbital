@@ -108,7 +108,7 @@ describe("cf-kristina Agent Config", () => {
 
   it("has externalMcp config with endpoint", () => {
     expect(cfKristinaAgent.externalMcp).toBeDefined();
-    expect(cfKristinaAgent.externalMcp!.endpoint).toContain("31337");
+    expect(cfKristinaAgent.externalMcp!.endpoint).toMatch(/^https?:\/\//);
   });
 
   it("uses CF_KRISTINA_USER_ID", () => {

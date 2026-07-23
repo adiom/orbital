@@ -48,7 +48,7 @@ The active product work is a redesign of Orbital from a chat/container interface
 
 ### Living Map
 
-The main page (`/`) now points to the new living map experience from `app/(orbit)/orbits/new_home/page.tsx`.
+The main page (`/`) now points to the new living map experience from `app/page.tsx`, which renders the components in `components/orbit/new-home/*` (`OrbitNetworkTimeline` on desktop, `OrbitMobileCards` + `OrbitCreateSheet` on mobile).
 
 The map should feel like a calm, premium, organic constellation of active thoughts:
 

@@ -58,5 +58,7 @@ export default defineConfig([
     'components/ui/**',
     'lib/utils.ts',
     'hooks/use-mobile.ts',
+    'playwright-report/**',
+    'test-results/**',
   ]),
 ])

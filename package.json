@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "bash scripts/dev-next.sh",
     "dev:ws": "tsx lib/websocket/server.ts",
-    "build": "next build",
+    "build": "pnpm db:migrate && next build",
     "start": "next start",
     "lint": "node_modules/.bin/eslint .",
     "format": "node_modules/.bin/eslint . --fix",
