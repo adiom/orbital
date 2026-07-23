@@ -453,3 +453,72 @@
     animation: none;
   }
 }
+
+/* Orbit loader — an orbit quietly forming while data loads.
+   A single orb drifts along a loose, non-repeating-looking path and
+   slowly cycles through the life-state hues (born → alive → settled). */
+@keyframes orbit-loader-drift {
+  0% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(16px, -12px);
+  }
+  45% {
+    transform: translate(3px, -24px);
+  }
+  70% {
+    transform: translate(-15px, -10px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes orbit-loader-hue {
+  0%,
+  100% {
+    background-color: #38bdf8;
+    box-shadow: 0 0 18px 4px rgba(56, 189, 248, 0.45);
+  }
+  40% {
+    background-color: #34d399;
+    box-shadow: 0 0 18px 4px rgba(52, 211, 153, 0.45);
+  }
+  75% {
+    background-color: #a78bfa;
+    box-shadow: 0 0 18px 4px rgba(167, 139, 250, 0.45);
+  }
+}
+
+@keyframes orbit-loader-breathe {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.orbit-loader-orb {
+  animation:
+    orbit-loader-drift 11s ease-in-out infinite,
+    orbit-loader-hue 9s ease-in-out infinite;
+  will-change: transform;
+}
+
+.orbit-loader-label {
+  animation: fade-in 900ms ease-out 400ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-loader-orb {
+    animation: orbit-loader-breathe 3.5s ease-in-out infinite;
+  }
+  .orbit-loader-label {
+    animation: none;
+  }
+}

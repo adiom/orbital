@@ -47,6 +47,7 @@ type OrbitControlBarProps = {
   resultCount: number;
   totalCount: number;
   className?: string;
+  hideViewToggle?: boolean;
 };
 
 const VIEW_MODE_CONFIG: Array<{
@@ -72,6 +73,7 @@ export function OrbitControlBar({
   resultCount,
   totalCount,
   className,
+  hideViewToggle,
 }: OrbitControlBarProps) {
   const activeFilterCount = [roleFilter, visibilityFilter].filter(
     Boolean
@@ -80,16 +82,16 @@ export function OrbitControlBar({
   return (
     <div
       className={cn(
-        "sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border border-white/80 bg-white/90 px-4 py-2 backdrop-blur",
+        "sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-full border border-white/70 bg-white/72 px-4 py-2 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl",
         className
       )}
     >
-      <div className="relative flex min-w-[240px] flex-1 items-center">
-        <Search className="pointer-events-none absolute left-3 h-4 w-4 text-gray-400" />
+      <div className="relative flex min-w-[220px] flex-1 items-center">
+        <Search className="pointer-events-none absolute left-3 h-4 w-4 text-neutral-400" />
         <Input
-          className="w-full rounded-xl bg-white py-2 pr-3 pl-10 text-sm"
+          className="w-full rounded-full border-transparent bg-white/70 py-2 pr-3 pl-10 text-neutral-800 text-sm placeholder:text-neutral-400 focus-visible:ring-neutral-200"
           onChange={(event) => onSearchChange(event.target.value)}
-          placeholder="Поиск по названию орбита..."
+          placeholder="Поиск..."
           value={searchQuery}
         />
       </div>
@@ -97,20 +99,20 @@ export function OrbitControlBar({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            className="relative gap-2 rounded-xl border border-gray-200 bg-white font-medium text-gray-700 text-xs shadow-none"
+            className="relative gap-2 rounded-full bg-white/60 font-medium text-neutral-500 text-xs shadow-none hover:bg-white hover:text-neutral-700"
             variant="ghost"
           >
             <SlidersHorizontal className="h-4 w-4" />
             Фильтры
             {hasActiveFilters && (
-              <Badge className="-right-2 -top-2 absolute h-5 min-w-[20px] rounded-full bg-purple-600 px-1 text-[11px] text-white">
+              <Badge className="-right-2 -top-2 absolute h-5 min-w-[20px] rounded-full bg-violet-400 px-1 text-[11px] text-white">
                 {activeFilterCount}
               </Badge>
             )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel className="text-gray-500 text-xs uppercase">
+          <DropdownMenuLabel className="text-neutral-400 text-xs uppercase">
             Роль
           </DropdownMenuLabel>
           {ROLE_OPTIONS.map((role) => (
@@ -125,7 +127,7 @@ export function OrbitControlBar({
             </DropdownMenuCheckboxItem>
           ))}
           <DropdownMenuSeparator />
-          <DropdownMenuLabel className="text-gray-500 text-xs uppercase">
+          <DropdownMenuLabel className="text-neutral-400 text-xs uppercase">
             Видимость
           </DropdownMenuLabel>
           {VISIBILITY_OPTIONS.map((option) => (
@@ -142,32 +144,34 @@ export function OrbitControlBar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <div className="flex items-center gap-1 text-gray-500 text-xs">
-        <Filter className="h-4 w-4 text-gray-500" />
-        {resultCount}/{totalCount} orbits
+      <div className="flex items-center gap-1 text-neutral-400 text-xs">
+        <Filter className="h-4 w-4 text-neutral-400" />
+        {resultCount}/{totalCount}
       </div>
 
-      <div className="flex items-center gap-0.5 rounded-full border border-gray-200 bg-gray-50 p-0.5">
-        {VIEW_MODE_CONFIG.map(({ mode, label, icon: Icon }) => {
-          const isActive = viewMode === mode;
-          return (
-            <button
-              className={cn(
-                "flex items-center gap-1 rounded-full px-2.5 py-1 font-medium text-xs transition",
-                isActive
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500 hover:text-gray-800"
-              )}
-              key={mode}
-              onClick={() => onViewModeChange(mode)}
-              type="button"
-            >
-              <Icon className="h-4 w-4" />
-              <span>{label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {!hideViewToggle && (
+        <div className="flex items-center gap-0.5 rounded-full bg-white/50 p-0.5">
+          {VIEW_MODE_CONFIG.map(({ mode, label, icon: Icon }) => {
+            const isActive = viewMode === mode;
+            return (
+              <button
+                className={cn(
+                  "flex items-center gap-1 rounded-full px-2.5 py-1 font-medium text-xs transition",
+                  isActive
+                    ? "bg-white text-neutral-900 shadow-sm"
+                    : "text-neutral-400 hover:text-neutral-700"
+                )}
+                key={mode}
+                onClick={() => onViewModeChange(mode)}
+                type="button"
+              >
+                <Icon className="h-4 w-4" />
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

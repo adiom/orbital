@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { MessageRenderer } from "@/components/chat/message-renderer";
 import { parseMessages, type Message } from "@/components/chat/shared-message-type";
 import { OrbitInput } from "./orbit-input";
+import { OrbitLoader } from "./orbit-loader";
 import { OrbitPageHeader } from "./orbit-page-header";
 
 type Member = {
@@ -398,11 +399,8 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-        <div className="text-center">
-          <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-blue-500" />
-          <p className="text-gray-500 text-sm">Loading orbit...</p>
-        </div>
+      <div className="flex h-full items-center justify-center bg-[#fbfaf8]">
+        <OrbitLoader label="орбита открывается" />
       </div>
     );
   }

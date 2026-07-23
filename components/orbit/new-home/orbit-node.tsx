@@ -2,6 +2,7 @@
 
 import { Brain, GitBranch, Settings, Sparkles, Trash2 } from "lucide-react";
 import { Handle, Position } from "@xyflow/react";
+import type { KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -114,6 +115,15 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
     data.onSelectOrbit?.(data.id);
   };
 
+  const handleOrbitKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleOrbitClick();
+    }
+  };
+
+  const nodeAriaLabel = `${data.title} — ${tone.label}`;
+
   const isOwner = data.currentUserId === data.ownerId;
 
   if (data.isSleeping) {
@@ -128,20 +138,24 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
   if (isCompact) {
     return (
       <div
+        aria-label={nodeAriaLabel}
         className={cn(
-          "pointer-events-auto group relative cursor-grab rounded-[20px] bg-white/65 backdrop-blur-xl transition-opacity active:cursor-grabbing",
+          "pointer-events-auto group relative cursor-grab rounded-[20px] bg-white/65 backdrop-blur-xl transition-opacity active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400",
           selected
             ? "ring-2 ring-violet-400/80"
             : "ring-1 ring-white/60",
           data.dimmed && "opacity-35"
         )}
+        onClick={handleOrbitClick}
+        onKeyDown={handleOrbitKeyDown}
+        role="button"
         style={{
           width: 160,
           minHeight: 72,
           padding: "10px 14px",
           boxShadow: `0 16px 40px rgba(15, 23, 42, 0.08), 0 0 28px ${tone.glow}`,
         }}
-        onClick={handleOrbitClick}
+        tabIndex={0}
       >
         <Handle position={Position.Top} type="target" className="!h-0 !w-0 !border-0 !bg-transparent" />
 
@@ -225,7 +239,8 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
       </div>
 
       <button
-        className="w-full cursor-pointer text-left"
+        aria-label={nodeAriaLabel}
+        className="w-full cursor-pointer rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
         onClick={handleOrbitClick}
         type="button"
       >

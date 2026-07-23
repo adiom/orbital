@@ -30,9 +30,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { ForkRelationship, Orbit } from "@/hooks/use-orbit-layout";
+import { useOrbitViewMode } from "@/hooks/use-orbit-view-mode";
 import { findClusters } from "@/lib/orbit/cluster-detection";
 import { computeForceLayout } from "@/lib/orbit/force-layout";
 import { ClusterOverlay } from "./cluster-overlay";
+import { OrbitControlBar } from "./orbit-control-bar";
 import { OrbitEdge } from "./orbit-edge";
 import { OrbitNode, type OrbitNodeData } from "./orbit-node";
 import { OrbitToolbar } from "./orbit-toolbar";
@@ -371,6 +373,12 @@ function OrbitNetworkTimelineInner({
   const [isDeleting, setIsDeleting] = useState(false);
   const [showArchive, setShowArchive] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string | null>(null);
+  const [visibilityFilter, setVisibilityFilter] = useState<string | null>(
+    null
+  );
+  const { viewMode, setViewMode } = useOrbitViewMode();
   const graphRef = useRef<HTMLDivElement>(null);
   // Snapshot of positions at drag start, for group-drag deltas.
   const dragStartRef = useRef<Map<string, XYPosition> | null>(null);
@@ -467,6 +475,29 @@ function OrbitNetworkTimelineInner({
     }
   };
 
+  const hasActiveFilters = Boolean(
+    searchQuery.trim() || roleFilter || visibilityFilter
+  );
+
+  const filteredOrbits = useMemo(() => {
+    if (!hasActiveFilters) return orbits;
+    const query = searchQuery.trim().toLowerCase();
+    return orbits.filter((orbit) => {
+      if (
+        query &&
+        !orbit.title.toLowerCase().includes(query) &&
+        !orbit.description?.toLowerCase().includes(query)
+      ) {
+        return false;
+      }
+      if (roleFilter && orbit.role !== roleFilter) return false;
+      if (visibilityFilter && orbit.visibility !== visibilityFilter) {
+        return false;
+      }
+      return true;
+    });
+  }, [orbits, hasActiveFilters, searchQuery, roleFilter, visibilityFilter]);
+
   const {
     nodes: initialNodes,
     edges: initialEdges,
@@ -475,14 +506,14 @@ function OrbitNetworkTimelineInner({
     clusterMap,
   } = useMemo(() => {
     return buildGraph(
-      orbits,
+      filteredOrbits,
       forkRelationships,
       currentUserId,
       handleOpenSettings,
       setOrbitToDelete,
       handleSelectOrbit
     );
-  }, [orbits, forkRelationships, currentUserId, handleSelectOrbit]);
+  }, [filteredOrbits, forkRelationships, currentUserId, handleSelectOrbit]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
@@ -658,10 +689,36 @@ function OrbitNetworkTimelineInner({
 
   return (
     <>
+      {/* Search + filters */}
+      <div className="pointer-events-auto fixed top-4 left-1/2 z-20 hidden w-full max-w-xl -translate-x-1/2 px-6 md:block">
+        <OrbitControlBar
+          hasActiveFilters={hasActiveFilters}
+          hideViewToggle
+          onRoleFilterChange={setRoleFilter}
+          onSearchChange={setSearchQuery}
+          onViewModeChange={setViewMode}
+          onVisibilityFilterChange={setVisibilityFilter}
+          resultCount={filteredOrbits.length}
+          roleFilter={roleFilter}
+          searchQuery={searchQuery}
+          totalCount={orbits.length}
+          viewMode={viewMode}
+          visibilityFilter={visibilityFilter}
+        />
+      </div>
+
+      {hasActiveFilters && filteredOrbits.length === 0 && (
+        <div className="pointer-events-none fixed inset-0 z-10 flex items-center justify-center">
+          <p className="text-[11px] text-neutral-400 uppercase tracking-[0.2em]">
+            Ничего не нашлось
+          </p>
+        </div>
+      )}
+
       {/* Stats bar */}
       <div className="pointer-events-auto fixed bottom-6 left-6 z-20 hidden items-center gap-2 md:flex">
         <div className="whitespace-nowrap rounded-full border border-white/70 bg-white/55 px-4 py-2 text-[11px] text-neutral-400 shadow-[0_18px_60px_rgba(15,23,42,0.08)] backdrop-blur-2xl">
-          {nodes.length} {nodes.length === 1 ? "мысль" : "живых точек"} · {edges.length} связей · {orbits.reduce((sum, o) => sum + (o.messageCount || 0), 0)} сообщений
+          {nodes.length} {nodes.length === 1 ? "мысль" : "живых точек"} · {edges.length} связей · {filteredOrbits.reduce((sum, o) => sum + (o.messageCount || 0), 0)} сообщений
           {archiveCount > 0 && (
             <span className="ml-1.5 text-neutral-300">· {archiveCount} в архиве</span>
           )}
@@ -729,7 +786,7 @@ function OrbitNetworkTimelineInner({
           minZoom={0.4}
           maxZoom={2}
           nodeDragThreshold={4}
-          onlyRenderVisibleElements={orbits.length > 50}
+          onlyRenderVisibleElements={filteredOrbits.length > 50}
           proOptions={{ hideAttribution: true }}
           className="orbital-flow"
           style={{ background: "transparent" }}

@@ -321,7 +321,7 @@ export function OrbitMobileCards({
       )}
 
       {/* Bottom create button - Instagram style */}
-      <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2">
+      <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2">
         <button
           className="flex h-14 w-14 items-center justify-center rounded-full bg-neutral-950 text-white shadow-[0_8px_32px_rgba(15,23,42,0.25)] transition-all active:scale-95"
           onClick={onCreateOpen}

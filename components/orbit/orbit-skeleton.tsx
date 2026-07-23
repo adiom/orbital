@@ -1,21 +1,22 @@
 "use client";
 
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { OrbitLoader } from "./orbit-loader";
 
 function DesktopSkeleton() {
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-gray-50 via-blue-50/50 to-purple-50/50">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#fbfaf8]">
       {/* Header Skeleton */}
-      <header className="border-gray-200/50 border-b bg-white/80 px-8 py-6 shadow-sm backdrop-blur-xl">
+      <header className="border-white/70 border-b bg-white/60 px-8 py-6 backdrop-blur-xl">
         <div className="flex items-center justify-between">
           <div>
-            <div className="mb-2 h-9 w-64 animate-pulse rounded-lg bg-gradient-to-r from-gray-200 to-gray-300" />
+            <div className="mb-2 h-9 w-64 animate-pulse rounded-lg bg-neutral-100" />
             <div className="mt-2 flex items-center gap-4">
-              <div className="h-8 w-24 animate-pulse rounded-full bg-gray-200" />
-              <div className="h-8 w-24 animate-pulse rounded-full bg-gray-200" />
+              <div className="h-8 w-24 animate-pulse rounded-full bg-neutral-100" />
+              <div className="h-8 w-24 animate-pulse rounded-full bg-neutral-100" />
             </div>
           </div>
-          <div className="h-12 w-36 animate-pulse rounded-full bg-gradient-to-r from-gray-200 to-gray-300" />
+          <div className="h-12 w-36 animate-pulse rounded-full bg-neutral-100" />
         </div>
       </header>
 
@@ -32,15 +33,15 @@ function DesktopSkeleton() {
             "skeleton-6",
           ].map((key, i) => (
             <div
-              className="h-32 w-44 animate-pulse rounded-3xl border-2 border-gray-200 bg-white shadow-lg"
+              className="h-32 w-44 animate-pulse rounded-[28px] bg-white/72 shadow-[0_24px_80px_rgba(15,23,42,0.10)] ring-1 ring-white/70"
               key={key}
               style={{
                 animationDelay: `${i * 100}ms`,
               }}
             >
               <div className="p-4">
-                <div className="mb-2 h-4 w-3/4 rounded bg-gray-200" />
-                <div className="h-3 w-1/2 rounded bg-gray-100" />
+                <div className="mb-2 h-4 w-3/4 rounded bg-neutral-100" />
+                <div className="h-3 w-1/2 rounded bg-neutral-100" />
               </div>
             </div>
           ))}
@@ -48,10 +49,7 @@ function DesktopSkeleton() {
 
         {/* Loading message */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <div className="mx-auto mb-3 h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-blue-500" />
-            <p className="text-gray-600 text-sm">Loading orbits...</p>
-          </div>
+          <OrbitLoader label="орбита формируется" />
         </div>
       </div>
     </div>
@@ -94,7 +92,7 @@ function MobileSkeleton() {
 function NeutralSkeleton() {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-[#fbfaf8]">
-      <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-neutral-400" />
+      <OrbitLoader />
     </div>
   );
 }
