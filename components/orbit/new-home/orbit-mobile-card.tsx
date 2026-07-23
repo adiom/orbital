@@ -235,7 +235,7 @@ export function OrbitMobileCard({
         {isOwner && (
           <div className="flex items-center gap-1">
             <Button
-              className="h-7 w-7 rounded-full bg-white/60 text-neutral-400 hover:bg-white hover:text-neutral-700"
+              className="h-10 w-10 rounded-full bg-white/60 text-neutral-400 hover:bg-white hover:text-neutral-700"
               onClick={(e) => {
                 e.stopPropagation();
                 onSettingsClick?.();
@@ -243,10 +243,10 @@ export function OrbitMobileCard({
               size="icon"
               variant="ghost"
             >
-              <Settings className="h-3.5 w-3.5" />
+              <Settings className="h-4 w-4" />
             </Button>
             <Button
-              className="h-7 w-7 rounded-full bg-white/60 text-neutral-300 hover:bg-red-50 hover:text-red-500"
+              className="h-10 w-10 rounded-full bg-white/60 text-neutral-300 hover:bg-red-50 hover:text-red-500"
               onClick={(e) => {
                 e.stopPropagation();
                 onDeleteClick?.();
@@ -254,7 +254,7 @@ export function OrbitMobileCard({
               size="icon"
               variant="ghost"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         )}

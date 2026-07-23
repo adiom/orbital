@@ -424,7 +424,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
       />
 
       {/* Messages */}
-      <div className="flex-grow overflow-y-auto px-3 pt-14 pb-40 md:px-8 md:pt-20">
+      <div className="flex-grow overflow-y-auto px-3 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-40 md:px-8 md:pt-20">
         <div className="mx-auto max-w-4xl">
           {messages.length === 0 ? (
             <div className="flex h-full min-h-[400px] items-center justify-center">
@@ -491,7 +491,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
 
         Комбинация этих классов делает панель ввода фиксированной снизу, с размытием и прозрачным белым фоном, визуально отделяя её от остальной части интерфейса.
       */}
-      <div className="fixed right-0 bottom-0 left-0 border-gray-200/50 border-t bg-white/80 p-0 backdrop-blur-xl md:p-1">
+      <div className="fixed right-0 bottom-0 left-0 border-gray-200/50 border-t bg-white/80 p-0 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:p-1">
         <div className="mx-auto max-w-4xl">
           <OrbitInput
             editingMessage={editingMessage}

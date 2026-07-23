@@ -1,8 +1,17 @@
 "use client";
 
 import { FileText, Code2, Table, Image, AppWindow, BarChart3, Gamepad2 } from "lucide-react";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import type { DocumentArtifact } from "./shared-message-type";
+
+const RENDERABLE_KINDS: DocumentArtifact["kind"][] = ["text", "code", "sheet"];
 
 type ArtifactsRendererProps = {
   artifacts: DocumentArtifact[];
@@ -73,9 +82,11 @@ const ARTIFACT_ICONS: Record<DocumentArtifact["kind"], React.ComponentType<{ cla
 function ArtifactCard({
   artifact,
   className,
+  onOpen,
 }: {
   artifact: DocumentArtifact;
   className?: string;
+  onOpen: (artifact: DocumentArtifact) => void;
 }) {
   const Icon = ARTIFACT_ICONS[artifact.kind] ?? FileText;
   const colorClass = getArtifactColor(artifact.kind);
@@ -100,6 +111,7 @@ function ArtifactCard({
         </div>
         <button
           className="rounded-lg bg-gray-100 px-3 py-1.5 text-gray-600 text-xs transition-colors hover:bg-gray-200"
+          onClick={() => onOpen(artifact)}
           type="button"
         >
           Открыть
@@ -116,6 +128,10 @@ export function ArtifactsRenderer({
   artifacts,
   className,
 }: ArtifactsRendererProps) {
+  const [openArtifact, setOpenArtifact] = useState<DocumentArtifact | null>(
+    null
+  );
+
   if (!artifacts || artifacts.length === 0) {
     return null;
   }
@@ -123,8 +139,32 @@ export function ArtifactsRenderer({
   return (
     <div className={cn("space-y-2", className)}>
       {artifacts.map((artifact) => (
-        <ArtifactCard artifact={artifact} key={artifact.id} />
+        <ArtifactCard
+          artifact={artifact}
+          key={artifact.id}
+          onOpen={setOpenArtifact}
+        />
       ))}
+
+      <Dialog
+        onOpenChange={(open) => !open && setOpenArtifact(null)}
+        open={openArtifact !== null}
+      >
+        <DialogContent className="max-h-[85dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{openArtifact?.title}</DialogTitle>
+          </DialogHeader>
+          {openArtifact && RENDERABLE_KINDS.includes(openArtifact.kind) ? (
+            <pre className="whitespace-pre-wrap break-words text-gray-800 text-sm">
+              {openArtifact.content || "Нет содержимого"}
+            </pre>
+          ) : (
+            <p className="text-gray-500 text-sm">
+              Предпросмотр для этого типа артефакта пока недоступен.
+            </p>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

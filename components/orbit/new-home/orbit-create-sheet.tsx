@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { ArrowUp, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -7,6 +8,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+
+const DISMISS_OFFSET = 100;
+const DISMISS_VELOCITY = 500;
 
 type OrbitCreateSheetProps = {
   isOpen: boolean;
@@ -18,6 +22,7 @@ export function OrbitCreateSheet({ isOpen, onClose }: OrbitCreateSheetProps) {
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     if (isOpen) {
@@ -92,76 +97,103 @@ export function OrbitCreateSheet({ isOpen, onClose }: OrbitCreateSheetProps) {
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/15 backdrop-blur-sm transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* Sheet */}
-      <div className="relative z-10 w-full animate-slide-in-up rounded-t-[24px] bg-white p-4 shadow-[0_-10px_40px_rgba(15,23,42,0.12)]">
-        {/* Handle */}
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-neutral-200" />
-
-        {/* Header */}
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-medium text-sm text-neutral-950">
-            Новая мысль
-          </h3>
-          <Button
+    <AnimatePresence>
+      {isOpen ? (
+        <div className="fixed inset-0 z-50 flex items-end">
+          {/* Backdrop */}
+          <motion.div
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-black/15 backdrop-blur-sm"
+            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }}
             onClick={onClose}
-            size="icon"
-            variant="ghost"
-            className="size-8 text-neutral-400"
+            transition={{ duration: prefersReducedMotion ? 0 : 0.2 }}
+          />
+
+          {/* Sheet */}
+          <motion.div
+            animate={{ y: 0 }}
+            className="relative z-10 w-full rounded-t-[24px] bg-white p-4 shadow-[0_-10px_40px_rgba(15,23,42,0.12)]"
+            drag={prefersReducedMotion ? false : "y"}
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0, bottom: 0.5 }}
+            exit={{ y: "100%" }}
+            initial={{ y: "100%" }}
+            onDragEnd={(_, info) => {
+              if (
+                info.offset.y > DISMISS_OFFSET ||
+                info.velocity.y > DISMISS_VELOCITY
+              ) {
+                onClose();
+              }
+            }}
+            transition={
+              prefersReducedMotion
+                ? { duration: 0 }
+                : { type: "spring", damping: 30, stiffness: 300 }
+            }
           >
-            <X className="h-4 w-4" />
-          </Button>
+            {/* Handle */}
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-neutral-200" />
+
+            {/* Header */}
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="font-medium text-sm text-neutral-950">
+                Новая мысль
+              </h3>
+              <Button
+                onClick={onClose}
+                size="icon"
+                variant="ghost"
+                className="size-8 text-neutral-400"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Input */}
+            <form onSubmit={handleSubmit}>
+              <div className="rounded-2xl border-2 border-neutral-200 bg-neutral-50 p-3 transition-colors focus-within:border-neutral-300">
+                <Textarea
+                  ref={textareaRef}
+                  value={content}
+                  onChange={handleInputChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder="О чём хотите подумать?"
+                  className="min-h-[48px] resize-none border-0 bg-transparent p-0 text-[15px] text-neutral-900 placeholder:text-neutral-400 focus-visible:ring-0 focus-visible:ring-offset-0"
+                  rows={1}
+                />
+              </div>
+
+              {/* Submit */}
+              <div className="mt-3 flex justify-end">
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={!content.trim() || isSending}
+                  className={cn(
+                    "gap-1.5 rounded-full px-4",
+                    content.trim()
+                      ? "bg-neutral-950 text-white hover:bg-neutral-800"
+                      : "bg-neutral-100 text-neutral-400"
+                  )}
+                >
+                  {isSending ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  ) : (
+                    <ArrowUp className="h-4 w-4" />
+                  )}
+                  Создать
+                </Button>
+              </div>
+            </form>
+
+            {/* Safe area */}
+            <div className="h-[env(safe-area-inset-bottom)]" />
+          </motion.div>
         </div>
-
-        {/* Input */}
-        <form onSubmit={handleSubmit}>
-          <div className="rounded-2xl border-2 border-neutral-200 bg-neutral-50 p-3 transition-colors focus-within:border-neutral-300">
-            <Textarea
-              ref={textareaRef}
-              value={content}
-              onChange={handleInputChange}
-              onKeyDown={handleKeyDown}
-              placeholder="О чём хотите подумать?"
-              className="min-h-[48px] resize-none border-0 bg-transparent p-0 text-[15px] text-neutral-900 placeholder:text-neutral-400 focus-visible:ring-0 focus-visible:ring-offset-0"
-              rows={1}
-            />
-          </div>
-
-          {/* Submit */}
-          <div className="mt-3 flex justify-end">
-            <Button
-              type="submit"
-              size="sm"
-              disabled={!content.trim() || isSending}
-              className={cn(
-                "gap-1.5 rounded-full px-4",
-                content.trim()
-                  ? "bg-neutral-950 text-white hover:bg-neutral-800"
-                  : "bg-neutral-100 text-neutral-400"
-              )}
-            >
-              {isSending ? (
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              ) : (
-                <ArrowUp className="h-4 w-4" />
-              )}
-              Создать
-            </Button>
-          </div>
-        </form>
-
-        {/* Safe area */}
-        <div className="h-[env(safe-area-inset-bottom)]" />
-      </div>
-    </div>
+      ) : null}
+    </AnimatePresence>
   );
 }

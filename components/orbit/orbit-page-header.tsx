@@ -44,7 +44,7 @@ export function OrbitPageHeader({
 
   return (
     <>
-      <div className="fixed top-0 right-0 left-0 z-10 border-gray-200/50 border-b bg-white/80 backdrop-blur-xl">
+      <div className="fixed top-0 right-0 left-0 z-10 border-gray-200/50 border-b bg-white/80 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4 md:h-16 md:px-8">
           <div className="min-w-0 flex-1">
             {/* Breadcrumbs */}
