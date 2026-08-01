@@ -3,6 +3,7 @@
 import Link from "next/link";
 import useSWR from "swr";
 import { AgentRow } from "@/components/admin/console/agent-row";
+import { BanitaCapability } from "@/components/admin/console/banita-capability";
 import type { AgentsSnapshot } from "@/components/admin/console/types";
 import { formatNumber, formatTime } from "@/components/admin/format";
 
@@ -119,6 +120,8 @@ export default function ConsolePage() {
           />
         ))}
       </ul>
+
+      <BanitaCapability />
 
       <p className="mt-12 max-w-[560px] text-[11.5px] text-neutral-400 leading-relaxed">
         Личность, слова-обращения и сами инструменты живут в коде — их отсюда не

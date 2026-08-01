@@ -9,7 +9,6 @@ import { buildSferaPrompt } from "@/lib/ai/prompts/index";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { myProvider } from "./providers";
-import { getSferaTools } from "./sfera-tools";
 import { logAiUsage } from "./usage-logger";
 
 // Use a fixed UUID for Avrora AI user
@@ -210,70 +209,14 @@ export async function generateAvroraResponse(
       content: triggerMessage.content.substring(0, 100),
     });
 
-    // Get all available tools
-    const tools = getSferaTools();
-    //console.log(`🔧 Loaded ${tools.length} tools for AI to use`);
-    //console.log(`triggerMessage = ${triggerMessage}`);
-    // Prepare tools object for AI SDK (convert array to object with tool names as keys)
-    const toolsObject: Record<string, (typeof tools)[number]> = {};
-
-    // Map tools by their type/name from the tool function
-    tools.forEach((tool, index) => {
-      const toolConfig = tool as any;
-      // Extract tool name from description or use index-based naming
-      let toolName = `tool_${index}`;
-
-      if (toolConfig.description?.includes("image")) {
-        toolName = "generateImage";
-      } else if (toolConfig.description?.includes("music")) {
-        toolName = "generateMusic";
-      } else if (toolConfig.description?.includes("video")) {
-        toolName = "generateVideo";
-      } else if (
-        toolConfig.description?.includes("speech") ||
-        toolConfig.description?.includes("transcribe")
-      ) {
-        toolName = "speechToText";
-      } else if (toolConfig.description?.includes("summarize")) {
-        toolName = "summarizeDiscussion";
-      } else if (
-        toolConfig.description?.includes("search") ||
-        toolConfig.description?.includes("web")
-      ) {
-        toolName = "webSearch";
-      } else if (
-        toolConfig.description?.includes("mini-app") ||
-        toolConfig.description?.includes("mini app")
-      ) {
-        toolName = "createMiniApp";
-      } else if (toolConfig.description?.includes("chart")) {
-        toolName = "createChart";
-      } else if (
-        toolConfig.description?.includes("game") ||
-        toolConfig.description?.includes("quiz")
-      ) {
-        toolName = "createGame";
-      } else if (
-        toolConfig.description?.includes("edit") &&
-        toolConfig.description?.includes("mini")
-      ) {
-        toolName = "editMiniApp";
-      }
-
-      toolsObject[toolName] = tool;
-    });
-
-    console.log("🗺️ Tools mapped:", Object.keys(toolsObject));
-
     // Initialize variables for tracking tool execution
     const toolResults: any[] = [];
     const executedToolNames: string[] = [];
 
-    // Always use full model (chat-model/gpt-5-mini) since we provide tools
-    // The AI SDK will decide whether to use them based on context
+    // Legacy Avrora remains text-only until orchestration moves to cf-avrora.
     const selectedModel = "chat-model";
 
-    console.log("🧠 Generating AI response with automatic tool calling...");
+    console.log("🧠 Generating text-only AI response...");
     console.log(`🎯 Model: ${selectedModel}`);
     const model = myProvider.languageModel(selectedModel);
 
@@ -287,7 +230,7 @@ export async function generateAvroraResponse(
       ${triggerMessage.content}
       `,
       temperature: 0.7,
-      tools: toolsObject, // AI will automatically decide which tools to use
+      tools: {},
     });
 
     const { text, usage, steps } = result;

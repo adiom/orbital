@@ -82,18 +82,23 @@ export function OrbitChatPanel({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
 
+  const hasGeneratingMessages = messages.some((message) => message.isGenerating);
+
   useEffect(() => {
-    if (!messages.some((message) => message.isGenerating)) {
+    if (!hasGeneratingMessages) {
       return;
     }
 
-    let timeoutId: ReturnType<typeof setTimeout>;
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let pollCount = 0;
     const BASE_DELAY = 1200;
     const MAX_DELAY = 5000;
 
-    const poll = () => {
-      void fetchData();
+    const poll = async () => {
+      // Wait for the slow snapshot request before scheduling another one.
+      await fetchData(controller.signal);
+      if (controller.signal.aborted) return;
       pollCount++;
       const delay = Math.min(BASE_DELAY * Math.pow(1.5, pollCount), MAX_DELAY);
       timeoutId = setTimeout(poll, delay);
@@ -101,8 +106,11 @@ export function OrbitChatPanel({
 
     timeoutId = setTimeout(poll, BASE_DELAY);
 
-    return () => clearTimeout(timeoutId);
-  }, [fetchData, messages]);
+    return () => {
+      controller.abort();
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [fetchData, hasGeneratingMessages]);
 
   const handleFork = useCallback(() => {
     fetchData();
@@ -237,6 +245,20 @@ export function OrbitChatPanel({
                   onEdit={handleEdit}
                   onFork={handleFork}
                   onReply={handleReply}
+                  onApproveTool={(approvalId) => {
+                    void fetch(`/api/sfera/${orbitId}/capabilities/banita`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ messageId: message.id, approvalId, action: "approve" }),
+                    }).then(() => fetchData());
+                  }}
+                  onDenyTool={(approvalId) => {
+                    void fetch(`/api/sfera/${orbitId}/capabilities/banita`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ messageId: message.id, approvalId, action: "deny" }),
+                    }).then(() => fetchData());
+                  }}
                   orbitId={orbitId}
                   parentMessage={parentMessageMap.get(message.id) ?? null}
                 />

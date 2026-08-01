@@ -35,6 +35,8 @@ type ToolResultsRendererProps = {
    * case the card falls back to its own navigation.
    */
   onOnboardingExit?: () => void;
+  onApprove?: (approvalId: string) => void;
+  onDeny?: (approvalId: string) => void;
 };
 
 /**
@@ -98,11 +100,15 @@ function ToolResultDisplay({
   messageId,
   className,
   onOnboardingExit,
+  onApprove,
+  onDeny,
 }: {
   result: ToolResult;
   messageId?: string;
   className?: string;
   onOnboardingExit?: () => void;
+  onApprove?: (approvalId: string) => void;
+  onDeny?: (approvalId: string) => void;
 }) {
   const [isImageZoomed, setIsImageZoomed] = useState(false);
 
@@ -113,6 +119,30 @@ function ToolResultDisplay({
       : "output" in result && typeof result.output === "object"
         ? { toolName: result.toolName, ...(result.output as Record<string, unknown>) }
         : result;
+
+  if (normalizedResult.toolName === "banitaApproval") {
+    const approvalId = normalizedResult.approvalId;
+    const status = normalizedResult.status;
+    if (typeof approvalId !== "string") return null;
+    if (status === "requested") {
+      return (
+        <div className={cn("rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-4", className)}>
+          <p className="font-medium text-fuchsia-950">BANITA хочет нарисовать</p>
+          <p className="mt-1 text-sm text-fuchsia-900">{normalizedResult.prompt || "Изображение"}</p>
+          <div className="mt-3 flex gap-2">
+            <button className="rounded-lg bg-fuchsia-600 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50" onClick={() => onApprove?.(approvalId)} type="button">Разрешить</button>
+            <button className="rounded-lg border border-fuchsia-300 px-3 py-1.5 text-sm text-fuchsia-900 disabled:opacity-50" onClick={() => onDeny?.(approvalId)} type="button">Отклонить</button>
+          </div>
+        </div>
+      );
+    }
+    if (status === "denied") {
+      return <div className={cn("rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm text-neutral-700", className)}>Генерация отменена</div>;
+    }
+    if (status === "approved" || status === "completed" || status === "failed") {
+      return null;
+    }
+  }
 
   // Onboarding completion — a milestone, not a tool log. Checked before
   // the generic success plaque below, which would otherwise render the
@@ -580,6 +610,8 @@ export function ToolResultsRenderer({
   messageId,
   className,
   onOnboardingExit,
+  onApprove,
+  onDeny,
 }: ToolResultsRendererProps) {
   if (!results || results.length === 0) {
     return null;
@@ -599,6 +631,8 @@ export function ToolResultsRenderer({
             key={String(resultKey)}
             messageId={messageId}
             onOnboardingExit={onOnboardingExit}
+            onApprove={onApprove}
+            onDeny={onDeny}
             result={result}
           />
         );

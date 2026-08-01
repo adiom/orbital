@@ -13,6 +13,7 @@ import { getAgentById } from "@/lib/ai/agents/registry";
 import type { AgentResponseEvent } from "@/lib/ai/agents/types";
 import { isAiConfigured } from "@/lib/ai/providers";
 import type { OrbitUIMessage } from "@/lib/ai/orbit-ui-message";
+import { detectImageIntent } from "@/lib/capabilities/image-intent";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { checkAvroraRateLimit } from "@/lib/redis/rate-limiter";
@@ -122,7 +123,18 @@ export async function POST(request: Request, context: RouteContext) {
   const [sferaData] = await db.select().from(sfera).where(eq(sfera.id, sferaId)).limit(1);
   if (!sferaData) return Response.json({ error: "Sfera not found" }, { status: 404 });
 
-  const mentionedAgents = detectMentionedAgents(content);
+  const imageIntent = detectImageIntent(content);
+  const imageApproval = imageIntent
+    ? {
+        toolName: "banitaApproval",
+        success: true,
+        approvalId: crypto.randomUUID(),
+        provider: "BANITA",
+        prompt: imageIntent.prompt,
+        status: "requested" as const,
+      }
+    : null;
+  const mentionedAgents = imageIntent ? [] : detectMentionedAgents(content);
   const [onboardingMembership] = await db
     .select()
     .from(sferaMember)
@@ -133,7 +145,7 @@ export async function POST(request: Request, context: RouteContext) {
       ),
     )
     .limit(1);
-  if (onboardingMembership) {
+  if (!imageIntent && onboardingMembership) {
     const onboardingAgent = getAgentById("onboarding");
     if (onboardingAgent && !mentionedAgents.some((agent) => agent.id === "onboarding")) {
       mentionedAgents.push(onboardingAgent);
@@ -182,6 +194,7 @@ export async function POST(request: Request, context: RouteContext) {
       content,
       parentMessageId: body.parentMessageId || null,
       attachments: attachments as never,
+      toolResults: imageApproval ? [imageApproval] : [],
       isForked: false,
       forkCount: 0,
       createdAt: new Date(),
@@ -258,6 +271,7 @@ export async function POST(request: Request, context: RouteContext) {
             userEmail: session.user.email || "user@orbital.local",
             parentMessageId: userMessage.parentMessageId,
             attachments: attachments as never,
+            toolResults: imageApproval ? [imageApproval] : [],
             isForked: false,
             forkedSferaId: null,
             createdAt: userMessage.createdAt.toISOString(),

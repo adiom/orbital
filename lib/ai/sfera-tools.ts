@@ -34,30 +34,28 @@ export const TOOL_CATEGORIES = {
   MINI_APPS: "mini_apps",
 } as const;
 
+/** Stable tool names are part of the model contract; do not infer them from descriptions. */
+export function getSferaToolMap(): Record<string, Tool<any, any>> {
+  return {
+    generateImage,
+    generateMusic,
+    generateVideo,
+    speechToText,
+    summarizeDiscussion,
+    webSearch,
+    createMiniApp,
+    createChart,
+    createGame,
+    editMiniApp,
+  };
+}
+
 /**
  * Get all tools available for Sfera
  * Returns an array of tools that the AI can use based on context
  */
 export function getSferaTools(): Tool<any, any>[] {
-  return [
-    // 🎨 Generative tools (5)
-    generateImage,
-    generateMusic,
-    generateVideo,
-    speechToText,
-
-    // 🔍 Analytics tools (1)
-    summarizeDiscussion,
-
-    // 🌐 Integration tools (1)
-    webSearch,
-
-    // 💻 Mini-app tools (4)
-    createMiniApp,
-    createChart,
-    createGame,
-    editMiniApp,
-  ];
+  return Object.values(getSferaToolMap());
 }
 
 /**

@@ -15,6 +15,7 @@ export type OrbitUserMessageData = {
     isForked: false;
     forkedSferaId: null;
     createdAt: string;
+    toolResults?: ToolResult[];
   };
 };
 

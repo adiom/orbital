@@ -19,6 +19,8 @@ import { toast } from "sonner";
 import { Response } from "@/components/elements/response";
 import {
   AVRORA_USER_ID,
+  BANITA_EMAIL,
+  BANITA_USER_ID,
   CLAUDE_CODE_USER_ID,
   CF_KRISTINA_USER_ID,
 } from "@/lib/constants/system-users";
@@ -168,6 +170,8 @@ export function OrbitMessage({
   const isCfKristinaMessage =
     message.userId === CF_KRISTINA_USER_ID ||
     message.userEmail === "cf-kristina@avrora.click";
+  const isBanitaMessage =
+    message.userId === BANITA_USER_ID || message.userEmail === BANITA_EMAIL;
 
   // Выбираем компонент индикатора
   const IndicatorComponent = parentMessage
@@ -234,6 +238,12 @@ export function OrbitMessage({
               <div className="flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1">
                 <Bot className="h-3 w-3 text-white" />
                 <span className="font-semibold text-white">cf-kristina</span>
+              </div>
+            )}
+            {isBanitaMessage && (
+              <div className="flex items-center gap-1 rounded-full bg-fuchsia-600 px-2.5 py-1">
+                <Sparkles className="h-3 w-3 text-white" />
+                <span className="font-semibold text-white">Banita</span>
               </div>
             )}
             <span

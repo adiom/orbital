@@ -32,6 +32,7 @@ import { PreviewAttachment } from "@/components/preview-attachment";
 import { MentionHighlight } from "@/components/sfera/sfera-mention-button";
 import {
   AVRORA_USER_ID,
+  BANITA_USER_ID,
   CLAUDE_CODE_USER_ID,
   CF_KRISTINA_USER_ID,
 } from "@/lib/constants/system-users";
@@ -82,7 +83,8 @@ export const SferaMessage = memo(
     const isAvrora = data?.userId === AVRORA_USER_ID;
     const isClaudeCode = data?.userId === CLAUDE_CODE_USER_ID;
     const isCfKristina = data?.userId === CF_KRISTINA_USER_ID;
-    const isAI = isAvrora || isClaudeCode || isCfKristina;
+    const isBanita = data?.userId === BANITA_USER_ID;
+    const isAI = isAvrora || isClaudeCode || isCfKristina || isBanita;
     const isOwn = data?.userId === currentUserId;
 
     // Extract text content for copying
@@ -162,6 +164,11 @@ export const SferaMessage = memo(
                     cf-kristina
                   </span>
                 </div>
+              )}
+              {isBanita && (
+                <span className="rounded-full bg-fuchsia-600 px-2 py-0.5 text-[10px] font-medium text-white">
+                  Banita
+                </span>
               )}
               <span
                 className={cn(

@@ -157,6 +157,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [busyBanitaApprovals, setBusyBanitaApprovals] = useState(() => new Set<string>());
   const [isClosing, setIsClosing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -467,6 +468,29 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     [currentUserId, members, sendStreamMessage]
   );
 
+  const handleBanitaApproval = useCallback(async (messageId: string, approvalId: string, action: "approve" | "deny") => {
+    if (busyBanitaApprovals.has(approvalId)) return;
+    setBusyBanitaApprovals((current) => new Set(current).add(approvalId));
+    try {
+      const response = await fetch(`/api/sfera/${orbitId}/capabilities/banita`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId, approvalId, action }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "BANITA не смогла выполнить запрос");
+      await fetchOrbit();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось обработать запрос");
+    } finally {
+      setBusyBanitaApprovals((current) => {
+        const next = new Set(current);
+        next.delete(approvalId);
+        return next;
+      });
+    }
+  }, [busyBanitaApprovals, fetchOrbit, orbitId]);
+
   useEffect(() => {
     const controller = new AbortController();
     fetchOrbit(controller.signal);
@@ -477,22 +501,24 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   }, [fetchOrbit]);
 
   // Poll for message updates when there are generating messages (exponential backoff)
-  useEffect(() => {
-    const hasGeneratingMessages = messages.some(
-      (m) => m.isGenerating === true && !activeAgentMessageIdsRef.current.has(m.id)
-    );
+  const hasGeneratingMessages = messages.some((m) => m.isGenerating === true);
 
-    if (!hasGeneratingMessages) {
+  useEffect(() => {
+    // The realtime AI SDK stream is authoritative while it is connected.
+    if (!hasGeneratingMessages || isAiStreaming) {
       return;
     }
 
-    let timeoutId: ReturnType<typeof setTimeout>;
+    const controller = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     let pollCount = 0;
     const BASE_DELAY = 1000;
     const MAX_DELAY = 5000;
 
-    const poll = () => {
-      fetchOrbit();
+    const poll = async () => {
+      // Snapshot requests can take several seconds; never overlap them.
+      await fetchOrbit(controller.signal);
+      if (controller.signal.aborted) return;
       pollCount++;
       const delay = Math.min(BASE_DELAY * Math.pow(1.5, pollCount), MAX_DELAY);
       timeoutId = setTimeout(poll, delay);
@@ -501,9 +527,10 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     timeoutId = setTimeout(poll, BASE_DELAY);
 
     return () => {
-      clearTimeout(timeoutId);
+      controller.abort();
+      if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [messages, fetchOrbit, streamStatus]);
+  }, [fetchOrbit, hasGeneratingMessages, isAiStreaming]);
 
   // Track whether the user is scrolled near the bottom, so background
   // refetches (polling) don't yank them back down while they're reading
@@ -745,6 +772,8 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
                       isLiveCompletion ? handleOnboardingExit : undefined
                     }
                     onReply={() => setReplyingTo(message)}
+                    onApproveTool={(approvalId) => void handleBanitaApproval(message.id, approvalId, "approve")}
+                    onDenyTool={(approvalId) => void handleBanitaApproval(message.id, approvalId, "deny")}
                     orbitId={orbitId}
                     parentMessage={parentMessageMap.get(message.id) ?? null}
                   />

@@ -3,7 +3,6 @@
  * Analytical and detail-oriented AI assistant for Sfera discussions
  */
 
-import { getSferaTools } from "@/lib/ai/sfera-tools";
 import type { AIAgent } from "../types";
 
 // Kristina's fixed UUID
@@ -63,7 +62,7 @@ export const kristinaAgent: AIAgent = {
   model: "chat-model", // Same model as Avrora for consistency
   runtime: "internal",
   temperature: 0.5, // Lower temperature for more analytical responses
-  maxSteps: 5,
+  maxSteps: 1,
 
   buildSystemPrompt: (context) => {
     return buildKristinaPrompt({
@@ -75,57 +74,9 @@ export const kristinaAgent: AIAgent = {
     });
   },
 
-  // Tools available to Kristina (same as Avrora)
+  // Legacy local agents remain text-only; cf-kristina owns external tools.
   get tools() {
-    const tools = getSferaTools();
-    const toolsObject: Record<string, (typeof tools)[number]> = {};
-
-    // Map tools by their description patterns
-    tools.forEach((tool, index) => {
-      const toolConfig = tool as any;
-      let toolName = `tool_${index}`;
-
-      if (toolConfig.description?.includes("image")) {
-        toolName = "generateImage";
-      } else if (toolConfig.description?.includes("music")) {
-        toolName = "generateMusic";
-      } else if (toolConfig.description?.includes("video")) {
-        toolName = "generateVideo";
-      } else if (
-        toolConfig.description?.includes("speech") ||
-        toolConfig.description?.includes("transcribe")
-      ) {
-        toolName = "speechToText";
-      } else if (toolConfig.description?.includes("summarize")) {
-        toolName = "summarizeDiscussion";
-      } else if (
-        toolConfig.description?.includes("search") ||
-        toolConfig.description?.includes("web")
-      ) {
-        toolName = "webSearch";
-      } else if (
-        toolConfig.description?.includes("mini-app") ||
-        toolConfig.description?.includes("mini app")
-      ) {
-        toolName = "createMiniApp";
-      } else if (toolConfig.description?.includes("chart")) {
-        toolName = "createChart";
-      } else if (
-        toolConfig.description?.includes("game") ||
-        toolConfig.description?.includes("quiz")
-      ) {
-        toolName = "createGame";
-      } else if (
-        toolConfig.description?.includes("edit") &&
-        toolConfig.description?.includes("mini")
-      ) {
-        toolName = "editMiniApp";
-      }
-
-      toolsObject[toolName] = tool;
-    });
-
-    return toolsObject;
+    return {};
   },
 
   // Rate limiting (same as Avrora)

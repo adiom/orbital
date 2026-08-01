@@ -4,6 +4,7 @@ import { streamAgentResponse } from "@/lib/ai/agents/base-streamer";
 import { streamExternalMcpAgentResponse } from "@/lib/ai/agents/external-mcp-streamer";
 import { detectMentionedAgents } from "@/lib/ai/agents/detector";
 import { getAgentById } from "@/lib/ai/agents/registry";
+import { detectImageIntent } from "@/lib/capabilities/image-intent";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { checkAvroraRateLimit } from "@/lib/redis/rate-limiter";
@@ -144,6 +145,18 @@ export async function POST(request: Request, context: RouteContext) {
       );
     }
 
+    const imageIntent = detectImageIntent(content || "");
+    const imageApproval = imageIntent
+      ? {
+          toolName: "banitaApproval",
+          success: true,
+          approvalId: crypto.randomUUID(),
+          provider: "BANITA",
+          prompt: imageIntent.prompt,
+          status: "requested" as const,
+        }
+      : null;
+
     // Create message
     const [newMessage] = await db
       .insert(sferaMessage)
@@ -157,6 +170,7 @@ export async function POST(request: Request, context: RouteContext) {
           url: string;
           contentType: string;
         }>,
+        toolResults: imageApproval ? [imageApproval] : [],
         isForked: false,
         forkCount: 0,
         createdAt: new Date(),
@@ -171,7 +185,7 @@ export async function POST(request: Request, context: RouteContext) {
       .where(eq(sfera.id, sferaId));
 
     // Detect all mentioned AI agents
-    let mentionedAgents = detectMentionedAgents(content || "");
+    let mentionedAgents = imageIntent ? [] : detectMentionedAgents(content || "");
 
     // Auto-add onboarding agent if this is an onboarding sfera
     const [onboardingMembership] = await db
@@ -185,7 +199,7 @@ export async function POST(request: Request, context: RouteContext) {
       )
       .limit(1);
 
-    if (onboardingMembership) {
+    if (!imageIntent && onboardingMembership) {
       const onboardingAgent = getAgentById("onboarding");
       if (onboardingAgent && !mentionedAgents.some((a) => a.id === "onboarding")) {
         mentionedAgents.push(onboardingAgent);

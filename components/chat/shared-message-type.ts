@@ -55,6 +55,12 @@ export type ToolResult = {
   }>;
   searchDepth?: "basic" | "advanced";
   message?: string;
+  approvalId?: string;
+  provider?: string;
+  status?: "requested" | "approved" | "denied" | "completed" | "failed";
+  model?: string;
+  executionTimeMs?: number;
+  providerStatus?: string;
   [key: string]: unknown;
 };
 
