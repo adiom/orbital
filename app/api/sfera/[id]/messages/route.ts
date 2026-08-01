@@ -1,13 +1,18 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { auth } from "@/app/(auth)/auth";
 import { streamAgentResponse } from "@/lib/ai/agents/base-streamer";
 import { streamExternalMcpAgentResponse } from "@/lib/ai/agents/external-mcp-streamer";
 import { detectMentionedAgents } from "@/lib/ai/agents/detector";
 import { getAgentById } from "@/lib/ai/agents/registry";
-import { detectImageIntent } from "@/lib/capabilities/image-intent";
+import {
+  buildBanitaPrompt,
+  detectImageIntent,
+  isIncompleteImageIntent,
+} from "@/lib/capabilities/image-intent";
 import { db } from "@/lib/db";
 import { sfera, sferaMember, sferaMessage, user } from "@/lib/db/schema";
 import { checkAvroraRateLimit } from "@/lib/redis/rate-limiter";
+import { BANITA_DISPLAY_NAME, BANITA_EMAIL, BANITA_USER_ID } from "@/lib/constants/system-users";
 
 const ONBOARDING_AGENT_ID = "00000000-0000-0000-0000-000000000009";
 
@@ -146,6 +151,25 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const imageIntent = detectImageIntent(content || "");
+    const incompleteImageIntent = isIncompleteImageIntent(content || "");
+    const recentContext = imageIntent
+      ? await db
+          .select({ userEmail: user.email, content: sferaMessage.content })
+          .from(sferaMessage)
+          .innerJoin(user, eq(user.id, sferaMessage.userId))
+          .where(eq(sferaMessage.sferaId, sferaId))
+          .orderBy(desc(sferaMessage.createdAt))
+          .limit(8)
+      : [];
+    const banitaPrompt = imageIntent
+      ? buildBanitaPrompt(
+          imageIntent.prompt,
+          recentContext.reverse().map((item) => ({
+            author: item.userEmail,
+            content: item.content,
+          })),
+        )
+      : null;
     const imageApproval = imageIntent
       ? {
           toolName: "banitaApproval",
@@ -153,6 +177,7 @@ export async function POST(request: Request, context: RouteContext) {
           approvalId: crypto.randomUUID(),
           provider: "BANITA",
           prompt: imageIntent.prompt,
+          generationPrompt: banitaPrompt,
           status: "requested" as const,
         }
       : null;
@@ -183,6 +208,25 @@ export async function POST(request: Request, context: RouteContext) {
       .update(sfera)
       .set({ updatedAt: new Date() })
       .where(eq(sfera.id, sferaId));
+
+    if (incompleteImageIntent) {
+      await db.insert(user).values({
+        id: BANITA_USER_ID,
+        email: BANITA_EMAIL,
+        name: BANITA_DISPLAY_NAME,
+        displayName: BANITA_DISPLAY_NAME,
+      }).onConflictDoNothing();
+      await db.insert(sferaMessage).values({
+        sferaId,
+        userId: BANITA_USER_ID,
+        content: "Что именно нарисовать? Опишите сцену, объект или стиль.",
+        messageType: "system",
+        parentMessageId: newMessage.id,
+        isGenerating: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
 
     // Detect all mentioned AI agents
     let mentionedAgents = imageIntent ? [] : detectMentionedAgents(content || "");

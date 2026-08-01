@@ -16,3 +16,24 @@ export function detectImageIntent(content: string): ImageIntent | null {
   }
   return null;
 }
+
+export function isIncompleteImageIntent(content: string): boolean {
+  return /^(?:@banita\s+)?(?:нарисуй|создай\s+(?:картинку|изображение|рисунок)|сгенерируй\s+(?:картинку|изображение|рисунок)|сделай\s+(?:картинку|изображение|рисунок))\s*$/i.test(
+    content.trim(),
+  );
+}
+
+/** Keep chat context bounded while preserving the latest human intent. */
+export function buildBanitaPrompt(
+  prompt: string,
+  context: Array<{ author: string; content: string }>,
+): string {
+  const relevant = context
+    .map(({ author, content }) => `${author}: ${content.trim()}`)
+    .filter((line) => line.length > 0)
+    .join("\n")
+    .slice(-4000);
+
+  if (!relevant) return prompt;
+  return `${prompt}\n\nКонтекст чата (используй только для уточнения замысла):\n${relevant}`;
+}

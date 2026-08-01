@@ -94,7 +94,11 @@ export async function POST(request: Request, context: RouteContext) {
       return { kind: "denied" as const };
     }
 
-    const prompt = typeof approval.prompt === "string" ? approval.prompt.trim() : "";
+    const prompt = typeof approval.generationPrompt === "string"
+      ? approval.generationPrompt.trim()
+      : typeof approval.prompt === "string"
+        ? approval.prompt.trim()
+        : "";
     if (!prompt) return { kind: "empty" as const };
 
     await tx.update(sferaMessage).set({

@@ -266,6 +266,9 @@ function MessageRendererComponent({
     message.userEmail === "cf-kristina@avrora.click";
   const isBanitaMessage =
     message.userId === BANITA_USER_ID || message.userEmail === BANITA_EMAIL;
+  const hasPendingBanitaApproval = message.toolResults?.some(
+    (result) => result.toolName === "banitaApproval" && result.status === "requested",
+  ) ?? false;
 
   const IndicatorComponent = parentMessage
     ? {
@@ -294,7 +297,10 @@ function MessageRendererComponent({
               : "border-gray-200 bg-white",
           isSelected && "shadow-md"
         )}
-        onClick={() => setIsSelected(!isSelected)}
+        onClick={(event) => {
+          if ((event.target as HTMLElement).closest("button")) return;
+          setIsSelected(!isSelected);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
@@ -456,7 +462,7 @@ function MessageRendererComponent({
 
         {/* Tool Results (from DB) */}
         {message.toolResults && message.toolResults.length > 0 && (
-          <div className="mt-4">
+          <div className="mt-4" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
             <ToolResultsRenderer
               messageId={message.id}
               onOnboardingExit={onOnboardingExit}
@@ -476,7 +482,7 @@ function MessageRendererComponent({
       </div>
 
       {/* Interaction Toolbar */}
-      {isSelected && (
+      {isSelected && !hasPendingBanitaApproval && (
         <div className="mt-2 flex flex-wrap items-center gap-2 px-2 opacity-100">
           <button
             className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-gray-600"

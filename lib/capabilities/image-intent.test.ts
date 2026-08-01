@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { detectImageIntent } from "./image-intent";
+import {
+  buildBanitaPrompt,
+  detectImageIntent,
+  isIncompleteImageIntent,
+} from "./image-intent";
 
 describe("detectImageIntent", () => {
   it.each([
@@ -19,5 +23,20 @@ describe("detectImageIntent", () => {
     "создай картинку",
   ])("avoids false positive for %s", (content) => {
     expect(detectImageIntent(content)).toBeNull();
+  });
+});
+
+describe("image intent follow-up", () => {
+  it("recognizes an incomplete drawing command", () => {
+    expect(isIncompleteImageIntent("нарисуй")).toBe(true);
+    expect(isIncompleteImageIntent("нарисуй кота")).toBe(false);
+  });
+
+  it("keeps the visible prompt separate from bounded chat context", () => {
+    expect(
+      buildBanitaPrompt("нарисуй что-то к чату", [
+        { author: "alice@example.com", content: "Мы обсуждаем космический корабль" },
+      ]),
+    ).toContain("Мы обсуждаем космический корабль");
   });
 });
