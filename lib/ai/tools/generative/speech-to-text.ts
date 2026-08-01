@@ -9,6 +9,7 @@
 
 import { tool } from "ai";
 import { z } from "zod";
+import { transcribeAudio } from "@/lib/ai/transcription";
 
 // Regex patterns for speech-to-text detection (moved to top level for performance)
 const SPEECH_TO_TEXT_PATTERNS = [
@@ -47,140 +48,18 @@ export const speechToText = tool({
   }),
 
   execute: async ({ audioUrl, language, fileName }) => {
-    try {
-      const baseUrl = process.env.SPEECH_TO_TEXT_API_URL?.replace(
-        "/transcribe",
-        ""
-      );
+    const result = await transcribeAudio(audioUrl, language, fileName);
 
-      if (!baseUrl) {
-        return {
-          success: false,
-          error: "Speech-to-text service is not configured",
-          message: "SPEECH_TO_TEXT_API_URL environment variable is not set",
-        };
-      }
-
-      // Step 1: Download audio file from Vercel Blob
-      const audioResponse = await fetch(audioUrl);
-      if (!audioResponse.ok) {
-        throw new Error(
-          `Failed to download audio: ${audioResponse.statusText}`
-        );
-      }
-
-      const audioBlob = await audioResponse.blob();
-      const audioFile = new File([audioBlob], fileName || "audio.m4a", {
-        type: audioBlob.type,
-      });
-
-      // Step 2: Upload to transcription service
-      const formData = new FormData();
-      formData.append("file", audioFile);
-
-      const lang = language === "auto" ? "ru" : language;
-      const uploadResponse = await fetch(
-        `${baseUrl}/transcribe?language=${lang}`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      if (!uploadResponse.ok) {
-        const errorData = await uploadResponse.json().catch(() => ({}));
-        throw new Error(
-          errorData.error ||
-            `Upload failed: ${uploadResponse.status} ${uploadResponse.statusText}`
-        );
-      }
-
-      const { job_id } = await uploadResponse.json();
-
-      // Step 3: Poll for job completion (max 2 minutes)
-      const maxAttempts = 120; // 2 minutes (1 second intervals)
-      let attempts = 0;
-
-      while (attempts < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait 1 second
-
-        const statusResponse = await fetch(`${baseUrl}/jobs/${job_id}`);
-
-        if (!statusResponse.ok) {
-          throw new Error(
-            `Failed to check status: ${statusResponse.statusText}`
-          );
-        }
-
-        const jobInfo = await statusResponse.json();
-
-        if (jobInfo.status === "completed" && jobInfo.result) {
-          // Success!
-          return {
-            success: true,
-            text: jobInfo.result.text || "",
-            audioUrl,
-            fileName,
-            language: jobInfo.result.language || language,
-            duration: jobInfo.result.duration,
-            confidence: calculateAverageConfidence(jobInfo.result.segments),
-            message: "Audio successfully transcribed",
-          };
-        }
-
-        if (jobInfo.status === "failed") {
-          throw new Error(
-            jobInfo.error_message || "Transcription failed on server"
-          );
-        }
-
-        if (jobInfo.status === "cancelled") {
-          throw new Error("Transcription was cancelled");
-        }
-
-        // Continue polling if status is "pending" or "processing"
-        attempts++;
-      }
-
-      // Timeout
-      throw new Error(
-        "Transcription timeout: Job took longer than 2 minutes to complete"
-      );
-    } catch (error) {
-      console.error("Speech-to-text error:", error);
-
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : "Transcription failed",
-        audioUrl,
-        fileName,
-        message:
-          "Failed to transcribe audio. Please check the audio file and try again.",
-      };
-    }
+    return {
+      ...result,
+      audioUrl,
+      fileName,
+      message: result.success
+        ? "Audio successfully transcribed"
+        : "Failed to transcribe audio. Please check the audio file and try again.",
+    };
   },
 });
-
-/**
- * Calculate average confidence from segments
- */
-function calculateAverageConfidence(
-  segments?: Array<{ confidence?: number | null }>
-): number | undefined {
-  if (!segments || segments.length === 0) {
-    return;
-  }
-
-  const confidences = segments
-    .map((s) => s.confidence)
-    .filter((c): c is number => c !== null && c !== undefined);
-
-  if (confidences.length === 0) {
-    return;
-  }
-
-  return confidences.reduce((sum, c) => sum + c, 0) / confidences.length;
-}
 
 /**
  * Helper function to detect if message requests transcription

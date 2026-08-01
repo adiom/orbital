@@ -299,7 +299,7 @@ export function OrbitMessage({
                           {attachment.name}
                         </div>
                         <div className="text-gray-500 text-xs">
-                          Audio attachment
+                          Audio attachment (orbit-message.tsx)
                         </div>
                       </div>
                     </div>

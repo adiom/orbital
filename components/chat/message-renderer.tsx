@@ -5,6 +5,7 @@ import {
   Code2,
   Copy,
   GitBranch,
+  Loader2,
   LogIn,
   Music,
   PenSquare,
@@ -55,6 +56,114 @@ type MessageRendererProps = {
    */
   onOnboardingExit?: () => void;
 };
+
+const TRANSCRIPTION_TRUNCATE_LENGTH = 200;
+
+function TranscriptionBlock({
+  message,
+  isOwner,
+}: {
+  message: Message;
+  isOwner: boolean;
+}) {
+  const [state, setState] = useState<"idle" | "transcribing" | "done" | "error">(
+    () => {
+      const cached = (message.toolResults as any[])?.find(
+        (r: any) => r.toolName === "speechToText" && r.success
+      );
+      return cached ? "done" : "idle";
+    }
+  );
+
+  const [result, setResult] = useState<string | null>(() => {
+    const cached = (message.toolResults as any[])?.find(
+      (r: any) => r.toolName === "speechToText" && r.success
+    );
+    return cached?.text || null;
+  });
+
+  const [expanded, setExpanded] = useState(false);
+
+  if (!isOwner) return null;
+
+  if (state === "done" && result) {
+    const isTruncated = result.length > TRANSCRIPTION_TRUNCATE_LENGTH && !expanded;
+    const displayText = isTruncated
+      ? result.slice(0, TRANSCRIPTION_TRUNCATE_LENGTH) + "..."
+      : result;
+
+    return (
+      <div className="mt-3 rounded-xl border border-gray-200 bg-white p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-xs font-medium text-gray-500">Транскрипция</span>
+          <button
+            onClick={() => {
+              navigator.clipboard.writeText(result);
+              toast.success("Скопировано");
+            }}
+            className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700"
+            type="button"
+          >
+            <Copy className="h-3 w-3" />
+            Копировать
+          </button>
+        </div>
+        <p className="text-sm leading-relaxed text-gray-900">{displayText}</p>
+        {isTruncated && (
+          <button
+            onClick={() => setExpanded(true)}
+            className="mt-1 text-xs text-gray-500 hover:text-gray-700"
+            type="button"
+          >
+            Показать ещё
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (state === "transcribing") {
+    return (
+      <div className="mt-3 flex items-center gap-2 text-sm text-gray-500">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span>Транскрибирую...</span>
+      </div>
+    );
+  }
+
+  const handleTranscribe = async () => {
+    setState("transcribing");
+    try {
+      const res = await fetch("/api/sfera/transcribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId: message.id }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResult(data.text);
+        setState("done");
+      } else {
+        toast.error(data.error || "Транскрипция не удалась");
+        setState("error");
+      }
+    } catch {
+      toast.error("Ошибка при транскрипции");
+      setState("error");
+    }
+  };
+
+  return (
+    <button
+      onClick={handleTranscribe}
+      className="mt-3 flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
+      type="button"
+    >
+      <Sparkles className="h-4 w-4 text-gray-500" />
+      <span>Преобразовать в текст</span>
+    </button>
+  );
+}
 
 function MessageRendererComponent({
   message,
@@ -280,7 +389,7 @@ function MessageRendererComponent({
                           {attachment.name}
                         </div>
                         <div className="text-gray-500 text-xs">
-                          Audio attachment
+                          Аудио запись
                         </div>
                       </div>
                     </div>
@@ -292,6 +401,10 @@ function MessageRendererComponent({
                     >
                       Your browser does not support audio playback.
                     </audio>
+                    <TranscriptionBlock
+                      message={message}
+                      isOwner={currentUserId === message.userId}
+                    />
                   </div>
                 );
               }
