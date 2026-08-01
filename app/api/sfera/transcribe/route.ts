@@ -7,9 +7,12 @@ import { transcribeAudio } from "@/lib/ai/transcription";
 // POST /api/sfera/transcribe
 // Body: { messageId: string, language?: "ru" | "en" | "auto" }
 export async function POST(request: Request) {
+  const requestId = crypto.randomUUID();
+  const startedAt = Date.now();
   const session = await auth();
 
   if (!session?.user) {
+    console.warn("[transcribe-api] Unauthorized request", { requestId });
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -17,7 +20,15 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { messageId, language = "auto" } = body;
 
+    console.info("[transcribe-api] Request started", {
+      requestId,
+      messageId: messageId || null,
+      userId: session.user.id,
+      language,
+    });
+
     if (!messageId) {
+      console.warn("[transcribe-api] Missing messageId", { requestId });
       return Response.json(
         { error: "messageId is required" },
         { status: 400 }
@@ -32,10 +43,20 @@ export async function POST(request: Request) {
       .limit(1);
 
     if (!message) {
+      console.warn("[transcribe-api] Message not found", {
+        requestId,
+        messageId,
+      });
       return Response.json({ error: "Message not found" }, { status: 404 });
     }
 
     if (message.userId !== session.user.id) {
+      console.warn("[transcribe-api] Ownership check failed", {
+        requestId,
+        messageId,
+        userId: session.user.id,
+        messageUserId: message.userId,
+      });
       return Response.json(
         { error: "You can only transcribe your own audio" },
         { status: 403 }
@@ -48,6 +69,11 @@ export async function POST(request: Request) {
     );
 
     if (existingTranscription) {
+      console.info("[transcribe-api] Returning cached transcription", {
+        requestId,
+        messageId,
+        durationMs: Date.now() - startedAt,
+      });
       return Response.json({
         success: true,
         text: existingTranscription.text,
@@ -64,11 +90,27 @@ export async function POST(request: Request) {
     );
 
     if (!audioAttachment) {
+      console.warn("[transcribe-api] Audio attachment not found", {
+        requestId,
+        messageId,
+        attachmentCount: Array.isArray(message.attachments)
+          ? message.attachments.length
+          : 0,
+      });
       return Response.json(
         { error: "No audio attachment found" },
         { status: 400 }
       );
     }
+
+    console.info("[transcribe-api] Audio attachment found", {
+      requestId,
+      messageId,
+      name: audioAttachment.name || null,
+      contentType: audioAttachment.contentType || null,
+      size: audioAttachment.size ?? null,
+      audioHost: getUrlHost(audioAttachment.url),
+    });
 
     // Future: quota check
     // const quota = await checkTranscriptionQuota(session.user.id);
@@ -82,6 +124,15 @@ export async function POST(request: Request) {
       language,
       audioAttachment.name
     );
+
+    console.info("[transcribe-api] Service call finished", {
+      requestId,
+      messageId,
+      success: result.success,
+      error: result.error || null,
+      textLength: result.text?.length ?? 0,
+      durationMs: Date.now() - startedAt,
+    });
 
     // Save to toolResults
     if (result.success) {
@@ -103,6 +154,11 @@ export async function POST(request: Request) {
           updatedAt: new Date(),
         })
         .where(eq(sferaMessage.id, messageId));
+
+      console.info("[transcribe-api] Transcription saved", {
+        requestId,
+        messageId,
+      });
     }
 
     // Future: log usage
@@ -110,7 +166,19 @@ export async function POST(request: Request) {
 
     return Response.json(result);
   } catch (error) {
-    console.error("Transcription API error:", error);
+    console.error("[transcribe-api] Request failed", {
+      requestId,
+      durationMs: Date.now() - startedAt,
+      error:
+        error instanceof Error
+          ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack,
+              cause: error.cause,
+            }
+          : { message: String(error) },
+    });
     return Response.json(
       {
         success: false,
@@ -118,5 +186,17 @@ export async function POST(request: Request) {
       },
       { status: 500 }
     );
+  }
+}
+
+function getUrlHost(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  try {
+    return new URL(value).host;
+  } catch {
+    return "invalid-url";
   }
 }
