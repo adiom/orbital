@@ -208,7 +208,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
           // Find optimistic/generating messages that are not yet on server
           const newMessagesMap = new Map(newMessages.map((m) => [m.id, m]));
           const optimisticMessages = prevMessages.filter(
-            (m) => (m.isPending || m.isGenerating) && !newMessagesMap.has(m.id)
+            (m) => ((m as any).isPending || (m as any).isGenerating) && !newMessagesMap.has(m.id)
           );
 
           // Merge server snapshots with optimistic agent placeholders so polling
