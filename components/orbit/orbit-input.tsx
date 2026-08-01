@@ -17,9 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/components/chat/shared-message-type";
 
-// Detect @Avrora mentions
 const AVRORA_MENTION_REGEX = /@avrora|@аврора/i;
-const isAvroraMention = (text: string) => AVRORA_MENTION_REGEX.test(text);
 
 // Client-side agent info (no server dependencies)
 const CLIENT_AGENTS = {
@@ -69,6 +67,14 @@ type OrbitInputProps = {
   onCancelReply?: () => void;
   onCancelEdit?: () => void;
   onMessageSent?: (userMessage?: Message, agentMessages?: Message[]) => void;
+  onSendMessage?: (input: {
+    clientMessageId: string;
+    content: string;
+    parentMessageId: string | null;
+    attachments: Attachment[];
+  }) => Promise<void> | void;
+  isStreaming?: boolean;
+  onStopStreaming?: () => void;
 };
 
 export function OrbitInput({
@@ -78,6 +84,9 @@ export function OrbitInput({
   onCancelReply,
   onCancelEdit,
   onMessageSent,
+  onSendMessage,
+  isStreaming = false,
+  onStopStreaming,
 }: OrbitInputProps) {
   const [content, setContent] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -321,7 +330,11 @@ export function OrbitInput({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if ((!content.trim() && attachments.length === 0) || isSending) {
+    if (
+      (!content.trim() && attachments.length === 0) ||
+      isSending ||
+      isStreaming
+    ) {
       return;
     }
 
@@ -333,10 +346,36 @@ export function OrbitInput({
     try {
       const isEditing = Boolean(editingMessage);
       const messageText = content.trim();
-      const isAvrora = !isEditing && isAvroraMention(messageText);
+      if (!isEditing && onSendMessage) {
+        const clientMessageId = crypto.randomUUID();
+        const submittedAttachments = [...attachments];
+        const submittedReply = replyingTo;
 
-      // Use panel-chat endpoint for @Avrora messages (streaming)
-      if (isAvrora) {
+        setContent("");
+        setHasTyped(false);
+        setAttachments([]);
+        if (textareaRef.current) {
+          textareaRef.current.style.height = "48px";
+        }
+
+        try {
+          await onSendMessage({
+            clientMessageId,
+            content: messageText,
+            parentMessageId: submittedReply?.id ?? null,
+            attachments: submittedAttachments,
+          });
+        } catch (error) {
+          setContent(messageText);
+          setHasTyped(messageText.length > 0);
+          setAttachments(submittedAttachments);
+          throw error;
+        }
+        return;
+      }
+
+      // Embedded panels retain their polling fallback until they adopt useChat.
+      if (!isEditing && AVRORA_MENTION_REGEX.test(messageText)) {
         const response = await fetch(`/api/sfera/${orbitId}/panel-chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -354,20 +393,16 @@ export function OrbitInput({
           const errorPayload = await response.json().catch(() => ({}));
           throw new Error(
             (errorPayload as { error?: string }).error ||
-              "Failed to send message to Avrora",
+              "Failed to send message to Avrora"
           );
         }
 
-        // Clear form
         setContent("");
         setHasTyped(false);
         setAttachments([]);
-
         if (textareaRef.current) {
           textareaRef.current.style.height = "48px";
         }
-
-        // Refresh messages (panel-chat saves to DB, we poll for updates)
         onMessageSent?.();
         toast.success("Message sent to Avrora");
         return;
@@ -636,11 +671,11 @@ export function OrbitInput({
         <div className="p-4 pb-16">
           <Textarea
             className="max-h-[200px] min-h-[48px] w-full resize-none overflow-y-auto border-0 bg-transparent p-0 text-[15px] text-gray-900 leading-relaxed placeholder:text-gray-400 focus-visible:ring-0 focus-visible:ring-offset-0"
-            disabled={isSending}
+            disabled={isSending || isStreaming}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
             placeholder={
-              isSending
+              isSending || isStreaming
                 ? "Sending..."
                 : editingMessage
                   ? "Update your message..."
@@ -734,27 +769,37 @@ export function OrbitInput({
             <Button
               className={cn(
                 "h-10 w-10 rounded-full border-0 shadow-lg transition-colors duration-200",
-                hasTyped || attachments.length > 0
+                isStreaming || hasTyped || attachments.length > 0
                   ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   : "bg-gray-300 hover:bg-gray-400"
               )}
               disabled={
-                (!content.trim() && attachments.length === 0) || isSending
+                !isStreaming &&
+                ((!content.trim() && attachments.length === 0) || isSending)
               }
+              onClick={isStreaming ? onStopStreaming : undefined}
               size="icon"
-              type="submit"
+              type={isStreaming ? "button" : "submit"}
               variant="outline"
             >
-              <ArrowUp
-                className={cn(
-                  "h-5 w-5 transition-colors duration-200",
-                  hasTyped || attachments.length > 0
-                    ? "text-white"
-                    : "text-gray-600"
-                )}
-              />
+              {isStreaming ? (
+                <Square className="h-4 w-4 fill-white text-white" />
+              ) : (
+                <ArrowUp
+                  className={cn(
+                    "h-5 w-5 transition-colors duration-200",
+                    hasTyped || attachments.length > 0
+                      ? "text-white"
+                      : "text-gray-600"
+                  )}
+                />
+              )}
               <span className="sr-only">
-                {editingMessage ? "Save changes" : "Submit"}
+                {isStreaming
+                  ? "Stop response"
+                  : editingMessage
+                    ? "Save changes"
+                    : "Submit"}
               </span>
             </Button>
           </div>

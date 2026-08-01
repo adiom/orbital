@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { memo, useState } from "react";
 import { toast } from "sonner";
 import { Response } from "@/components/elements/response";
 import {
@@ -27,7 +27,7 @@ import { ParentIndicators } from "../orbit/parent-message-indicators";
 import { ArtifactsRenderer } from "./artifacts-renderer";
 import { ToolCallsRenderer } from "./tool-calls-renderer";
 import { ToolResultsRenderer } from "./tool-results-renderer";
-import type { Message, ToolCallPart } from "./shared-message-type";
+import type { Message } from "./shared-message-type";
 
 type MessageRendererProps = {
   message: Message;
@@ -56,7 +56,7 @@ type MessageRendererProps = {
   onOnboardingExit?: () => void;
 };
 
-export function MessageRenderer({
+function MessageRendererComponent({
   message,
   parentMessage,
   orbitId,
@@ -73,22 +73,12 @@ export function MessageRenderer({
 }: MessageRendererProps) {
   const router = useRouter();
   const [isForking, setIsForking] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
   const [isSelected, setIsSelected] = useState(false);
 
   const canEdit =
     canModerate || (!!currentUserId && currentUserId === message.userId);
   const canDelete = canEdit;
   const deleteDisabled = Boolean(message.isForked || message.forkedSferaId);
-
-  useEffect(() => {
-    if (contentRef.current) {
-      const height = contentRef.current.scrollHeight;
-      setIsOverflowing(height > 100);
-    }
-  }, []);
 
   const handleFork = async () => {
     if (isForking || message.isForked) {
@@ -251,11 +241,7 @@ export function MessageRenderer({
 
         {/* Text Content */}
         <div
-          className={cn(
-            "relative whitespace-pre-wrap text-sm text-gray-900 leading-relaxed md:text-[15px]",
-            isOverflowing && !isExpanded && "max-h-[100px] overflow-hidden"
-          )}
-          ref={contentRef}
+          className="relative whitespace-pre-wrap text-sm text-gray-900 leading-relaxed md:text-[15px]"
         >
           {message.isGenerating && message.content === "" ? (
             <div className="flex items-center gap-2 text-gray-500">
@@ -461,3 +447,24 @@ export function MessageRenderer({
 
   return messageContent;
 }
+
+const areMessageRendererPropsEqual = (
+  previous: MessageRendererProps,
+  next: MessageRendererProps
+) =>
+  previous.message === next.message &&
+  previous.parentMessage === next.parentMessage &&
+  previous.orbitId === next.orbitId &&
+  previous.currentUserId === next.currentUserId &&
+  previous.canModerate === next.canModerate &&
+  previous.indicatorVariant === next.indicatorVariant &&
+  previous.onApproveTool === next.onApproveTool &&
+  previous.onDenyTool === next.onDenyTool &&
+  previous.onOnboardingExit === next.onOnboardingExit;
+
+export const MessageRenderer = memo(
+  MessageRendererComponent,
+  areMessageRendererPropsEqual
+);
+
+MessageRenderer.displayName = "MessageRenderer";

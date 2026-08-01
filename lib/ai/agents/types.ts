@@ -108,7 +108,37 @@ export type AgentResponseContext = {
 
   /** Agent configuration */
   agent: AIAgent;
+
+  /** Cancels generation when the client stops or disconnects. */
+  abortSignal?: AbortSignal;
+
+  /** Optional realtime sink used by UI-stream transports. */
+  onEvent?: AgentResponseEventHandler;
 };
+
+/** Lifecycle phases emitted while an agent response is generated. */
+export type AgentResponsePhase =
+  | "started"
+  | "streaming"
+  | "completed"
+  | "failed"
+  | "aborted";
+
+/** Stable event contract shared by internal and external agent runtimes. */
+export type AgentResponseEvent = {
+  phase: AgentResponsePhase;
+  agentId: string;
+  messageId: string;
+  /** Accumulated response text at this point in the generation. */
+  content: string;
+  sequence: number;
+  error?: string;
+  toolResults?: unknown[];
+};
+
+export type AgentResponseEventHandler = (
+  event: AgentResponseEvent
+) => void | Promise<void>;
 
 /**
  * Result of agent response generation

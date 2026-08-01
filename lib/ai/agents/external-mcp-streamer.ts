@@ -9,6 +9,7 @@ import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { sfera, sferaMessage, user } from "@/lib/db/schema";
 import { resolveAgent, silenceAgent } from "./resolve";
+import { emitAgentResponseEvent } from "./stream-events";
 import type { AIAgent, ExternalMcpConfig } from "./types";
 import type { AgentResponseContext, AgentResponseResult } from "./types";
 
@@ -97,7 +98,8 @@ function selectContext(
 async function callMcpTool(
   config: ExternalMcpConfig,
   prompt: string,
-  contextPayload: Record<string, unknown>
+  contextPayload: Record<string, unknown>,
+  abortSignal?: AbortSignal
 ): Promise<string> {
   const body = {
     jsonrpc: "2.0",
@@ -115,6 +117,7 @@ async function callMcpTool(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: abortSignal,
   });
 
   if (!response.ok) {
@@ -145,22 +148,35 @@ export async function streamExternalMcpAgentResponse(
 ): Promise<AgentResponseResult> {
   const { sferaId, triggerMessageId, targetMessageId, requestingUserId } =
     context;
+  let sequence = 0;
+  let currentText = "";
 
   // Same resolution point as the internal streamer — see resolve.ts. For MCP
   // agents this is also where a console-supplied endpoint takes effect.
   const agent = await resolveAgent(context.agent);
 
+  emitAgentResponseEvent(context, {
+    phase: "started",
+    agentId: agent.id,
+    messageId: targetMessageId,
+    content: "",
+    sequence: sequence++,
+  });
+
   if (agent.enabled === false) {
-    return silenceAgent({
+    const result = await silenceAgent({
       agent,
       targetMessageId,
       reason: "выключен на пульте",
     });
-  }
-
-  const externalMcp = agent.externalMcp;
-  if (!externalMcp) {
-    throw new Error(`Agent ${agent.id} has no externalMcp config`);
+    emitAgentResponseEvent(context, {
+      phase: "completed",
+      agentId: agent.id,
+      messageId: targetMessageId,
+      content: "",
+      sequence: sequence++,
+    });
+    return result;
   }
 
   console.log(`📝 ${agent.name} (external MCP) generating response:`, {
@@ -170,6 +186,11 @@ export async function streamExternalMcpAgentResponse(
   });
 
   try {
+    const externalMcp = agent.externalMcp;
+    if (!externalMcp) {
+      throw new Error(`Agent ${agent.id} has no externalMcp config`);
+    }
+
     // Get Sfera details
     const [sferaData] = await db
       .select()
@@ -245,7 +266,8 @@ export async function streamExternalMcpAgentResponse(
     const rawResultText = await callMcpTool(
       externalMcp,
       triggerMessage.content,
-      contextPayload
+      contextPayload,
+      context.abortSignal
     );
 
     // Parse AgentResult from the MCP response
@@ -260,12 +282,13 @@ export async function streamExternalMcpAgentResponse(
 
     // Strip thinking/reasoning blocks from the response
     agentResultText = stripThinking(agentResultText);
+    currentText = agentResultText.trim();
 
     // Save the response into the placeholder message
     await db
       .update(sferaMessage)
       .set({
-        content: agentResultText.trim(),
+        content: currentText,
         isGenerating: false,
       })
       .where(eq(sferaMessage.id, targetMessageId));
@@ -276,30 +299,51 @@ export async function streamExternalMcpAgentResponse(
       .set({ updatedAt: new Date() })
       .where(eq(sfera.id, sferaId));
 
+    emitAgentResponseEvent(context, {
+      phase: "completed",
+      agentId: agent.id,
+      messageId: targetMessageId,
+      content: currentText,
+      sequence: sequence++,
+    });
+
     console.log(
       `✅ ${agent.name} (external MCP): Response saved (${agentResultText.length} chars)`
     );
 
     return {
-      text: agentResultText.trim(),
+      text: currentText,
       success: true,
     };
   } catch (error) {
     console.error(`❌ ${agent.name} (external MCP) error:`, error);
 
+    const wasAborted = context.abortSignal?.aborted === true;
+    const errorMessage =
+      error instanceof Error ? error.message : "External agent failed";
+
     // Save error into the placeholder message
     await db
       .update(sferaMessage)
       .set({
-        content: `Error: ${error instanceof Error ? error.message : "External agent failed"}`,
+        content: wasAborted ? currentText : `Error: ${errorMessage}`,
         isGenerating: false,
       })
       .where(eq(sferaMessage.id, targetMessageId));
 
+    emitAgentResponseEvent(context, {
+      phase: wasAborted ? "aborted" : "failed",
+      agentId: agent.id,
+      messageId: targetMessageId,
+      content: currentText,
+      sequence: sequence++,
+      error: wasAborted ? undefined : errorMessage,
+    });
+
     return {
       text: "",
       success: false,
-      error: error instanceof Error ? error.message : "External agent failed",
+      error: errorMessage,
     };
   }
 }

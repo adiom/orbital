@@ -2,13 +2,14 @@
  * Base streaming functionality for AI agents
  */
 
-import { stepCountIs, streamText } from "ai";
+import { smoothStream, stepCountIs, streamText } from "ai";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { sfera, sferaMessage, user } from "@/lib/db/schema";
 import { myProvider } from "../providers";
 import { logAiUsage } from "../usage-logger";
 import { resolveAgent, silenceAgent } from "./resolve";
+import { emitAgentResponseEvent } from "./stream-events";
 import type { AgentResponseContext, AgentResponseResult } from "./types";
 
 /**
@@ -84,18 +85,37 @@ export async function streamAgentResponse(
 ): Promise<AgentResponseResult> {
   const { sferaId, triggerMessageId, targetMessageId, requestingUserId } =
     context;
+  let sequence = 0;
+  let currentText = "";
+  let pendingPersistence: Promise<void> = Promise.resolve();
 
   // Operator overrides from the console are applied here rather than at the
   // call sites: eight places look an agent up, but every reply passes through
   // this function, so no route can bypass the settings.
   const agent = await resolveAgent(context.agent);
 
+  emitAgentResponseEvent(context, {
+    phase: "started",
+    agentId: agent.id,
+    messageId: targetMessageId,
+    content: "",
+    sequence: sequence++,
+  });
+
   if (agent.enabled === false) {
-    return silenceAgent({
+    const result = await silenceAgent({
       agent,
       targetMessageId,
       reason: "выключен на пульте",
     });
+    emitAgentResponseEvent(context, {
+      phase: "completed",
+      agentId: agent.id,
+      messageId: targetMessageId,
+      content: "",
+      sequence: sequence++,
+    });
+    return result;
   }
 
   console.log(`📝 ${agent.name} generating response:`, {
@@ -169,9 +189,8 @@ export async function streamAgentResponse(
     const model = myProvider.languageModel(agent.model);
 
     // Track streaming state
-    let currentText = "";
     let lastUpdateTime = Date.now();
-    const UPDATE_THROTTLE_MS = 200; // Update DB every 200ms max
+    const UPDATE_THROTTLE_MS = 500;
 
     const toolResults: any[] = [];
     const executedToolNames: string[] = [];
@@ -188,27 +207,42 @@ ${triggerMessage.content}`,
       temperature: agent.temperature ?? 0.7,
       tools: agent.tools,
       stopWhen: agent.maxSteps ? stepCountIs(agent.maxSteps) : undefined,
+      abortSignal: context.abortSignal,
+      experimental_transform: smoothStream({
+        chunking: "word",
+        delayInMs: null,
+      }),
       onChunk: async ({ chunk }) => {
         // Handle text deltas
         if (chunk.type === "text-delta") {
           currentText += chunk.text;
 
+          emitAgentResponseEvent(context, {
+            phase: "streaming",
+            agentId: agent.id,
+            messageId: targetMessageId,
+            content: currentText,
+            sequence: sequence++,
+          });
+
           // Throttle DB updates to avoid too many writes
           const now = Date.now();
           if (now - lastUpdateTime >= UPDATE_THROTTLE_MS) {
-            try {
-              await db
-                .update(sferaMessage)
-                .set({ content: currentText })
-                .where(eq(sferaMessage.id, targetMessageId));
-
-              lastUpdateTime = now;
-            } catch (error) {
-              console.error(
-                `❌ ${agent.name}: Failed to update message:`,
-                error
-              );
-            }
+            const snapshot = currentText;
+            lastUpdateTime = now;
+            pendingPersistence = pendingPersistence
+              .then(async () => {
+                await db
+                  .update(sferaMessage)
+                  .set({ content: snapshot })
+                  .where(eq(sferaMessage.id, targetMessageId));
+              })
+              .catch((error) => {
+                console.error(
+                  `❌ ${agent.name}: Failed to update message:`,
+                  error
+                );
+              });
           }
         }
       },
@@ -260,6 +294,8 @@ ${triggerMessage.content}`,
       `✅ ${agent.name}: Response generated (${resolvedText.length} chars)`
     );
 
+    await pendingPersistence;
+
     // Final update with tool results
     await db
       .update(sferaMessage)
@@ -269,6 +305,15 @@ ${triggerMessage.content}`,
         isGenerating: false,
       })
       .where(eq(sferaMessage.id, targetMessageId));
+
+    emitAgentResponseEvent(context, {
+      phase: "completed",
+      agentId: agent.id,
+      messageId: targetMessageId,
+      content: resolvedText.trim(),
+      sequence: sequence++,
+      toolResults,
+    });
 
     // Log AI usage
     await logAiUsage({
@@ -305,14 +350,29 @@ ${triggerMessage.content}`,
   } catch (error) {
     console.error(`❌ ${agent.name}: Error generating response:`, error);
 
+    await pendingPersistence;
+
+    const wasAborted = context.abortSignal?.aborted === true;
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+
     // Update message to mark as failed
     await db
       .update(sferaMessage)
       .set({
-        content: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        content: wasAborted ? currentText : `Error: ${errorMessage}`,
         isGenerating: false,
       })
       .where(eq(sferaMessage.id, targetMessageId));
+
+    emitAgentResponseEvent(context, {
+      phase: wasAborted ? "aborted" : "failed",
+      agentId: agent.id,
+      messageId: targetMessageId,
+      content: currentText,
+      sequence: sequence++,
+      error: wasAborted ? undefined : errorMessage,
+    });
 
     // Log error
     await logAiUsage({
@@ -324,13 +384,13 @@ ${triggerMessage.content}`,
       inputTokens: 0,
       outputTokens: 0,
       status: "error",
-      errorMessage: error instanceof Error ? error.message : "Unknown error",
+      errorMessage,
     });
 
     return {
       text: "",
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: errorMessage,
     };
   }
 }

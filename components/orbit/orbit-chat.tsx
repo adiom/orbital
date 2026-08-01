@@ -1,9 +1,18 @@
 "use client";
 
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport } from "ai";
 import { Loader2, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { MessageRenderer } from "@/components/chat/message-renderer";
+import {
+  parseMessage,
+  parseMessages,
+  type Attachment,
+  type Message,
+} from "@/components/chat/shared-message-type";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,8 +24,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { MessageRenderer } from "@/components/chat/message-renderer";
-import { parseMessages, type Message } from "@/components/chat/shared-message-type";
+import type {
+  OrbitAgentMessageData,
+  OrbitUIMessage,
+} from "@/lib/ai/orbit-ui-message";
 import { hasOnboardingCompleted } from "@/lib/onboarding/completion-signal";
 import { cn } from "@/lib/utils";
 import { OrbitInput } from "./orbit-input";
@@ -54,6 +65,7 @@ const isNonEmptyString = (value: unknown): value is string =>
 
 /** Must stay in step with the `orbit-closing` animation in globals.css. */
 const ORBIT_CLOSE_DURATION_MS = 700;
+const STREAM_RENDER_THROTTLE_MS = 50;
 
 const parseMember = (value: unknown): Member | null => {
   if (!value || typeof value !== "object") {
@@ -149,6 +161,8 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
+  const pendingClientMessageIdsRef = useRef(new Set<string>());
+  const activeAgentMessageIdsRef = useRef(new Set<string>());
   const NEAR_BOTTOM_THRESHOLD = 120;
 
   // Onboarding finishing is an event, not a state. If the completion was
@@ -163,9 +177,6 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   const [wasCompleteOnLoad, setWasCompleteOnLoad] = useState<boolean | null>(
     null
   );
-  const isLiveCompletion =
-    wasCompleteOnLoad === false && hasOnboardingCompleted(messages);
-
   const fetchOrbit = useCallback(
     async (signal?: AbortSignal) => {
       try {
@@ -208,7 +219,8 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
           // Find optimistic/generating messages that are not yet on server
           const newMessagesMap = new Map(newMessages.map((m) => [m.id, m]));
           const optimisticMessages = prevMessages.filter(
-            (m) => ((m as any).isPending || (m as any).isGenerating) && !newMessagesMap.has(m.id)
+            (m) =>
+              (m.isPending || m.isGenerating) && !newMessagesMap.has(m.id)
           );
 
           // Merge server snapshots with optimistic agent placeholders so polling
@@ -256,6 +268,205 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     [orbitId]
   );
 
+  const streamTransport = useMemo(
+    () =>
+      new DefaultChatTransport<OrbitUIMessage>({
+        api: `/api/sfera/${orbitId}/ai-stream`,
+        credentials: "include",
+      }),
+    [orbitId]
+  );
+
+  const {
+    messages: streamMessages,
+    sendMessage: sendStreamMessage,
+    setMessages: setStreamMessages,
+    status: streamStatus,
+    stop: stopStream,
+  } = useChat<OrbitUIMessage>({
+    id: `orbit-${orbitId}`,
+    transport: streamTransport,
+    experimental_throttle: STREAM_RENDER_THROTTLE_MS,
+    onData: (part) => {
+      if (part.type === "data-stream-init") {
+        activeAgentMessageIdsRef.current = new Set(part.data.agentMessageIds);
+        return;
+      }
+
+      if (part.type === "data-agent-message") {
+        if (
+          part.data.phase === "completed" ||
+          part.data.phase === "failed" ||
+          part.data.phase === "aborted"
+        ) {
+          activeAgentMessageIdsRef.current.delete(part.data.messageId);
+        }
+        return;
+      }
+
+      if (part.type !== "data-user-message") return;
+
+      const serverMessage = parseMessage(part.data.message);
+      if (!serverMessage) return;
+
+      pendingClientMessageIdsRef.current.delete(part.data.clientMessageId);
+      setMessages((previous) => {
+        const clientIndex = previous.findIndex(
+          (message) => message.id === part.data.clientMessageId
+        );
+        const next = previous.filter(
+          (message) =>
+            message.id !== part.data.clientMessageId &&
+            message.id !== serverMessage.id
+        );
+        next.splice(clientIndex < 0 ? next.length : clientIndex, 0, serverMessage);
+        return next;
+      });
+    },
+    onError: (error) => {
+      const pendingIds = new Set(pendingClientMessageIdsRef.current);
+      pendingClientMessageIdsRef.current.clear();
+      activeAgentMessageIdsRef.current.clear();
+      setMessages((previous) =>
+        previous.filter((message) => !pendingIds.has(message.id))
+      );
+      void fetchOrbit();
+      toast.error(error.message || "Failed to stream AI response");
+    },
+    onFinish: async ({ messages: finishedMessages }) => {
+      const completedUserMessageId = [...finishedMessages]
+        .reverse()
+        .find((message) => message.role === "user")?.id;
+      activeAgentMessageIdsRef.current.clear();
+      await fetchOrbit();
+      setStreamMessages((current) => {
+        const latestUserMessageId = [...current]
+          .reverse()
+          .find((message) => message.role === "user")?.id;
+        return latestUserMessageId &&
+          latestUserMessageId !== completedUserMessageId
+          ? current
+          : [];
+      });
+    },
+  });
+
+  const streamAgentMessages = useMemo(() => {
+    const byId = new Map<string, Message>();
+
+    for (const streamMessage of streamMessages) {
+      for (const part of streamMessage.parts) {
+        if (part.type !== "data-agent-message") continue;
+
+        const data: OrbitAgentMessageData = part.data;
+        const isGenerating =
+          data.phase === "started" || data.phase === "streaming";
+        byId.set(data.messageId, {
+          id: data.messageId,
+          content: data.content || data.error || "",
+          userId: data.userId,
+          userEmail: data.userEmail,
+          parentMessageId: data.parentMessageId,
+          toolResults: data.toolResults,
+          isForked: false,
+          forkedSferaId: null,
+          isGenerating,
+          isPending: isGenerating && data.content.length === 0,
+          createdAt: new Date(data.createdAt),
+        });
+      }
+    }
+
+    return byId;
+  }, [streamMessages]);
+
+  const renderedMessages = useMemo(() => {
+    const rendered = messages.map((message) => {
+      const streamed = streamAgentMessages.get(message.id);
+      if (!streamed) return message;
+
+      return {
+        ...message,
+        ...streamed,
+        attachments: message.attachments,
+        artifacts: message.artifacts,
+        toolCalls: message.toolCalls,
+        toolResults: streamed.toolResults ?? message.toolResults,
+      } satisfies Message;
+    });
+    const existingIds = new Set(rendered.map((message) => message.id));
+
+    for (const message of streamAgentMessages.values()) {
+      if (!existingIds.has(message.id)) rendered.push(message);
+    }
+
+    return rendered;
+  }, [messages, streamAgentMessages]);
+
+  const isLiveCompletion =
+    wasCompleteOnLoad === false && hasOnboardingCompleted(renderedMessages);
+
+  const parentMessageMap = useMemo(() => {
+    const byId = new Map(renderedMessages.map((message) => [message.id, message]));
+    const parents = new Map<string, Message>();
+
+    for (const message of renderedMessages) {
+      if (!message.parentMessageId) continue;
+      const parent = byId.get(message.parentMessageId);
+      if (parent) parents.set(message.id, parent);
+    }
+
+    return parents;
+  }, [renderedMessages]);
+
+  const isAiStreaming =
+    streamStatus === "submitted" || streamStatus === "streaming";
+
+  const handleStreamSend = useCallback(
+    async ({
+      clientMessageId,
+      content,
+      parentMessageId,
+      attachments,
+    }: {
+      clientMessageId: string;
+      content: string;
+      parentMessageId: string | null;
+      attachments: Attachment[];
+    }) => {
+      pendingClientMessageIdsRef.current.add(clientMessageId);
+      setMessages((previous) => [
+        ...previous,
+        {
+          id: clientMessageId,
+          content,
+          userId: currentUserId ?? "pending-user",
+          userEmail:
+            members.find((member) => member.userId === currentUserId)?.email ??
+            "you",
+          parentMessageId,
+          attachments,
+          isForked: false,
+          forkedSferaId: null,
+          isPending: true,
+          createdAt: new Date(),
+        },
+      ]);
+      setReplyingTo(null);
+      setEditingMessage(null);
+
+      await sendStreamMessage(
+        {
+          id: clientMessageId,
+          role: "user",
+          parts: [{ type: "text", text: content }],
+        },
+        { body: { attachments, parentMessageId, clientMessageId } }
+      );
+    },
+    [currentUserId, members, sendStreamMessage]
+  );
+
   useEffect(() => {
     const controller = new AbortController();
     fetchOrbit(controller.signal);
@@ -268,7 +479,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   // Poll for message updates when there are generating messages (exponential backoff)
   useEffect(() => {
     const hasGeneratingMessages = messages.some(
-      (m) => (m as any).isGenerating === true
+      (m) => m.isGenerating === true && !activeAgentMessageIdsRef.current.has(m.id)
     );
 
     if (!hasGeneratingMessages) {
@@ -292,7 +503,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [messages, fetchOrbit]);
+  }, [messages, fetchOrbit, streamStatus]);
 
   // Track whether the user is scrolled near the bottom, so background
   // refetches (polling) don't yank them back down while they're reading
@@ -317,14 +528,11 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   useEffect(() => {
     if (!isNearBottomRef.current) return;
 
-    const scrollToBottom = () => {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
-
-    // Small delay to ensure DOM is updated
-    const timer = setTimeout(scrollToBottom, 100);
-    return () => clearTimeout(timer);
-  }, [messages]);
+    const frameId = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+    });
+    return () => cancelAnimationFrame(frameId);
+  }, [renderedMessages]);
 
   const handleMessageSent = (
     userMessage?: Message,
@@ -347,9 +555,9 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     fetchOrbit();
 
     // Scroll to bottom immediately after sending
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, 100);
+    });
   };
 
   /**
@@ -374,7 +582,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     setTimeout(() => router.push("/"), ORBIT_CLOSE_DURATION_MS);
   }, [router]);
 
-  const handleFork = (_messageId: string) => {
+  const handleFork = () => {
     fetchOrbit();
   };
 
@@ -510,7 +718,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
         ref={messagesContainerRef}
       >
         <div className="mx-auto max-w-4xl">
-          {messages.length === 0 ? (
+          {renderedMessages.length === 0 ? (
             <div className="flex h-full min-h-[400px] items-center justify-center">
               <div className="text-center">
                 <Sparkles className="mx-auto mb-4 h-20 w-20 text-gray-300" />
@@ -524,17 +732,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
             </div>
           ) : (
             <>
-              {(() => {
-                const parentMessageMap = new Map(
-                  messages
-                    .filter((m) => m.parentMessageId)
-                    .map((m) => [
-                      m.id,
-                      messages.find((p) => p.id === m.parentMessageId),
-                    ])
-                );
-
-                return messages.map((message) => (
+              {renderedMessages.map((message) => (
                   <MessageRenderer
                     canModerate={Boolean(isOwnerOrAdmin)}
                     currentUserId={currentUserId}
@@ -550,8 +748,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
                     orbitId={orbitId}
                     parentMessage={parentMessageMap.get(message.id) ?? null}
                   />
-                ));
-              })()}
+              ))}
 
               {/* Invisible anchor for auto-scroll */}
               <div ref={messagesEndRef} />
@@ -585,6 +782,9 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
             onCancelEdit={() => setEditingMessage(null)}
             onCancelReply={() => setReplyingTo(null)}
             onMessageSent={handleMessageSent}
+            onSendMessage={handleStreamSend}
+            isStreaming={isAiStreaming}
+            onStopStreaming={() => void stopStream()}
             orbitId={orbitId}
             replyingTo={replyingTo}
           />
