@@ -52,12 +52,15 @@ export const saveOnboardingProfile = tool({
         };
       }
 
-      const currentSettings = (currentUser.settings as Record<string, any>) || {};
+      const currentSettings = currentUser.settings ?? {};
 
-      // Merge onboarding data into settings
+      // Merge onboarding data into settings. `sferaId` is spread back in
+      // deliberately — replacing the whole object would lose the link to the
+      // onboarding space.
       const updatedSettings = {
         ...currentSettings,
         onboarding: {
+          ...currentSettings.onboarding,
           completed: true,
           name,
           role,

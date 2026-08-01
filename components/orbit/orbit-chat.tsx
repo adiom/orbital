@@ -17,6 +17,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { MessageRenderer } from "@/components/chat/message-renderer";
 import { parseMessages, type Message } from "@/components/chat/shared-message-type";
+import { hasOnboardingCompleted } from "@/lib/onboarding/completion-signal";
+import { cn } from "@/lib/utils";
 import { OrbitInput } from "./orbit-input";
 import { OrbitLoader } from "./orbit-loader";
 import { OrbitPageHeader } from "./orbit-page-header";
@@ -49,6 +51,9 @@ type OrbitChatProps = {
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
+
+/** Must stay in step with the `orbit-closing` animation in globals.css. */
+const ORBIT_CLOSE_DURATION_MS = 700;
 
 const parseMember = (value: unknown): Member | null => {
   if (!value || typeof value !== "object") {
@@ -140,10 +145,26 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
   const NEAR_BOTTOM_THRESHOLD = 120;
+
+  // Onboarding finishing is an event, not a state. If the completion was
+  // Onboarding finishing is an event, not a state. If the completion was
+  // already in the first snapshot, the user is re-reading a finished
+  // conversation and must be left alone — otherwise reopening the space
+  // would bounce them out of it every time. Only a completion that
+  // *arrives* while they are watching earns the exit.
+  //
+  // Recorded from the fetch that first returns messages, so the baseline
+  // is set by the data arriving rather than by a render pass.
+  const [wasCompleteOnLoad, setWasCompleteOnLoad] = useState<boolean | null>(
+    null
+  );
+  const isLiveCompletion =
+    wasCompleteOnLoad === false && hasOnboardingCompleted(messages);
 
   const fetchOrbit = useCallback(
     async (signal?: AbortSignal) => {
@@ -169,6 +190,17 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
         } = rawData as Record<string, unknown>;
 
         setOrbit(parseOrbitData(rawOrbit));
+
+        // Baseline for the onboarding exit, taken from the first snapshot
+        // this component sees. `setState` ignores the write on later
+        // fetches, so a completion that arrives during polling still reads
+        // as live.
+        setWasCompleteOnLoad((previous) =>
+          previous === null
+            ? hasOnboardingCompleted(parseMessages(rawMessages))
+            : previous
+        );
+
         setMessages((prevMessages) => {
           // Parse new messages from server using shared parser
           const newMessages = parseMessages(rawMessages);
@@ -320,6 +352,28 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
     }, 100);
   };
 
+  /**
+   * Closes the onboarding conversation and lands on the living map.
+   *
+   * The fade is on the whole screen rather than the completion card, so
+   * the conversation reads as finished rather than as a card that left.
+   * Navigation waits out the animation; with reduced motion it goes
+   * straight there.
+   */
+  const handleOnboardingExit = useCallback(() => {
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (prefersReducedMotion) {
+      router.push("/");
+      return;
+    }
+
+    setIsClosing(true);
+    setTimeout(() => router.push("/"), ORBIT_CLOSE_DURATION_MS);
+  }, [router]);
+
   const handleFork = (_messageId: string) => {
     fetchOrbit();
   };
@@ -427,7 +481,12 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30">
+    <div
+      className={cn(
+        "flex h-screen flex-col overflow-hidden bg-gradient-to-br from-gray-50 via-blue-50/30 to-purple-50/30",
+        isClosing && "orbit-closing pointer-events-none"
+      )}
+    >
       {/* Header */}
       <OrbitPageHeader
         currentUserId={currentUserId}
@@ -484,6 +543,9 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
                     onDelete={() => handleDeleteMessage(message)}
                     onEdit={() => handleEditMessage(message)}
                     onFork={handleFork}
+                    onOnboardingExit={
+                      isLiveCompletion ? handleOnboardingExit : undefined
+                    }
                     onReply={() => setReplyingTo(message)}
                     orbitId={orbitId}
                     parentMessage={parentMessageMap.get(message.id) ?? null}

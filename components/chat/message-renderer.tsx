@@ -48,6 +48,12 @@ type MessageRendererProps = {
   onApproveTool?: (approvalId: string) => void;
   onDenyTool?: (approvalId: string) => void;
   indicatorVariant?: 1 | 2 | 3 | 4 | 5;
+  /**
+   * Passed to the onboarding completion card so the surrounding chat can
+   * animate itself closed before leaving. Omit where staying put is the
+   * right behaviour (message permalinks, an already-finished onboarding).
+   */
+  onOnboardingExit?: () => void;
 };
 
 export function MessageRenderer({
@@ -63,6 +69,7 @@ export function MessageRenderer({
   onApproveTool,
   onDenyTool,
   indicatorVariant = 1,
+  onOnboardingExit,
 }: MessageRendererProps) {
   const router = useRouter();
   const [isForking, setIsForking] = useState(false);
@@ -167,7 +174,12 @@ export function MessageRenderer({
     : null;
 
   const messageContent = (
-    <article className="group relative mb-2">
+    <article
+      className="group relative mb-2"
+      data-generating={message.isGenerating ? "true" : "false"}
+      data-message-id={message.id}
+      data-testid="orbit-message"
+    >
       <div
         className={cn(
           "relative cursor-pointer overflow-hidden rounded-2xl border p-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 md:rounded-3xl md:border-2 md:p-5",
@@ -337,6 +349,7 @@ export function MessageRenderer({
           <div className="mt-4">
             <ToolResultsRenderer
               messageId={message.id}
+              onOnboardingExit={onOnboardingExit}
               results={message.toolResults}
             />
           </div>

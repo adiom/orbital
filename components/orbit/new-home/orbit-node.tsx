@@ -156,6 +156,8 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
           boxShadow: `0 16px 40px rgba(15, 23, 42, 0.08), 0 0 28px ${tone.glow}`,
         }}
         tabIndex={0}
+        data-testid="orbit-node"
+        data-orbit-title={data.title}
       >
         <Handle position={Position.Top} type="target" className="!h-0 !w-0 !border-0 !bg-transparent" />
 
@@ -241,6 +243,8 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
       <button
         aria-label={nodeAriaLabel}
         className="w-full cursor-pointer rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+        data-orbit-title={data.title}
+        data-testid="orbit-node"
         onClick={handleOrbitClick}
         type="button"
       >
@@ -316,7 +320,9 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
         {isOwner && (
           <div className="nodrag flex items-center gap-1">
             <Button
+              aria-label={`Настройки: ${data.title}`}
               className="h-6 w-6 rounded-full bg-white/60 text-neutral-400 hover:bg-white hover:text-neutral-700"
+              data-testid="orbit-node-settings"
               onClick={(e) => {
                 e.stopPropagation();
                 data.onSettingsClick?.();
@@ -327,7 +333,9 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
               <Settings className="h-3 w-3" />
             </Button>
             <Button
+              aria-label={`Удалить: ${data.title}`}
               className="h-6 w-6 rounded-full bg-white/60 text-neutral-300 hover:bg-red-50 hover:text-red-500"
+              data-testid="orbit-node-delete"
               onClick={(e) => {
                 e.stopPropagation();
                 data.onDeleteClick?.();

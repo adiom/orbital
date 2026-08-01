@@ -235,7 +235,9 @@ export function OrbitMobileCard({
         {isOwner && (
           <div className="flex items-center gap-1">
             <Button
+              aria-label={`Настройки: ${orbit.title}`}
               className="h-10 w-10 rounded-full bg-white/60 text-neutral-400 hover:bg-white hover:text-neutral-700"
+              data-testid="orbit-card-settings"
               onClick={(e) => {
                 e.stopPropagation();
                 onSettingsClick?.();
@@ -246,7 +248,9 @@ export function OrbitMobileCard({
               <Settings className="h-4 w-4" />
             </Button>
             <Button
+              aria-label={`Удалить: ${orbit.title}`}
               className="h-10 w-10 rounded-full bg-white/60 text-neutral-300 hover:bg-red-50 hover:text-red-500"
+              data-testid="orbit-card-delete"
               onClick={(e) => {
                 e.stopPropagation();
                 onDeleteClick?.();

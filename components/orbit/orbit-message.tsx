@@ -181,7 +181,12 @@ export function OrbitMessage({
     : null;
 
   const messageContent = (
-    <article className="group relative mb-2">
+    <article
+      className="group relative mb-2"
+      data-generating={message.isGenerating ? "true" : "false"}
+      data-message-id={message.id}
+      data-testid="orbit-message"
+    >
       <div
         className={cn(
           "relative cursor-pointer overflow-hidden rounded-2xl border p-3 shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 md:rounded-3xl md:border-2 md:p-5",

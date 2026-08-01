@@ -394,7 +394,9 @@ export function OrbitCreatePrompt({ isOpen, onClose }: OrbitCreatePromptProps) {
               <div className="flex flex-shrink-0 items-center gap-1.5">
                 {/* Image upload */}
                 <Button
+                  aria-label="Добавить изображение"
                   className="h-8 w-8 rounded-full border-neutral-200 bg-white text-neutral-500 transition-colors hover:border-violet-300 hover:bg-violet-50 hover:text-violet-600"
+                  data-testid="create-attach-image"
                   disabled={isSending || isUploading}
                   onClick={() => fileInputRef.current?.click()}
                   size="icon"
@@ -410,6 +412,10 @@ export function OrbitCreatePrompt({ isOpen, onClose }: OrbitCreatePromptProps) {
                     "h-8 w-8 rounded-full border-neutral-200 bg-white text-neutral-500 transition-colors hover:border-violet-300 hover:bg-violet-50 hover:text-violet-600",
                     isRecording && "border-red-300 bg-red-50 text-red-500 hover:border-red-400 hover:bg-red-50"
                   )}
+                  aria-label={
+                    isRecording ? "Остановить запись" : "Записать голос"
+                  }
+                  data-testid="create-record-voice"
                   disabled={isSending || isUploading}
                   onClick={isRecording ? stopRecording : startRecording}
                   size="icon"
@@ -452,6 +458,8 @@ export function OrbitCreatePrompt({ isOpen, onClose }: OrbitCreatePromptProps) {
                     ? "bg-gradient-to-br from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600"
                     : "bg-neutral-200"
                 )}
+                aria-label="Отправить"
+                data-testid="create-submit"
                 disabled={!hasContent || isSending}
                 size="icon"
                 type="submit"

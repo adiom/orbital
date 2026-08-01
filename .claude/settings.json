@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./node_modules/.bin/eslint components/chat/onboarding-completion-card.tsx lib/onboarding/completion-signal.ts components/chat/tool-results-renderer.tsx components/chat/message-renderer.tsx components/orbit/orbit-chat.tsx -f json)",
+      "Bash(npx vitest *)"
+    ]
+  }
+}

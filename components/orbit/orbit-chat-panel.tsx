@@ -169,6 +169,7 @@ export function OrbitChatPanel({
             Полный экран
           </Button>
           <Button
+            aria-label="Закрыть панель"
             onClick={onClose}
             size="icon"
             variant="ghost"

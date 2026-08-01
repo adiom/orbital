@@ -15,15 +15,26 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
+import {
+  getOnboardingCompletionMessage,
+  isOnboardingCompletionResult,
+} from "@/lib/onboarding/completion-signal";
 import { cn } from "@/lib/utils";
 import { ChartArtifact } from "../orbit/chart-artifact";
 import { MiniAppArtifact } from "../orbit/mini-app-artifact";
+import { OnboardingCompletionCard } from "./onboarding-completion-card";
 import type { ToolResult } from "./shared-message-type";
 
 type ToolResultsRendererProps = {
   results: ToolResult[];
   messageId?: string;
   className?: string;
+  /**
+   * Called when the onboarding completion card wants to leave for the
+   * living map. Absent outside the onboarding conversation, in which
+   * case the card falls back to its own navigation.
+   */
+  onOnboardingExit?: () => void;
 };
 
 /**
@@ -86,10 +97,12 @@ function ToolResultDisplay({
   result,
   messageId,
   className,
+  onOnboardingExit,
 }: {
   result: ToolResult;
   messageId?: string;
   className?: string;
+  onOnboardingExit?: () => void;
 }) {
   const [isImageZoomed, setIsImageZoomed] = useState(false);
 
@@ -100,6 +113,20 @@ function ToolResultDisplay({
       : "output" in result && typeof result.output === "object"
         ? { toolName: result.toolName, ...(result.output as Record<string, unknown>) }
         : result;
+
+  // Onboarding completion — a milestone, not a tool log. Checked before
+  // the generic success plaque below, which would otherwise render the
+  // raw tool name at the user.
+  if (isOnboardingCompletionResult(result)) {
+    return (
+      <div className={className}>
+        <OnboardingCompletionCard
+          message={getOnboardingCompletionMessage(result)}
+          onExit={onOnboardingExit}
+        />
+      </div>
+    );
+  }
 
   // Error state
   if (!normalizedResult.success && normalizedResult.error) {
@@ -553,6 +580,7 @@ export function ToolResultsRenderer({
   results,
   messageId,
   className,
+  onOnboardingExit,
 }: ToolResultsRendererProps) {
   if (!results || results.length === 0) {
     return null;
@@ -571,6 +599,7 @@ export function ToolResultsRenderer({
           <ToolResultDisplay
             key={String(resultKey)}
             messageId={messageId}
+            onOnboardingExit={onOnboardingExit}
             result={result}
           />
         );

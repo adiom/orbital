@@ -2,12 +2,14 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/app/(auth)/auth";
 import { db } from "@/lib/db";
 import { user } from "@/lib/db/schema";
+import { mergePreferences } from "@/lib/onboarding/merge-settings";
 
+/** Only these keys may be written through this endpoint. */
 type UserSettings = {
   autoArchive?: boolean;
 };
 
-const DEFAULT_SETTINGS: UserSettings = {
+const DEFAULT_SETTINGS: Required<UserSettings> = {
   autoArchive: true,
 };
 
@@ -60,18 +62,23 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Merge with defaults
-    const currentSettings: UserSettings = {
-      ...DEFAULT_SETTINGS,
-      ...settings,
-    };
+    // `settings` is a single JSONB column shared with onboarding state, so it
+    // must be read-modify-written. Writing the request body straight through
+    // would silently wipe `onboarding.completed` and `onboarding.sferaId`.
+    const [row] = await db
+      .select({ settings: user.settings })
+      .from(user)
+      .where(eq(user.id, session.user.id))
+      .limit(1);
+
+    const merged = mergePreferences(row?.settings, settings, DEFAULT_SETTINGS);
 
     await db
       .update(user)
-      .set({ settings: currentSettings })
+      .set({ settings: merged })
       .where(eq(user.id, session.user.id));
 
-    return Response.json({ settings: currentSettings });
+    return Response.json({ settings: merged });
   } catch (error) {
     console.error("Failed to update settings:", error);
     return Response.json(

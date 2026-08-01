@@ -33,6 +33,7 @@ export function OrbitToolbar({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              aria-label="Собрать заново"
               className={BTN_CLASS}
               onClick={onReshuffle}
               size="icon"
@@ -47,6 +48,7 @@ export function OrbitToolbar({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              aria-label="Сбросить раскладку"
               className={BTN_CLASS}
               onClick={onReset}
               size="icon"
@@ -61,6 +63,7 @@ export function OrbitToolbar({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
+              aria-label="Показать всё"
               className={BTN_CLASS}
               onClick={onFitView}
               size="icon"

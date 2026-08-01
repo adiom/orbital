@@ -78,13 +78,14 @@ export function OrbitPageHeader({
             </Button>
 
             <Button asChild className="md:hidden" size="icon" variant="ghost">
-              <Link href="/">
+              <Link aria-label="Назад" href="/">
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
 
             {isOwnerOrAdmin && (
               <Button
+                aria-label="Настройки"
                 onClick={() => setIsSettingsOpen(true)}
                 size="sm"
                 variant="ghost"

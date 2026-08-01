@@ -142,6 +142,14 @@ describe("Property 5: Validation and error response", () => {
             fc
               .string({ minLength: 1, maxLength: 20 })
               .filter((s) => !s.includes("://") && !s.includes("."))
+              .filter((s) => {
+                try {
+                  new URL(s);
+                  return false;
+                } catch {
+                  return true;
+                }
+              })
           ),
           (invalidUrl) => {
             const result = validateAndGetErrors(createMessageSchema, {
@@ -351,6 +359,14 @@ describe("Property 5: Validation and error response", () => {
             fc
               .string({ minLength: 1, maxLength: 20 })
               .filter((s) => !s.includes("://") && !s.includes("."))
+              .filter((s) => {
+                try {
+                  new URL(s);
+                  return false;
+                } catch {
+                  return true;
+                }
+              })
           ),
           (invalidUrl) => {
             const result = validateAndGetErrors(agentRegistrationSchema, {

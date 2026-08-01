@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+.git/
+*.log
+*.pem
+coverage/
+.next/
+.turbo/

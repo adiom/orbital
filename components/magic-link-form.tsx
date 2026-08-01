@@ -64,7 +64,8 @@ export function MagicLinkForm({ onFocus, onBlur }: MagicLinkFormProps) {
 
       if (response.ok) {
         await updateSession();
-        router.push("/");
+        // The onboarding space is created server-side; we only navigate to it.
+        router.push(data.sferaId ? `/${data.sferaId}` : "/");
       } else {
         console.error(data.error || "Неверный код");
       }

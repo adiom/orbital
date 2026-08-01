@@ -143,6 +143,7 @@ export function OrbitCreateSheet({ isOpen, onClose }: OrbitCreateSheetProps) {
                 Новая мысль
               </h3>
               <Button
+                aria-label="Закрыть"
                 onClick={onClose}
                 size="icon"
                 variant="ghost"

@@ -522,3 +522,31 @@
     animation: none;
   }
 }
+
+/* Orbit closing — the conversation settles and lets go.
+   Used when onboarding completes and the user is handed to the living
+   map. Slow and single-pass: the space recedes rather than snapping
+   shut. Duration is mirrored by ORBIT_CLOSE_DURATION_MS in
+   components/orbit/orbit-chat.tsx. */
+@keyframes orbit-close {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+.orbit-closing {
+  animation: orbit-close 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: opacity, transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-closing {
+    animation: none;
+    opacity: 0;
+  }
+}

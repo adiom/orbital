@@ -31,13 +31,25 @@ export default defineConfig({
   /* Retry on CI only */
   retries: 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 2 : 8,
+  // A single dev server backs every worker, and each sign-in triggers space
+  // creation plus a model call — 8 workers starve it and tests time out in
+  // beforeEach. 3 keeps the suite parallel without overwhelming the server.
+  workers: process.env.CI ? 2 : 3,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: "html",
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL,
+
+    /* Run with a visible browser locally so runs can be watched; CI stays
+     * headless. Override with `--headed` / `--headed=false` when needed. */
+    headless: !!process.env.CI,
+
+    /* Slow actions down locally so a watched run is followable. */
+    launchOptions: {
+      slowMo: process.env.CI ? 0 : 300,
+    },
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: "retain-on-failure",
