@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { sfera, sferaMessage, user } from "@/lib/db/schema";
 import { myProvider } from "../providers";
 import { logAiUsage } from "../usage-logger";
+import { resolveAgent, silenceAgent } from "./resolve";
 import type { AgentResponseContext, AgentResponseResult } from "./types";
 
 /**
@@ -81,13 +82,21 @@ function selectSmartContext(
 export async function streamAgentResponse(
   context: AgentResponseContext
 ): Promise<AgentResponseResult> {
-  const {
-    sferaId,
-    triggerMessageId,
-    targetMessageId,
-    requestingUserId,
-    agent,
-  } = context;
+  const { sferaId, triggerMessageId, targetMessageId, requestingUserId } =
+    context;
+
+  // Operator overrides from the console are applied here rather than at the
+  // call sites: eight places look an agent up, but every reply passes through
+  // this function, so no route can bypass the settings.
+  const agent = await resolveAgent(context.agent);
+
+  if (agent.enabled === false) {
+    return silenceAgent({
+      agent,
+      targetMessageId,
+      reason: "выключен на пульте",
+    });
+  }
 
   console.log(`📝 ${agent.name} generating response:`, {
     sferaId,

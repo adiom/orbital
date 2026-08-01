@@ -95,9 +95,17 @@ export default function AdminPage() {
         >
           Orbital / Станция
         </Link>
-        <span className="font-mono text-[11px] text-neutral-400 tabular-nums">
-          снято в {formatTime(data.generatedAt)}
-        </span>
+        <div className="flex items-baseline gap-5">
+          <Link
+            className="text-[11px] text-neutral-400 transition-colors hover:text-neutral-700"
+            href="/admin/agents"
+          >
+            пульт
+          </Link>
+          <span className="font-mono text-[11px] text-neutral-400 tabular-nums">
+            снято в {formatTime(data.generatedAt)}
+          </span>
+        </div>
       </header>
 
       <div className="mt-12">
@@ -122,7 +130,7 @@ export default function AdminPage() {
 
         <aside className="mt-14 space-y-12 lg:mt-0 lg:border-neutral-200/70 lg:border-l lg:pl-12">
           <SpendPanel spend={data.spend} />
-          <AgentsPanel agents={data.agents} />
+          <AgentsPanel />
           <EventsStream events={data.events} />
         </aside>
       </div>

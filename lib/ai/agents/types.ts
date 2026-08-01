@@ -44,6 +44,12 @@ export type AIAgent = {
   /** Agent runtime - internal (Vercel AI SDK) or external-mcp */
   runtime?: AgentRuntime;
 
+  /**
+   * False silences the agent without removing it from the registry. Set only by
+   * operator overrides in AgentConfig — agents in code are always enabled.
+   */
+  enabled?: boolean;
+
   /** External MCP configuration (only when runtime = "external-mcp") */
   externalMcp?: ExternalMcpConfig;
 

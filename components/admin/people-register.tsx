@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { DeletePeopleDialog } from "./delete-people-dialog";
 import { formatAbsence, formatNumber } from "./format";
 import { daysSince, LifeDot, LifeLabel, lifeState } from "./life-dot";
+import { PersonDrawer } from "./person-drawer";
 import { PulseLine } from "./pulse-line";
 import type { AdminOverview, DeletePreview } from "./types";
 
@@ -25,6 +26,9 @@ export function PeopleRegister({
 }) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [openId, setOpenId] = useState<string | null>(null);
+  /** Who the confirm dialog is about — one row from the card, or the selection. */
+  const [targets, setTargets] = useState<string[]>([]);
   const [confirming, setConfirming] = useState(false);
   const [preview, setPreview] = useState<DeletePreview | null>(null);
   const [isLoadingPreview, setLoadingPreview] = useState(false);
@@ -49,6 +53,16 @@ export function PeopleRegister({
 
   const allVisibleChosen =
     visible.length > 0 && visible.every((person) => selected.has(person.id));
+
+  /** Names for the confirm dialog, in the order the ids were handed over. */
+  const targetNames = useMemo(
+    () =>
+      targets
+        .map((id) => people.find((person) => person.id === id))
+        .filter((person): person is Person => Boolean(person))
+        .map(label),
+    [people, targets]
+  );
 
   function toggle(id: string) {
     setSelected((current) => {
@@ -78,8 +92,16 @@ export function PeopleRegister({
     });
   }
 
-  /** Asks the server what the delete would cost before showing the button. */
-  async function openConfirm() {
+  /**
+   * Both entry points funnel through `targets`: the checkbox selection and the
+   * single "delete" inside a person's card. One confirm path, one delete call.
+   */
+  async function openConfirm(ids: string[]) {
+    if (ids.length === 0) {
+      return;
+    }
+
+    setTargets(ids);
     setConfirming(true);
     setPreview(null);
     setLoadingPreview(true);
@@ -89,7 +111,7 @@ export function PeopleRegister({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ids: chosen.map((person) => person.id) }),
+        body: JSON.stringify({ ids }),
       });
 
       if (!response.ok) {
@@ -113,7 +135,7 @@ export function PeopleRegister({
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ ids: chosen.map((person) => person.id) }),
+        body: JSON.stringify({ ids: targets }),
       });
 
       const result = await response.json();
@@ -126,8 +148,22 @@ export function PeopleRegister({
         type: "success",
         description: `Удалено: ${formatNumber(result.deleted)}`,
       });
-      setSelected(new Set());
+
+      // The card would otherwise stay open on someone who no longer exists.
+      setSelected((current) => {
+        const next = new Set(current);
+        for (const id of targets) {
+          next.delete(id);
+        }
+        return next;
+      });
+
+      if (openId && targets.includes(openId)) {
+        setOpenId(null);
+      }
+
       setConfirming(false);
+      setTargets([]);
       onChanged?.();
     } catch (error) {
       toast({
@@ -163,7 +199,7 @@ export function PeopleRegister({
               </button>
               <button
                 className="rounded-full border border-red-200 bg-white px-3.5 py-1.5 text-[12px] text-red-500 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                onClick={openConfirm}
+                onClick={() => openConfirm(chosen.map((person) => person.id))}
                 type="button"
               >
                 Удалить {formatNumber(chosen.length)}
@@ -216,7 +252,15 @@ export function PeopleRegister({
 
                 <LifeDot state={state} />
 
-                <div className="min-w-0 flex-1">
+                {/*
+                  The row opens the card; the checkbox stays a separate target
+                  so selecting several people never opens anything.
+                */}
+                <button
+                  className="min-w-0 flex-1 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  onClick={() => setOpenId(person.id)}
+                  type="button"
+                >
                   <div className="truncate text-[13.5px] text-neutral-900">
                     {person.name || person.email.split("@")[0]}
                     {person.onboarded ? null : (
@@ -228,7 +272,7 @@ export function PeopleRegister({
                   <div className="truncate font-mono text-[11px] text-neutral-400">
                     {person.email}
                   </div>
-                </div>
+                </button>
 
                 <div className="hidden w-[124px] shrink-0 text-right font-mono text-[11px] text-neutral-500 tabular-nums sm:block">
                   {formatNumber(person.cellCount)} яч ·{" "}
@@ -249,12 +293,23 @@ export function PeopleRegister({
         </ul>
       )}
 
+      {openId ? (
+        <PersonDrawer
+          onClose={() => setOpenId(null)}
+          onDelete={() => openConfirm([openId])}
+          personId={openId}
+        />
+      ) : null}
+
       {confirming ? (
         <DeletePeopleDialog
           isDeleting={isDeleting}
           isLoading={isLoadingPreview}
-          names={chosen.map(label)}
-          onCancel={() => setConfirming(false)}
+          names={targetNames}
+          onCancel={() => {
+            setConfirming(false);
+            setTargets([]);
+          }}
           onConfirm={confirmDelete}
           preview={preview}
         />

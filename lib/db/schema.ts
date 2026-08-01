@@ -12,6 +12,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -539,6 +540,99 @@ export const agentRegistry = pgTable("AgentRegistry", {
 });
 
 export type AgentRegistry = InferSelectModel<typeof agentRegistry>;
+
+// ============ AVRORA: Agent Console (operator overrides for code agents) ====
+
+/**
+ * Operator overrides for the agents defined in lib/ai/agents/instances/*.
+ *
+ * Those agents live in code — personality, mention patterns and tool
+ * implementations cannot come from a table. What an operator needs to turn
+ * without a deploy does: model, temperature, step budget, the system prompt,
+ * which tools are handed over, and whether the agent answers at all.
+ *
+ * A row is an override layer, not a definition: every nullable column means
+ * "keep whatever the code says". Deleting the row restores the code exactly.
+ *
+ * `agentId` is the string id from the code registry ("avrora", "cf-kristina"),
+ * deliberately not a FK — the agent may not exist in any table.
+ */
+export const agentConfig = pgTable("AgentConfig", {
+  id: uuid("id").primaryKey().notNull().defaultRandom(),
+  agentId: varchar("agentId", { length: 64 }).notNull().unique(),
+
+  /** False silences the agent without removing it from the code registry. */
+  enabled: boolean("enabled").notNull().default(true),
+
+  // Null in every override column means "use the value from code".
+  model: varchar("model", { length: 100 }),
+  temperature: doublePrecision("temperature"),
+  maxSteps: integer("maxSteps"),
+
+  /** Tool names this agent may call. Null hands over the code's full set. */
+  tools: jsonb("tools").$type<string[]>(),
+
+  rateLimit: jsonb("rateLimit").$type<{
+    requestsPerMinute: number;
+    requestsPerHour: number;
+    cooldownSeconds: number;
+  }>(),
+
+  /** Endpoint for runtime = "external-mcp" agents. */
+  mcpEndpoint: text("mcpEndpoint"),
+
+  // Reachability, written by the console's check button. The existing
+  // AgentRegistry table only covers webhook agents, so MCP and internal
+  // agents had nowhere to report from.
+  lastCheckAt: timestamp("lastCheckAt"),
+  lastCheckOk: boolean("lastCheckOk"),
+  lastCheckMs: integer("lastCheckMs"),
+  lastCheckError: text("lastCheckError"),
+
+  updatedById: uuid("updatedById").references(() => user.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+  updatedAt: timestamp("updatedAt").notNull().defaultNow(),
+});
+
+export type AgentConfig = InferSelectModel<typeof agentConfig>;
+
+/**
+ * Every system prompt ever saved, newest version wins.
+ *
+ * The prompt is the most dangerous field on the console — a bad edit changes
+ * how the product talks to everyone, and the damage is invisible until someone
+ * reads a conversation. It is never overwritten in place: each save appends a
+ * version, so an operator can read the diff and go back.
+ */
+export const agentPromptVersion = pgTable(
+  "AgentPromptVersion",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    agentId: varchar("agentId", { length: 64 }).notNull(),
+    version: integer("version").notNull(),
+    prompt: text("prompt").notNull(),
+    /** Why it changed, in the operator's words. */
+    note: text("note"),
+    authorId: uuid("authorId").references(() => user.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("createdAt").notNull().defaultNow(),
+  },
+  (table) => ({
+    agentVersion: unique("agent_prompt_version_agent_id_version_key").on(
+      table.agentId,
+      table.version
+    ),
+    agentIdx: index("agent_prompt_version_agent_id_idx").on(
+      table.agentId,
+      table.version
+    ),
+  })
+);
+
+export type AgentPromptVersion = InferSelectModel<typeof agentPromptVersion>;
 
 // ============ AVRORA: Idempotency Log for Duplicate Prevention ============
 

@@ -8,6 +8,7 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { sfera, sferaMessage, user } from "@/lib/db/schema";
+import { resolveAgent, silenceAgent } from "./resolve";
 import type { AIAgent, ExternalMcpConfig } from "./types";
 import type { AgentResponseContext, AgentResponseResult } from "./types";
 
@@ -142,13 +143,20 @@ async function callMcpTool(
 export async function streamExternalMcpAgentResponse(
   context: AgentResponseContext
 ): Promise<AgentResponseResult> {
-  const {
-    sferaId,
-    triggerMessageId,
-    targetMessageId,
-    requestingUserId,
-    agent,
-  } = context;
+  const { sferaId, triggerMessageId, targetMessageId, requestingUserId } =
+    context;
+
+  // Same resolution point as the internal streamer — see resolve.ts. For MCP
+  // agents this is also where a console-supplied endpoint takes effect.
+  const agent = await resolveAgent(context.agent);
+
+  if (agent.enabled === false) {
+    return silenceAgent({
+      agent,
+      targetMessageId,
+      reason: "выключен на пульте",
+    });
+  }
 
   const externalMcp = agent.externalMcp;
   if (!externalMcp) {
