@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, User } from "lucide-react";
+import { Activity, Plus, User } from "lucide-react";
 import Link from "next/link";
 import { redirect, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -13,6 +13,7 @@ import { OrbitErrorState } from "@/components/orbit/orbit-error-state";
 import { OrbitSkeleton } from "@/components/orbit/orbit-skeleton";
 import { Button } from "@/components/ui/button";
 import { useOrbits } from "@/hooks/use-orbits";
+import { useIsAdmin } from "@/hooks/use-is-admin";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 
 export default function HomePage() {
@@ -28,6 +29,7 @@ export default function HomePage() {
   const [selectedOrbitId, setSelectedOrbitId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const isMobile = useIsMobile();
+  const isAdmin = useIsAdmin();
 
   const handleRetryFetch = async () => {
     setIsRetrying(true);
@@ -96,6 +98,16 @@ export default function HomePage() {
               <Plus className="mr-2 h-4 w-4" />
               Создать...
             </Button>
+
+            {isAdmin ? (
+              <Link
+                aria-label="Станция"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/70 bg-white/75 text-neutral-600 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all hover:bg-white hover:text-neutral-900"
+                href="/admin"
+              >
+                <Activity className="h-4 w-4" />
+              </Link>
+            ) : null}
 
             {session?.user?.id ? (
               <Link

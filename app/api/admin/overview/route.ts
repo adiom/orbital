@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import { requireAdmin } from "@/lib/admin/access";
 import { db } from "@/lib/db";
 import {
@@ -65,6 +65,16 @@ function toSeriesByKey(
   return result;
 }
 
+/** One failed sensor, surfaced to the station instead of killing the screen. */
+type Failure = { source: string; message: string };
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
 export async function GET() {
   const admin = await requireAdmin();
 
@@ -75,10 +85,46 @@ export async function GET() {
   const pulseSince = daysAgo(PULSE_DAYS);
   const spendSince = daysAgo(SPEND_DAYS);
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const startedAt = Date.now();
+  const failures: Failure[] = [];
+
+  /**
+   * Runs one aggregate. A single broken query degrades its own panel and is
+   * logged with its name — the rest of the station still reports.
+   */
+  async function probe<T>(
+    source: string,
+    run: () => Promise<T>,
+    fallback: T
+  ): Promise<T> {
+    const probeStartedAt = Date.now();
+    try {
+      const result = await run();
+      const rows = Array.isArray(result) ? result.length : 1;
+      console.log(
+        `[admin/overview] ${source} ok rows=${rows} ${Date.now() - probeStartedAt}ms`
+      );
+      return result;
+    } catch (error) {
+      const message = errorMessage(error);
+      failures.push({ source, message });
+      console.error(
+        `[admin/overview] ${source} failed after ${Date.now() - probeStartedAt}ms:`,
+        error
+      );
+      return fallback;
+    }
+  }
 
   try {
+    console.log(
+      `[admin/overview] collecting for ${admin.email} (pulse from ${dayKey(pulseSince)})`
+    );
+
     const [
-      totals,
+      peopleTotal,
+      cellsTotal,
+      livingCellsTotal,
       messages24h,
       ai24h,
       errors24h,
@@ -98,227 +144,331 @@ export async function GET() {
       mcpEvents,
       toolEvents,
     ] = await Promise.all([
-      // Totals: people, living cells (touched in the last 14 days), all cells.
-      db
-        .select({
-          people: sql<number>`(select count(*)::int from ${user})`,
-          cells: sql<number>`(select count(*)::int from ${sfera})`,
-          livingCells: sql<number>`(select count(*)::int from ${sfera} where ${sfera.updatedAt} >= ${pulseSince})`,
-        })
-        .from(sql`(select 1) as t`),
+      probe("people.total", () => db.select({ value: count() }).from(user), []),
 
-      db
-        .select({ value: count() })
-        .from(sferaMessage)
-        .where(gte(sferaMessage.createdAt, dayAgo)),
+      probe("cells.total", () => db.select({ value: count() }).from(sfera), []),
 
-      db
-        .select({ value: count() })
-        .from(aiUsageLog)
-        .where(gte(aiUsageLog.createdAt, dayAgo)),
+      probe(
+        "cells.living",
+        () =>
+          db
+            .select({ value: count() })
+            .from(sfera)
+            .where(gte(sfera.updatedAt, pulseSince)),
+        []
+      ),
 
-      db
-        .select({ value: count() })
-        .from(aiUsageLog)
-        .where(
-          and(
-            gte(aiUsageLog.createdAt, dayAgo),
-            sql`${aiUsageLog.status} <> 'success'`
-          )
-        ),
+      probe(
+        "messages.24h",
+        () =>
+          db
+            .select({ value: count() })
+            .from(sferaMessage)
+            .where(gte(sferaMessage.createdAt, dayAgo)),
+        []
+      ),
 
-      db
-        .select({ cents: sql<number>`coalesce(sum(${aiUsageLog.estimatedCost}), 0)::int` })
-        .from(aiUsageLog)
-        .where(gte(aiUsageLog.createdAt, dayAgo)),
+      probe(
+        "ai.24h",
+        () =>
+          db
+            .select({ value: count() })
+            .from(aiUsageLog)
+            .where(gte(aiUsageLog.createdAt, dayAgo)),
+        []
+      ),
+
+      probe(
+        "errors.24h",
+        () =>
+          db
+            .select({ value: count() })
+            .from(aiUsageLog)
+            .where(
+              and(
+                gte(aiUsageLog.createdAt, dayAgo),
+                sql`${aiUsageLog.status} <> 'success'`
+              )
+            ),
+        []
+      ),
+
+      probe(
+        "spend.24h",
+        () =>
+          db
+            .select({
+              cents: sql<number>`coalesce(sum(${aiUsageLog.estimatedCost}), 0)::int`,
+            })
+            .from(aiUsageLog)
+            .where(gte(aiUsageLog.createdAt, dayAgo)),
+        []
+      ),
 
       // Daily pulses for the top gauges.
-      db
-        .select({
-          day: sql<string>`date_trunc('day', ${user.createdAt})::date::text`,
-          value: sql<number>`count(*)::int`,
-        })
-        .from(user)
-        .where(gte(user.createdAt, pulseSince))
-        .groupBy(sql`1`),
+      probe(
+        "pulse.people",
+        () =>
+          db
+            .select({
+              day: sql<string>`date_trunc('day', ${user.createdAt})::date::text`,
+              value: sql<number>`count(*)::int`,
+            })
+            .from(user)
+            .where(gte(user.createdAt, pulseSince))
+            .groupBy(sql`1`),
+        []
+      ),
 
-      db
-        .select({
-          day: sql<string>`date_trunc('day', ${sfera.createdAt})::date::text`,
-          value: sql<number>`count(*)::int`,
-        })
-        .from(sfera)
-        .where(gte(sfera.createdAt, pulseSince))
-        .groupBy(sql`1`),
+      probe(
+        "pulse.cells",
+        () =>
+          db
+            .select({
+              day: sql<string>`date_trunc('day', ${sfera.createdAt})::date::text`,
+              value: sql<number>`count(*)::int`,
+            })
+            .from(sfera)
+            .where(gte(sfera.createdAt, pulseSince))
+            .groupBy(sql`1`),
+        []
+      ),
 
-      db
-        .select({
-          day: sql<string>`date_trunc('day', ${sferaMessage.createdAt})::date::text`,
-          value: sql<number>`count(*)::int`,
-        })
-        .from(sferaMessage)
-        .where(gte(sferaMessage.createdAt, pulseSince))
-        .groupBy(sql`1`),
+      probe(
+        "pulse.messages",
+        () =>
+          db
+            .select({
+              day: sql<string>`date_trunc('day', ${sferaMessage.createdAt})::date::text`,
+              value: sql<number>`count(*)::int`,
+            })
+            .from(sferaMessage)
+            .where(gte(sferaMessage.createdAt, pulseSince))
+            .groupBy(sql`1`),
+        []
+      ),
 
-      db
-        .select({
-          day: sql<string>`date_trunc('day', ${aiUsageLog.createdAt})::date::text`,
-          value: sql<number>`count(*)::int`,
-        })
-        .from(aiUsageLog)
-        .where(gte(aiUsageLog.createdAt, pulseSince))
-        .groupBy(sql`1`),
+      probe(
+        "pulse.ai",
+        () =>
+          db
+            .select({
+              day: sql<string>`date_trunc('day', ${aiUsageLog.createdAt})::date::text`,
+              value: sql<number>`count(*)::int`,
+            })
+            .from(aiUsageLog)
+            .where(gte(aiUsageLog.createdAt, pulseSince))
+            .groupBy(sql`1`),
+        []
+      ),
 
-      db
-        .select({
-          day: sql<string>`date_trunc('day', ${aiUsageLog.createdAt})::date::text`,
-          value: sql<number>`coalesce(sum(${aiUsageLog.estimatedCost}), 0)::int`,
-        })
-        .from(aiUsageLog)
-        .where(gte(aiUsageLog.createdAt, pulseSince))
-        .groupBy(sql`1`),
+      probe(
+        "pulse.spend",
+        () =>
+          db
+            .select({
+              day: sql<string>`date_trunc('day', ${aiUsageLog.createdAt})::date::text`,
+              value: sql<number>`coalesce(sum(${aiUsageLog.estimatedCost}), 0)::int`,
+            })
+            .from(aiUsageLog)
+            .where(gte(aiUsageLog.createdAt, pulseSince))
+            .groupBy(sql`1`),
+        []
+      ),
 
-      db
-        .select({
-          day: sql<string>`date_trunc('day', ${aiUsageLog.createdAt})::date::text`,
-          value: sql<number>`count(*)::int`,
-        })
-        .from(aiUsageLog)
-        .where(
-          and(
-            gte(aiUsageLog.createdAt, pulseSince),
-            sql`${aiUsageLog.status} <> 'success'`
-          )
-        )
-        .groupBy(sql`1`),
+      probe(
+        "pulse.errors",
+        () =>
+          db
+            .select({
+              day: sql<string>`date_trunc('day', ${aiUsageLog.createdAt})::date::text`,
+              value: sql<number>`count(*)::int`,
+            })
+            .from(aiUsageLog)
+            .where(
+              and(
+                gte(aiUsageLog.createdAt, pulseSince),
+                sql`${aiUsageLog.status} <> 'success'`
+              )
+            )
+            .groupBy(sql`1`),
+        []
+      ),
 
       // People register.
-      db
-        .select({
-          id: user.id,
-          name: user.name,
-          displayName: user.displayName,
-          email: user.email,
-          createdAt: user.createdAt,
-          settings: user.settings,
-          cellCount: sql<number>`(select count(*)::int from ${sferaMember} where ${sferaMember.userId} = ${user.id})`,
-          messageCount: sql<number>`(select count(*)::int from ${sferaMessage} where ${sferaMessage.userId} = ${user.id})`,
-          lastSeen: sql<string | null>`(select max(${sferaMessage.createdAt})::text from ${sferaMessage} where ${sferaMessage.userId} = ${user.id})`,
-        })
-        .from(user)
-        .orderBy(desc(user.createdAt))
-        .limit(REGISTER_LIMIT),
+      probe(
+        "register.people",
+        () =>
+          db
+            .select({
+              id: user.id,
+              name: user.name,
+              displayName: user.displayName,
+              email: user.email,
+              createdAt: user.createdAt,
+              settings: user.settings,
+              cellCount: sql<number>`(select count(*)::int from ${sferaMember} where ${sferaMember.userId} = ${user.id})`,
+              messageCount: sql<number>`(select count(*)::int from ${sferaMessage} where ${sferaMessage.userId} = ${user.id})`,
+              lastSeen: sql<string | null>`(select max(${sferaMessage.createdAt})::text from ${sferaMessage} where ${sferaMessage.userId} = ${user.id})`,
+            })
+            .from(user)
+            .orderBy(desc(user.createdAt))
+            .limit(REGISTER_LIMIT),
+        []
+      ),
 
-      db
-        .select({
-          key: sferaMessage.userId,
-          day: sql<string>`date_trunc('day', ${sferaMessage.createdAt})::date::text`,
-          value: sql<number>`count(*)::int`,
-        })
-        .from(sferaMessage)
-        .where(gte(sferaMessage.createdAt, pulseSince))
-        .groupBy(sferaMessage.userId, sql`2`),
+      probe(
+        "pulse.perPerson",
+        () =>
+          db
+            .select({
+              key: sferaMessage.userId,
+              day: sql<string>`date_trunc('day', ${sferaMessage.createdAt})::date::text`,
+              value: sql<number>`count(*)::int`,
+            })
+            .from(sferaMessage)
+            .where(gte(sferaMessage.createdAt, pulseSince))
+            .groupBy(sferaMessage.userId, sql`2`),
+        []
+      ),
 
       // Cells register, most recently active first.
-      db
-        .select({
-          id: sfera.id,
-          title: sfera.title,
-          visibility: sfera.visibility,
-          createdAt: sfera.createdAt,
-          updatedAt: sfera.updatedAt,
-          ownerName: user.name,
-          ownerEmail: user.email,
-          memberCount: sql<number>`(select count(*)::int from ${sferaMember} where ${sferaMember.sferaId} = ${sfera.id})`,
-          messageCount: sql<number>`(select count(*)::int from ${sferaMessage} where ${sferaMessage.sferaId} = ${sfera.id})`,
-        })
-        .from(sfera)
-        .innerJoin(user, eq(sfera.ownerId, user.id))
-        .orderBy(desc(sfera.updatedAt))
-        .limit(REGISTER_LIMIT),
+      probe(
+        "register.cells",
+        () =>
+          db
+            .select({
+              id: sfera.id,
+              title: sfera.title,
+              visibility: sfera.visibility,
+              createdAt: sfera.createdAt,
+              updatedAt: sfera.updatedAt,
+              ownerName: user.name,
+              ownerEmail: user.email,
+              memberCount: sql<number>`(select count(*)::int from ${sferaMember} where ${sferaMember.sferaId} = ${sfera.id})`,
+              messageCount: sql<number>`(select count(*)::int from ${sferaMessage} where ${sferaMessage.sferaId} = ${sfera.id})`,
+            })
+            .from(sfera)
+            .innerJoin(user, eq(sfera.ownerId, user.id))
+            .orderBy(desc(sfera.updatedAt))
+            .limit(REGISTER_LIMIT),
+        []
+      ),
 
-      db
-        .select({
-          provider: aiUsageLog.provider,
-          requests: sql<number>`count(*)::int`,
-          tokens: sql<number>`coalesce(sum(${aiUsageLog.totalTokens}), 0)::int`,
-          cents: sql<number>`coalesce(sum(${aiUsageLog.estimatedCost}), 0)::int`,
-        })
-        .from(aiUsageLog)
-        .where(gte(aiUsageLog.createdAt, spendSince))
-        .groupBy(aiUsageLog.provider)
-        .orderBy(sql`4 desc`),
+      probe(
+        "spend.byProvider",
+        () =>
+          db
+            .select({
+              provider: aiUsageLog.provider,
+              requests: sql<number>`count(*)::int`,
+              tokens: sql<number>`coalesce(sum(${aiUsageLog.totalTokens}), 0)::int`,
+              cents: sql<number>`coalesce(sum(${aiUsageLog.estimatedCost}), 0)::int`,
+            })
+            .from(aiUsageLog)
+            .where(gte(aiUsageLog.createdAt, spendSince))
+            .groupBy(aiUsageLog.provider)
+            .orderBy(sql`4 desc`),
+        []
+      ),
 
-      db
-        .select({
-          id: agentRegistry.id,
-          name: agentRegistry.name,
-          healthStatus: agentRegistry.healthStatus,
-          lastHealthCheck: agentRegistry.lastHealthCheck,
-          failedWebhookCount: agentRegistry.failedWebhookCount,
-        })
-        .from(agentRegistry)
-        .orderBy(desc(agentRegistry.failedWebhookCount)),
+      probe(
+        "agents",
+        () =>
+          db
+            .select({
+              id: agentRegistry.id,
+              name: agentRegistry.name,
+              healthStatus: agentRegistry.healthStatus,
+              lastHealthCheck: agentRegistry.lastHealthCheck,
+              failedWebhookCount: agentRegistry.failedWebhookCount,
+            })
+            .from(agentRegistry)
+            .orderBy(desc(agentRegistry.failedWebhookCount)),
+        []
+      ),
 
       // Keys: prefix only, never the hash.
-      db
-        .select({
-          id: apiKey.id,
-          name: apiKey.name,
-          prefix: apiKey.prefix,
-          usageCount: apiKey.usageCount,
-          lastUsedAt: apiKey.lastUsedAt,
-          revokedAt: apiKey.revokedAt,
-          expiresAt: apiKey.expiresAt,
-          createdAt: apiKey.createdAt,
-          ownerEmail: user.email,
-        })
-        .from(apiKey)
-        .innerJoin(user, eq(apiKey.userId, user.id))
-        .orderBy(desc(apiKey.createdAt))
-        .limit(REGISTER_LIMIT),
+      probe(
+        "register.keys",
+        () =>
+          db
+            .select({
+              id: apiKey.id,
+              name: apiKey.name,
+              prefix: apiKey.prefix,
+              usageCount: apiKey.usageCount,
+              lastUsedAt: apiKey.lastUsedAt,
+              revokedAt: apiKey.revokedAt,
+              expiresAt: apiKey.expiresAt,
+              createdAt: apiKey.createdAt,
+              ownerEmail: user.email,
+            })
+            .from(apiKey)
+            .innerJoin(user, eq(apiKey.userId, user.id))
+            .orderBy(desc(apiKey.createdAt))
+            .limit(REGISTER_LIMIT),
+        []
+      ),
 
-      db
-        .select({
-          at: mcpAuditLog.createdAt,
-          source: sql<string>`'mcp'`,
-          label: mcpAuditLog.method,
-          detail: mcpAuditLog.toolName,
-          status: sql<string>`case when ${mcpAuditLog.statusCode} < 400 then 'ok' else 'error' end`,
-          durationMs: mcpAuditLog.responseTimeMs,
-        })
-        .from(mcpAuditLog)
-        .orderBy(desc(mcpAuditLog.createdAt))
-        .limit(EVENTS_LIMIT),
+      probe(
+        "events.mcp",
+        () =>
+          db
+            .select({
+              at: mcpAuditLog.createdAt,
+              source: sql<string>`'mcp'`,
+              label: mcpAuditLog.method,
+              detail: mcpAuditLog.toolName,
+              status: sql<string>`case when ${mcpAuditLog.statusCode} < 400 then 'ok' else 'error' end`,
+              durationMs: mcpAuditLog.responseTimeMs,
+            })
+            .from(mcpAuditLog)
+            .orderBy(desc(mcpAuditLog.createdAt))
+            .limit(EVENTS_LIMIT),
+        []
+      ),
 
-      db
-        .select({
-          at: toolExecution.executedAt,
-          source: sql<string>`'tool'`,
-          label: toolExecution.toolName,
-          detail: sql<string | null>`null`,
-          status: toolExecution.status,
-          durationMs: sql<number | null>`null`,
-        })
-        .from(toolExecution)
-        .orderBy(desc(toolExecution.executedAt))
-        .limit(EVENTS_LIMIT),
+      probe(
+        "events.tools",
+        () =>
+          db
+            .select({
+              at: toolExecution.executedAt,
+              source: sql<string>`'tool'`,
+              label: toolExecution.toolName,
+              detail: sql<string | null>`null`,
+              status: toolExecution.status,
+              durationMs: sql<number | null>`null`,
+            })
+            .from(toolExecution)
+            .orderBy(desc(toolExecution.executedAt))
+            .limit(EVENTS_LIMIT),
+        []
+      ),
     ]);
 
-    const totalsRow = totals[0];
     const peoplePulseByUser = toSeriesByKey(peoplePulse);
 
     const events = [...mcpEvents, ...toolEvents]
       .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
       .slice(0, EVENTS_LIMIT);
 
+    console.log(
+      `[admin/overview] done in ${Date.now() - startedAt}ms — people=${people.length} cells=${cells.length} events=${events.length} failures=${failures.length}`
+    );
+
     return Response.json({
       generatedAt: new Date().toISOString(),
+      failures,
       gauges: {
-        people: { value: totalsRow?.people ?? 0, series: toSeries(userPulse) },
+        people: {
+          value: peopleTotal[0]?.value ?? 0,
+          series: toSeries(userPulse),
+        },
         livingCells: {
-          value: totalsRow?.livingCells ?? 0,
-          total: totalsRow?.cells ?? 0,
+          value: livingCellsTotal[0]?.value ?? 0,
+          total: cellsTotal[0]?.value ?? 0,
           series: toSeries(cellPulse),
         },
         messages24h: {
@@ -359,10 +509,14 @@ export async function GET() {
       events,
     });
   } catch (error) {
+    console.error(
+      `[admin/overview] collapsed after ${Date.now() - startedAt}ms:`,
+      error
+    );
     return Response.json(
       {
         error: "Не удалось собрать данные",
-        detail: error instanceof Error ? error.message : String(error),
+        detail: errorMessage(error),
       },
       { status: 500 }
     );
