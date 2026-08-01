@@ -149,8 +149,7 @@ function ToolResultDisplay({
   // Image generation result
   if (
     (normalizedResult.toolName === "generate-image" ||
-      normalizedResult.toolName === "generateImage" ||
-      normalizedResult.toolName === "generateImageReplicate") &&
+      normalizedResult.toolName === "generateImage") &&
     normalizedResult.imageUrl
   ) {
     return (

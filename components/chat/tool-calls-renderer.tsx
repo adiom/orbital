@@ -26,7 +26,6 @@ const getToolDisplayName = (toolName: string): string => {
     createGame: "Game",
     "generate-image": "Image",
     generateImage: "Image",
-    generateImageReplicate: "Image",
     "generate-video": "Video",
     generateVideo: "Video",
     "generate-music": "Music",

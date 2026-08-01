@@ -17,8 +17,7 @@ const MODEL_PRICING = {
 
 // Tool costs (approximate, in USD)
 const TOOL_COSTS = {
-  generateImage: 0.02, // Gemini Imagen
-  generateImageReplicate: 0.08, // Replicate FLUX
+  generateImage: 0.02, // Banita image generation
   generateMusic: 0.15, // Replicate music
   generateVideo: 0.3, // Replicate video
   webSearch: 0.005, // Tavily

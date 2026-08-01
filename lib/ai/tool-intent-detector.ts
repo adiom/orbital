@@ -7,11 +7,6 @@
 
 // Regex patterns for tool intent detection (moved to top level for performance)
 const AVRORA_PATTERN = /(?:аврора|avrora)\s+/i;
-const REPLICATE_PATTERNS = [
-  /(?:нарисуй|создай|сгенерируй).*?(?:через\s+)?(?:replicate|flux)/i,
-  /(?:replicate|flux).*?(?:нарисуй|создай|сгенерируй)/i,
-];
-
 const IMAGE_PATTERNS = [
   /(?:нарисуй|нарисовать)\s+(.+)/i,
   /(?:создай|создать)\s+(?:картинку|изображение|рисунок)\s*:?\s*(.+)/i,
@@ -46,12 +41,6 @@ const CLEANUP_PATTERNS = [
   /^(?:расскажи|tell me)\s+(?:о|про|about)\s+/i,
 ];
 
-const PROMPT_EXTRACTION_PATTERNS = [
-  /(?:нарисуй|создай|сгенерируй).*?[:-]\s*(.+)/i,
-  /(?:replicate|flux).*?[:-]\s*(.+)/i,
-  /(?:нарисуй|создай|сгенерируй)\s+(.+)/i,
-];
-
 // List tools patterns - when user asks about available tools
 const LIST_TOOLS_PATTERNS = [
   /(?:список|перечень|покажи|скинь|расскажи про)\s+(?:свои\s+)?(?:tool|тул|инструмент|возможност|функци)/i,
@@ -70,7 +59,6 @@ const EXPLICIT_TOOL_PATTERN =
 export type ToolIntent = {
   toolName:
     | "generateImage"
-    | "generateImageReplicate"
     | "generateMusic"
     | "generateVideo"
     | "speechToText"
@@ -117,8 +105,6 @@ function detectExplicitToolIntent(message: string): ToolIntent {
     картинка: "generateImage",
     изображение: "generateImage",
     рисунок: "generateImage",
-    replicate: "generateImageReplicate",
-    flux: "generateImageReplicate",
 
     // Music generation
     generatemusic: "generateMusic",
@@ -191,7 +177,6 @@ function detectExplicitToolIntent(message: string): ToolIntent {
 
   switch (detectedToolName) {
     case "generateImage":
-    case "generateImageReplicate":
       parameters = { prompt: paramText || "красивая картинка" };
       break;
     case "generateMusic":
@@ -369,20 +354,6 @@ export function detectToolIntent(message: string): ToolIntent {
  * Detect image generation intent
  */
 function detectImageGenerationIntent(message: string): ToolIntent {
-  // Replicate-specific patterns
-  for (const pattern of REPLICATE_PATTERNS) {
-    if (pattern.test(message)) {
-      const prompt = extractPromptFromMessage(message);
-      if (prompt) {
-        return {
-          toolName: "generateImageReplicate",
-          parameters: { prompt },
-          confidence: "high",
-        };
-      }
-    }
-  }
-
   // General image generation patterns
   for (const pattern of IMAGE_PATTERNS) {
     const match = message.match(pattern);
@@ -393,7 +364,7 @@ function detectImageGenerationIntent(message: string): ToolIntent {
         prompt = prompt.replace(/@avrora|@аврора/gi, "").trim();
         if (prompt.length > 3) {
           return {
-            toolName: "generateImage", // Default to Gemini
+            toolName: "generateImage",
             parameters: { prompt },
             confidence: "high",
           };
@@ -753,24 +724,4 @@ function detectWebSearchIntent(message: string): ToolIntent {
     parameters: {},
     confidence: "low",
   };
-}
-
-/**
- * Extract prompt from message (helper)
- */
-function extractPromptFromMessage(message: string): string | null {
-  // Try to find prompt after common patterns
-  for (const pattern of PROMPT_EXTRACTION_PATTERNS) {
-    const match = message.match(pattern);
-    if (match?.[1]) {
-      let prompt = match[1].trim();
-      // Clean up
-      prompt = prompt.replace(/@avrora|@аврора/gi, "").trim();
-      if (prompt.length > 3) {
-        return prompt;
-      }
-    }
-  }
-
-  return null;
 }

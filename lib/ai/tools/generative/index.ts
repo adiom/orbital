@@ -6,10 +6,6 @@
 
 // biome-ignore lint/performance/noBarrelFile: Barrel file needed for organized exports
 export { generateImage, parseImageGenerationRequest } from "./generate-image";
-export {
-  generateImageReplicate,
-  parseReplicateImageRequest,
-} from "./generate-image-replicate";
 export { generateMusic, parseMusicGenerationRequest } from "./generate-music";
 export { generateVideo, parseVideoGenerationRequest } from "./generate-video";
 export {

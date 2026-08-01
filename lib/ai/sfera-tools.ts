@@ -12,7 +12,6 @@ import type { Tool } from "ai";
 import { summarizeDiscussion } from "./tools/analytics";
 import {
   generateImage,
-  generateImageReplicate,
   generateMusic,
   generateVideo,
   speechToText,
@@ -43,7 +42,6 @@ export function getSferaTools(): Tool<any, any>[] {
   return [
     // 🎨 Generative tools (5)
     generateImage,
-    generateImageReplicate,
     generateMusic,
     generateVideo,
     speechToText,

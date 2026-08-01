@@ -85,17 +85,8 @@ export const kristinaAgent: AIAgent = {
       const toolConfig = tool as any;
       let toolName = `tool_${index}`;
 
-      if (
-        toolConfig.description?.includes("Gemini") &&
-        toolConfig.description?.includes("image")
-      ) {
+      if (toolConfig.description?.includes("image")) {
         toolName = "generateImage";
-      } else if (
-        toolConfig.description?.includes("FLUX") ||
-        (toolConfig.description?.includes("Replicate") &&
-          toolConfig.description?.includes("image"))
-      ) {
-        toolName = "generateImageReplicate";
       } else if (toolConfig.description?.includes("music")) {
         toolName = "generateMusic";
       } else if (toolConfig.description?.includes("video")) {

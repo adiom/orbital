@@ -19,7 +19,6 @@ const TOOLS_REQUIRING_APPROVAL = [
   "createChart",
   "createGame",
   "generateImage",
-  "generateImageReplicate",
   "generateVideo",
   "generateMusic",
   "createDocument",

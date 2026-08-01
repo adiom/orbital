@@ -46,7 +46,6 @@ export const RATE_LIMITS = {
 
 // List of expensive tools (cost > $0.10)
 export const EXPENSIVE_TOOLS = [
-  "generateImageReplicate",
   "generateMusic",
   "generateVideo",
 ];
