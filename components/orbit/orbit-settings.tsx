@@ -79,7 +79,9 @@ export function OrbitSettings({
     const syncState = () => {
       setTitle(currentTitle);
       setDescription(currentDescription || "");
-      setVisibility(currentVisibility);
+      setVisibility(
+        (currentVisibility as VisibilityValue | undefined) || "private"
+      );
       setMembers(currentMembers);
     };
 

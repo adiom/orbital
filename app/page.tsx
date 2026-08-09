@@ -21,7 +21,7 @@ export default function HomePage() {
   const { status, data: session } = useSession();
   const router = useRouter();
   const isGuest = status === "unauthenticated";
-  const shouldLoadUserData = status === "authenticated";
+  const shouldLoadUserData = status !== "loading";
   const demoPreview = useMemo(() => buildDemoOrbitPreview(), []);
   const { orbits, forkRelationships, isLoading, error, refetch } = useOrbits(shouldLoadUserData);
   const [isRetrying, setIsRetrying] = useState(false);
@@ -58,8 +58,16 @@ export default function HomePage() {
     );
   }
 
-  const previewOrbits = isGuest ? demoPreview.orbits : orbits;
-  const previewForkRelationships = isGuest ? demoPreview.forkRelationships : forkRelationships;
+  const previewOrbits = isGuest
+    ? orbits.length > 0
+      ? orbits
+      : demoPreview.orbits
+    : orbits;
+  const previewForkRelationships = isGuest
+    ? forkRelationships.length > 0
+      ? forkRelationships
+      : demoPreview.forkRelationships
+    : forkRelationships;
 
   const sortedGraphOrbits = [...previewOrbits].sort((a, b) => {
     const aTime = new Date(a.createdAt).getTime();
