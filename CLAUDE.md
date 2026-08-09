@@ -35,6 +35,8 @@ The system is organized into a clear separation of concerns: UI components, core
 
 The active product work is a redesign of Orbital from a chat/container interface into a **living knowledge universe**.
 
+> **Design authority:** `DESIGN.md` at the repository root is the machine‑readable design system (tokens + rationale) for the living map and product-wide UI. Follow it for any frontend work; validate with `npx -y -p @google/design.md designmd lint DESIGN.md`. The previous `docs/design-system.md` was merged into it.
+
 ### Product Language
 
 - Public product name: **Orbital**.

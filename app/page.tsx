@@ -1,10 +1,10 @@
 "use client";
 
-import { Activity, Plus, User } from "lucide-react";
+import { Activity, LogIn, Plus, User } from "lucide-react";
 import Link from "next/link";
-import { redirect, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { OrbitNetworkTimeline } from "@/components/orbit/new-home/orbit-network-timeline";
 import { OrbitMobileCards } from "@/components/orbit/new-home/orbit-mobile-cards";
 import { OrbitCreateSheet } from "@/components/orbit/new-home/orbit-create-sheet";
@@ -15,16 +15,15 @@ import { Button } from "@/components/ui/button";
 import { useOrbits } from "@/hooks/use-orbits";
 import { useIsAdmin } from "@/hooks/use-is-admin";
 import { useIsMobile } from "@/hooks/use-is-mobile";
+import { buildDemoOrbitPreview } from "@/lib/orbit/demo-data";
 
 export default function HomePage() {
   const { status, data: session } = useSession();
-
-  if (status === "unauthenticated") {
-    redirect("/login");
-  }
-
   const router = useRouter();
-  const { orbits, forkRelationships, isLoading, error, refetch } = useOrbits();
+  const isGuest = status === "unauthenticated";
+  const shouldLoadUserData = status === "authenticated";
+  const demoPreview = useMemo(() => buildDemoOrbitPreview(), []);
+  const { orbits, forkRelationships, isLoading, error, refetch } = useOrbits(shouldLoadUserData);
   const [isRetrying, setIsRetrying] = useState(false);
   const [selectedOrbitId, setSelectedOrbitId] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -59,11 +58,23 @@ export default function HomePage() {
     );
   }
 
-  const sortedGraphOrbits = [...orbits].sort((a, b) => {
+  const previewOrbits = isGuest ? demoPreview.orbits : orbits;
+  const previewForkRelationships = isGuest ? demoPreview.forkRelationships : forkRelationships;
+
+  const sortedGraphOrbits = [...previewOrbits].sort((a, b) => {
     const aTime = new Date(a.createdAt).getTime();
     const bTime = new Date(b.createdAt).getTime();
     return aTime - bTime;
   });
+
+  const handleCreateClick = () => {
+    if (isGuest) {
+      router.push("/login?callbackUrl=/");
+      return;
+    }
+
+    setIsCreateOpen(true);
+  };
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#fbfaf8] text-neutral-950 md:overflow-x-hidden">
@@ -72,11 +83,24 @@ export default function HomePage() {
 
       {isMobile ? (
         <>
+          <div className="pointer-events-none absolute left-4 top-[calc(1rem+env(safe-area-inset-top))] z-20 max-w-[220px] rounded-full border border-white/70 bg-white/70 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-neutral-500 shadow-[0_8px_24px_rgba(15,23,42,0.06)] backdrop-blur-xl">
+            {isGuest ? "Пример сети" : "Живая карта"}
+          </div>
+          {isGuest ? (
+            <div className="pointer-events-none absolute left-4 right-4 top-[calc(4.25rem+env(safe-area-inset-top))] z-20 rounded-[24px] border border-white/70 bg-white/70 p-4 text-sm shadow-[0_14px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">
+                Как это выглядит
+              </p>
+              <p className="mt-2 text-[14px] leading-5 text-neutral-800">
+                Один широкий вопрос распадается на несколько живых продолжений — как в реальных форумах и обсуждениях.
+              </p>
+            </div>
+          ) : null}
           <OrbitMobileCards
             orbits={sortedGraphOrbits}
-            forkRelationships={forkRelationships}
+            forkRelationships={previewForkRelationships}
             currentUserId={session?.user?.id}
-            onCreateOpen={() => setIsCreateOpen(true)}
+            onCreateOpen={handleCreateClick}
           />
           <OrbitCreateSheet
             isOpen={isCreateOpen}
@@ -90,14 +114,21 @@ export default function HomePage() {
           </div>
 
           <div className="fixed right-5 top-5 z-30 flex items-center gap-2">
-            <Button
-              className="rounded-full border border-white/70 bg-white/75 px-5 text-neutral-800 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all hover:bg-white hover:shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
-              onClick={() => setIsCreateOpen(true)}
-              variant="ghost"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Создать...
-            </Button>
+            {isGuest ? (
+              <Link href="/login?callbackUrl=/" className="flex items-center rounded-full border border-white/70 bg-white/75 px-4 py-2 text-sm font-medium text-neutral-700 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all hover:bg-white hover:text-neutral-900">
+                <LogIn className="mr-2 h-4 w-4" />
+                Войти
+              </Link>
+            ) : (
+              <Button
+                className="rounded-full border border-white/70 bg-white/75 px-5 text-neutral-800 shadow-[0_18px_50px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-all hover:bg-white hover:shadow-[0_22px_70px_rgba(15,23,42,0.14)]"
+                onClick={handleCreateClick}
+                variant="ghost"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Создать...
+              </Button>
+            )}
 
             {isAdmin ? (
               <Link
@@ -127,7 +158,7 @@ export default function HomePage() {
 
           <OrbitNetworkTimeline
             currentUserId={session?.user?.id}
-            forkRelationships={forkRelationships}
+            forkRelationships={previewForkRelationships}
             onUpdate={refetch}
             orbits={sortedGraphOrbits}
             selectedOrbitId={selectedOrbitId}

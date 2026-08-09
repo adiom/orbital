@@ -13,7 +13,7 @@ export type UseOrbitsReturn = {
  * Hook for fetching and managing orbit data
  * Handles loading states and error handling
  */
-export function useOrbits(): UseOrbitsReturn {
+export function useOrbits(enabled = true): UseOrbitsReturn {
   const [orbits, setOrbits] = useState<Orbit[]>([]);
   const [forkRelationships, setForkRelationships] = useState<
     ForkRelationship[]
@@ -22,6 +22,12 @@ export function useOrbits(): UseOrbitsReturn {
   const [error, setError] = useState<Error | null>(null);
 
   const fetchOrbits = useCallback(async () => {
+    if (!enabled) {
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
@@ -53,11 +59,21 @@ export function useOrbits(): UseOrbitsReturn {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
+    if (!enabled) {
+      queueMicrotask(() => {
+        setOrbits([]);
+        setForkRelationships([]);
+        setIsLoading(false);
+        setError(null);
+      });
+      return;
+    }
+
     fetchOrbits();
-  }, [fetchOrbits]);
+  }, [enabled, fetchOrbits]);
 
   return {
     orbits,

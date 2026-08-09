@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, Plus, X } from "lucide-react";
+import { Globe, Loader2, Lock, Plus, Shield, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,10 +19,34 @@ type Member = {
   role: string;
 };
 
+type VisibilityValue = "private" | "public" | "dao";
+
+export const ORBIT_VISIBILITY_OPTIONS = [
+  {
+    value: "private" as const,
+    label: "Private",
+    description: "Только участники и владелец",
+    icon: Lock,
+  },
+  {
+    value: "public" as const,
+    label: "Public",
+    description: "Доступно по ссылке",
+    icon: Globe,
+  },
+  {
+    value: "dao" as const,
+    label: "DAO",
+    description: "Для DAO/сообщества с общими правилами",
+    icon: Shield,
+  },
+];
+
 type OrbitSettingsProps = {
   orbitId: string;
   currentTitle: string;
   currentDescription: string | null;
+  currentVisibility?: VisibilityValue | string;
   currentMembers: Member[];
   isOwner: boolean;
   isOpen: boolean;
@@ -34,6 +58,7 @@ export function OrbitSettings({
   orbitId,
   currentTitle,
   currentDescription,
+  currentVisibility = "private",
   currentMembers,
   isOwner,
   isOpen,
@@ -42,16 +67,24 @@ export function OrbitSettings({
 }: OrbitSettingsProps) {
   const [title, setTitle] = useState(currentTitle);
   const [description, setDescription] = useState(currentDescription || "");
+  const [visibility, setVisibility] = useState<VisibilityValue>(
+    (currentVisibility as VisibilityValue | undefined) || "private"
+  );
   const [members, setMembers] = useState<Member[]>(currentMembers);
   const [newMemberEmail, setNewMemberEmail] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isAddingMember, setIsAddingMember] = useState(false);
 
   useEffect(() => {
-    setTitle(currentTitle);
-    setDescription(currentDescription || "");
-    setMembers(currentMembers);
-  }, [currentTitle, currentDescription, currentMembers]);
+    const syncState = () => {
+      setTitle(currentTitle);
+      setDescription(currentDescription || "");
+      setVisibility(currentVisibility);
+      setMembers(currentMembers);
+    };
+
+    queueMicrotask(syncState);
+  }, [currentTitle, currentDescription, currentVisibility, currentMembers]);
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -67,6 +100,7 @@ export function OrbitSettings({
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || null,
+          visibility,
         }),
       });
 
@@ -193,6 +227,39 @@ export function OrbitSettings({
                 placeholder="Describe what this Orbit is about..."
                 value={description}
               />
+            </div>
+          </div>
+
+          {/* Visibility */}
+          <div className="space-y-3">
+            <label className="block font-medium text-gray-700 text-sm">Status</label>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {ORBIT_VISIBILITY_OPTIONS.map((option) => {
+                const Icon = option.icon;
+                const isActive = visibility === option.value;
+
+                return (
+                  <button
+                    className={`flex items-start gap-3 rounded-xl border p-3 text-left transition-all ${
+                      isActive
+                        ? "border-violet-300 bg-violet-50 text-violet-900"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                    }`}
+                    disabled={!isOwner}
+                    key={option.value}
+                    onClick={() => setVisibility(option.value as VisibilityValue)}
+                    type="button"
+                  >
+                    <div className="mt-0.5 rounded-full bg-white/70 p-1.5">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{option.label}</p>
+                      <p className="text-xs opacity-80">{option.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

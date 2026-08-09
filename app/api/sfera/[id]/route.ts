@@ -8,6 +8,7 @@ import {
   sferaMessage,
   user,
 } from "@/lib/db/schema";
+import { getDemoOrbitPayload } from "@/lib/orbit/demo-data";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -29,12 +30,16 @@ async function checkSferaMembership(sferaId: string, userId: string) {
 // GET /api/sfera/[id] - Get Sfera details with messages
 export async function GET(_request: Request, context: RouteContext) {
   const session = await auth();
+  const { id } = await context.params;
+
+  const demoPayload = getDemoOrbitPayload(id);
+  if (demoPayload) {
+    return Response.json(demoPayload);
+  }
 
   if (!session || !session.user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const { id } = await context.params;
 
   try {
     // Check membership (must be first)

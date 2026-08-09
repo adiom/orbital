@@ -103,6 +103,7 @@ export function OrbitPageHeader({
           currentDescription={sfera.description}
           currentMembers={members}
           currentTitle={sfera.title}
+          currentVisibility={sfera.visibility}
           isOpen={isSettingsOpen}
           isOwner={sfera.ownerId === currentUserId}
           onClose={() => setIsSettingsOpen(false)}

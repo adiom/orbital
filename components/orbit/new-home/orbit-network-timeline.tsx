@@ -813,6 +813,7 @@ function OrbitNetworkTimelineInner({
           currentDescription={selectedOrbitForSettings.description}
           currentMembers={orbitMembers}
           currentTitle={selectedOrbitForSettings.title}
+          currentVisibility={selectedOrbitForSettings.visibility}
           isOpen={!!selectedOrbitForSettings}
           isOwner={selectedOrbitForSettings.ownerId === currentUserId}
           onClose={handleCloseSettings}
