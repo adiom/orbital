@@ -59,14 +59,10 @@ export default function HomePage() {
   }
 
   const previewOrbits = isGuest
-    ? orbits.length > 0
-      ? orbits
-      : demoPreview.orbits
+    ? [...demoPreview.orbits, ...orbits]
     : orbits;
   const previewForkRelationships = isGuest
-    ? forkRelationships.length > 0
-      ? forkRelationships
-      : demoPreview.forkRelationships
+    ? [...demoPreview.forkRelationships, ...forkRelationships]
     : forkRelationships;
 
   const sortedGraphOrbits = [...previewOrbits].sort((a, b) => {

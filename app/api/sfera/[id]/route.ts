@@ -37,21 +37,34 @@ export async function GET(_request: Request, context: RouteContext) {
     return Response.json(demoPayload);
   }
 
-  if (!session || !session.user) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  const [sferaData] = await db
+    .select()
+    .from(sfera)
+    .where(eq(sfera.id, id))
+    .limit(1);
+
+  if (!sferaData) {
+    return Response.json({ error: "Sfera not found" }, { status: 404 });
   }
 
-  try {
-    // Check membership (must be first)
-    const membership = await checkSferaMembership(id, session.user.id);
+  const isPublicOrDao =
+    sferaData.visibility === "public" || sferaData.visibility === "dao";
+
+  let membership = null;
+  if (!isPublicOrDao) {
+    if (!session || !session.user) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    membership = await checkSferaMembership(id, session.user.id);
     if (!membership) {
       return Response.json({ error: "Forbidden" }, { status: 403 });
     }
+  }
 
-    // Get Sfera details, fork info, members, and messages in parallel
-    const [sferaData, forkInfo, members, messages] = await Promise.all([
-      // Sfera details
-      db.select().from(sfera).where(eq(sfera.id, id)).limit(1).then((rows) => rows[0]),
+  try {
+    // Get fork info, members, and messages in parallel
+    const [forkInfo, members, messages] = await Promise.all([
       // Fork info
       db.select({
         parentSferaId: sferaForkedSfera.parentSferaId,
@@ -107,9 +120,9 @@ export async function GET(_request: Request, context: RouteContext) {
 
     return Response.json({
       sfera: sferaData,
-      parentSfera,
-      members,
-      messages,
+      parentSfera: parentSfera,
+      members: members,
+      messages: messages,
     });
   } catch (error) {
     console.error("Failed to fetch sfera:", error);
