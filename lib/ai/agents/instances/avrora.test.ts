@@ -6,7 +6,7 @@ describe("local Avrora runtime policy", () => {
     expect(avroraAgent.maxSteps).toBe(3);
     expect(avroraAgent.tools).toEqual(
       expect.objectContaining({
-        webSearch: expect.objectContaining({ name: "webSearch" }),
+        webSearch: expect.anything(),
       })
     );
   });

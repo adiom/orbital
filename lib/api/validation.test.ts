@@ -20,8 +20,8 @@ import {
 /**
  * Helper function to validate and extract error details
  */
-function validateAndGetErrors<T>(
-  schema: z.ZodSchema<T>,
+function validateAndGetErrors(
+  schema: z.ZodTypeAny,
   data: unknown
 ): { success: boolean; errors?: Record<string, string[]> } {
   const result = schema.safeParse(data);
