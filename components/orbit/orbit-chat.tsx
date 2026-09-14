@@ -728,6 +728,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
         isOwnerOrAdmin={Boolean(isOwnerOrAdmin)}
         memberCount={members.length}
         members={members}
+        onRequestDelete={() => setIsDeleteDialogOpen(true)}
         onUpdate={handleSettingsUpdate}
         parentSfera={parentOrbit}
         sfera={{
@@ -808,6 +809,7 @@ export function OrbitChat({ orbitId, currentUserId }: OrbitChatProps) {
         <div className="mx-auto max-w-4xl">
           <OrbitInput
             editingMessage={editingMessage}
+            members={members}
             onCancelEdit={() => setEditingMessage(null)}
             onCancelReply={() => setReplyingTo(null)}
             onMessageSent={handleMessageSent}

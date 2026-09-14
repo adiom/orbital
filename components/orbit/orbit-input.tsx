@@ -10,7 +10,7 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -60,8 +60,19 @@ type EditingMessage = {
   attachments?: Attachment[];
 };
 
+export type OrbitInputMember = {
+  userId: string;
+  email: string;
+  role: string;
+};
+
+type MentionMatch = OrbitInputMember & {
+  label: string;
+};
+
 type OrbitInputProps = {
   orbitId: string;
+  members?: OrbitInputMember[];
   replyingTo?: ReplyingToMessage | null;
   editingMessage?: EditingMessage | null;
   onCancelReply?: () => void;
@@ -79,6 +90,7 @@ type OrbitInputProps = {
 
 export function OrbitInput({
   orbitId,
+  members = [],
   replyingTo,
   editingMessage,
   onCancelReply,
@@ -95,6 +107,8 @@ export function OrbitInput({
   const [isUploading, setIsUploading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [activeMentionIndex, setActiveMentionIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -108,6 +122,8 @@ export function OrbitInput({
       setContent(nextContent);
       setHasTyped(nextContent.trim().length > 0);
       setAttachments(editingMessage.attachments ?? []);
+      setMentionQuery(null);
+      setActiveMentionIndex(0);
 
       requestAnimationFrame(() => {
         const textarea = textareaRef.current;
@@ -309,6 +325,21 @@ export function OrbitInput({
     }
   }, [isRecording, startRecording, stopRecording]);
 
+  const mentionMatches = useMemo(() => {
+    if (mentionQuery === null) {
+      return [];
+    }
+
+    const query = mentionQuery.toLowerCase();
+    return members
+      .map((member) => {
+        const label = member.email.split("@")[0];
+        return { ...member, label };
+      })
+      .filter((member) => member.label.toLowerCase().includes(query))
+      .slice(0, 6) satisfies MentionMatch[];
+  }, [mentionQuery, members]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -354,6 +385,8 @@ export function OrbitInput({
         setContent("");
         setHasTyped(false);
         setAttachments([]);
+        setMentionQuery(null);
+        setActiveMentionIndex(0);
         if (textareaRef.current) {
           textareaRef.current.style.height = "48px";
         }
@@ -505,6 +538,11 @@ export function OrbitInput({
 
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
+    const caretPosition = e.target.selectionStart;
+    const textBeforeCaret = newValue.slice(0, caretPosition);
+    const match = /(^|\s)@([\w.-]*)$/.exec(textBeforeCaret);
+    setMentionQuery(match ? match[2].toLowerCase() : null);
+    setActiveMentionIndex(0);
 
     if (!isSending) {
       setContent(newValue);
@@ -524,7 +562,61 @@ export function OrbitInput({
     }
   };
 
+  const selectMention = (member: { email: string }) => {
+    const textarea = textareaRef.current;
+    const caretPosition = textarea?.selectionStart ?? content.length;
+    const textBeforeCaret = content.slice(0, caretPosition);
+    const match = /(^|\s)@([\w.-]*)$/.exec(textBeforeCaret);
+    if (!match) {
+      return;
+    }
+
+    const mentionStart = caretPosition - match[2].length - 1;
+    const label = member.email.split("@")[0];
+    const nextContent = `${content.slice(0, mentionStart)}@${label} ${content.slice(caretPosition)}`;
+    setContent(nextContent);
+    setHasTyped(true);
+    setMentionQuery(null);
+    setActiveMentionIndex(0);
+
+    if (textarea) {
+      const nextCaretPosition = mentionStart + label.length + 2;
+      requestAnimationFrame(() => {
+        textarea.focus();
+        textarea.setSelectionRange(nextCaretPosition, nextCaretPosition);
+      });
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (mentionMatches.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveMentionIndex((previous) => (previous + 1) % mentionMatches.length);
+        return;
+      }
+
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveMentionIndex((previous) =>
+          previous === 0 ? mentionMatches.length - 1 : previous - 1
+        );
+        return;
+      }
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMentionQuery(null);
+        return;
+      }
+
+      if ((e.key === "Enter" || e.key === "Tab") && !e.shiftKey && !e.metaKey) {
+        e.preventDefault();
+        selectMention(mentionMatches[activeMentionIndex]);
+        return;
+      }
+    }
+
     if (!isSending && e.key === "Enter" && e.metaKey) {
       e.preventDefault();
       handleSubmit(e);
@@ -657,6 +749,36 @@ export function OrbitInput({
         ref={fileInputRef}
         type="file"
       />
+
+      {mentionMatches.length > 0 && (
+        <div className="absolute bottom-full left-0 z-20 mb-2 w-full overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-lg">
+          <div className="border-b border-gray-100 px-4 py-2 text-gray-500 text-xs">
+            Mention a member
+          </div>
+          <ul className="max-h-56 overflow-y-auto p-1">
+            {mentionMatches.map((member, index) => (
+              <li key={member.userId}>
+                <button
+                  className={cn(
+                    "flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors",
+                    index === activeMentionIndex
+                      ? "bg-blue-50 text-blue-700"
+                      : "text-gray-700 hover:bg-gray-50"
+                  )}
+                  onClick={() => selectMention(member)}
+                  onMouseDown={(event) => event.preventDefault()}
+                  type="button"
+                >
+                  <span className="truncate font-medium">@{member.label}</span>
+                  <span className="truncate text-gray-400 text-xs">
+                    {member.email}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Стабилизируем контейнер - убираем transform transitions */}
       <div

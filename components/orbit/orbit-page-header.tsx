@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Settings } from "lucide-react";
+import { ArrowLeft, Settings, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ type OrbitPageHeaderProps = {
   currentUserId: string | undefined;
   isOwnerOrAdmin: boolean;
   members: Member[];
+  onRequestDelete: () => void;
   onUpdate?: () => void;
 };
 
@@ -38,6 +39,7 @@ export function OrbitPageHeader({
   currentUserId,
   isOwnerOrAdmin,
   members,
+  onRequestDelete,
   onUpdate,
 }: OrbitPageHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -82,6 +84,17 @@ export function OrbitPageHeader({
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
+
+            {isOwnerOrAdmin && (
+              <Button
+                aria-label="Удалить"
+                onClick={onRequestDelete}
+                size="icon"
+                variant="ghost"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
 
             {isOwnerOrAdmin && (
               <Button

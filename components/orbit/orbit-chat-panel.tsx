@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MessageRenderer } from "@/components/chat/message-renderer";
 import { parseMessages, type Message } from "@/components/chat/shared-message-type";
-import { OrbitInput } from "./orbit-input";
+import { OrbitInput, type OrbitInputMember } from "./orbit-input";
 
 type OrbitData = {
   id: string;
@@ -31,6 +31,7 @@ export function OrbitChatPanel({
   onGoFullScreen,
 }: OrbitChatPanelProps) {
   const [orbit, setOrbit] = useState<OrbitData | null>(null);
+  const [members, setMembers] = useState<OrbitInputMember[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,10 +53,25 @@ export function OrbitChatPanel({
 
       const {
         sfera: rawOrbit,
+        members: rawMembers,
         messages: rawMessages,
       } = rawData as Record<string, unknown>;
 
       setOrbit(rawOrbit as OrbitData);
+      setMembers(
+        Array.isArray(rawMembers)
+          ? rawMembers.filter(
+              (member): member is OrbitInputMember =>
+                Boolean(
+                  member &&
+                    typeof member === "object" &&
+                    typeof (member as OrbitInputMember).userId === "string" &&
+                    typeof (member as OrbitInputMember).email === "string" &&
+                    typeof (member as OrbitInputMember).role === "string"
+                )
+            )
+          : []
+      );
       setMessages(parseMessages(rawMessages));
     } catch (err) {
       if (signal?.aborted) return;
@@ -274,6 +290,7 @@ export function OrbitChatPanel({
         <OrbitInput
           onCancelEdit={() => {}}
           onCancelReply={() => {}}
+          members={members}
           onMessageSent={handleMessageSent}
           orbitId={orbitId}
         />
