@@ -63,7 +63,7 @@ export function getSferaTools(): Record<string, Tool<any, any>> {
  * Useful for analytics and debugging
  */
 export function getToolMetadata(toolName: string) {
-  const tools = getSferaTools();
+  const tools = Object.values(getSferaTools());
   const tool = tools.find((t: any) => {
     // Check various possible tool identifiers
     return (
