@@ -5,16 +5,36 @@ import { toast } from "@/components/toast";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { DeletePeopleDialog } from "./delete-people-dialog";
-import { formatAbsence, formatNumber } from "./format";
+import { formatAbsence, formatCents, formatNumber } from "./format";
 import { daysSince, LifeDot, LifeLabel, lifeState } from "./life-dot";
 import { PersonDrawer } from "./person-drawer";
 import { PulseLine } from "./pulse-line";
 import type { AdminOverview, DeletePreview } from "./types";
 
 type Person = AdminOverview["people"][number];
+type PersonFilter = "all" | "active" | "notOnboarded" | "mcp";
+type PersonSort = "new" | "activity" | "messages" | "spend";
+
+const FILTERS: Array<{ id: PersonFilter; label: string }> = [
+  { id: "all", label: "Все" },
+  { id: "active", label: "Активные" },
+  { id: "notOnboarded", label: "Без onboarding" },
+  { id: "mcp", label: "MCP" },
+];
+
+const SORTS: Array<{ id: PersonSort; label: string }> = [
+  { id: "new", label: "Новые" },
+  { id: "activity", label: "Активность" },
+  { id: "messages", label: "Сообщения" },
+  { id: "spend", label: "Расход" },
+];
 
 function label(person: Person): string {
   return person.name || person.email;
+}
+
+function isActive(person: Person): boolean {
+  return lifeState(person.lastSeen, person.createdAt) !== "quiet";
 }
 
 export function PeopleRegister({
@@ -25,6 +45,8 @@ export function PeopleRegister({
   onChanged?: () => void;
 }) {
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<PersonFilter>("all");
+  const [sort, setSort] = useState<PersonSort>("new");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [openId, setOpenId] = useState<string | null>(null);
   /** Who the confirm dialog is about — one row from the card, or the selection. */
@@ -36,15 +58,34 @@ export function PeopleRegister({
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) {
-      return people;
-    }
-    return people.filter(
+    const matching = people.filter(
       (person) =>
-        person.email.toLowerCase().includes(needle) ||
-        (person.name ?? "").toLowerCase().includes(needle)
+        (!needle ||
+          person.email.toLowerCase().includes(needle) ||
+          (person.name ?? "").toLowerCase().includes(needle)) &&
+        (filter === "all" ||
+          (filter === "active" && isActive(person)) ||
+          (filter === "notOnboarded" && !person.onboarded) ||
+          (filter === "mcp" && person.mcpEnabled))
     );
-  }, [people, query]);
+
+    return matching.sort((left, right) => {
+      if (sort === "messages") {
+        return right.messageCount - left.messageCount;
+      }
+      if (sort === "spend") {
+        return right.spendCents - left.spendCents;
+      }
+      if (sort === "activity") {
+        const leftAt = new Date(left.lastSeen ?? left.createdAt).getTime();
+        const rightAt = new Date(right.lastSeen ?? right.createdAt).getTime();
+        return rightAt - leftAt;
+      }
+      return (
+        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+      );
+    });
+  }, [filter, people, query, sort]);
 
   const chosen = useMemo(
     () => people.filter((person) => selected.has(person.id)),
@@ -177,49 +218,94 @@ export function PeopleRegister({
 
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between gap-4">
-        <Input
-          aria-label="Найти человека"
-          className="h-9 max-w-[260px] rounded-full border-neutral-200 bg-white/70 px-4 text-[13px] shadow-none placeholder:text-neutral-400"
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Имя или почта"
-          type="search"
-          value={query}
-        />
+      <div className="mb-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Input
+            aria-label="Найти человека"
+            className="h-9 max-w-[260px] rounded-full border-neutral-200 bg-white/70 px-4 text-[13px] shadow-none placeholder:text-neutral-400"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Имя или почта"
+            type="search"
+            value={query}
+          />
 
-        <div className="flex items-center gap-4">
-          {chosen.length > 0 ? (
-            <>
+          <div className="flex items-center gap-4">
+            {chosen.length > 0 ? (
+              <>
+                <button
+                  className="text-[11px] text-neutral-400 transition-colors hover:text-neutral-700 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  onClick={() => setSelected(new Set())}
+                  type="button"
+                >
+                  снять
+                </button>
+                <button
+                  className="rounded-full border border-red-200 bg-white px-3.5 py-1.5 text-[12px] text-red-500 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  onClick={() => openConfirm(chosen.map((person) => person.id))}
+                  type="button"
+                >
+                  Удалить {formatNumber(chosen.length)}
+                </button>
+              </>
+            ) : null}
+
+            {visible.length > 0 ? (
               <button
                 className="text-[11px] text-neutral-400 transition-colors hover:text-neutral-700 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                onClick={() => setSelected(new Set())}
+                onClick={toggleAllVisible}
                 type="button"
               >
-                снять
+                {allVisibleChosen ? "ничего" : "все"}
               </button>
+            ) : null}
+
+            <span className="font-mono text-[11px] text-neutral-400 tabular-nums">
+              {formatNumber(visible.length)}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            {FILTERS.map((item) => (
               <button
-                className="rounded-full border border-red-200 bg-white px-3.5 py-1.5 text-[12px] text-red-500 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                onClick={() => openConfirm(chosen.map((person) => person.id))}
+                aria-pressed={filter === item.id}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-[11px] transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                  filter === item.id
+                    ? "border-neutral-900 bg-neutral-900 text-white"
+                    : "border-neutral-200 bg-white/70 text-neutral-500 hover:text-neutral-800"
+                )}
+                key={item.id}
+                onClick={() => setFilter(item.id)}
                 type="button"
               >
-                Удалить {formatNumber(chosen.length)}
+                {item.label}
               </button>
-            </>
-          ) : null}
+            ))}
+          </div>
 
-          {visible.length > 0 ? (
-            <button
-              className="text-[11px] text-neutral-400 transition-colors hover:text-neutral-700 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
-              onClick={toggleAllVisible}
-              type="button"
+          <div className="flex items-center gap-2">
+            <label
+              className="text-[10px] uppercase tracking-[0.2em] text-neutral-400"
+              htmlFor="people-sort"
             >
-              {allVisibleChosen ? "ничего" : "все"}
-            </button>
-          ) : null}
-
-          <span className="font-mono text-[11px] text-neutral-400 tabular-nums">
-            {formatNumber(visible.length)}
-          </span>
+              Сортировка
+            </label>
+            <select
+              aria-label="Сортировка людей"
+              className="h-8 rounded-full border border-neutral-200 bg-white/70 px-3 text-[12px] text-neutral-700 shadow-none focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              id="people-sort"
+              onChange={(event) => setSort(event.target.value as PersonSort)}
+              value={sort}
+            >
+              {SORTS.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -263,6 +349,16 @@ export function PeopleRegister({
                 >
                   <div className="truncate text-[13.5px] text-neutral-900">
                     {person.name || person.email.split("@")[0]}
+                    {person.admin ? (
+                      <span className="ml-2 text-[10px] uppercase tracking-[0.2em] text-violet-500">
+                        админ
+                      </span>
+                    ) : null}
+                    {person.mcpEnabled ? (
+                      <span className="ml-2 text-[10px] uppercase tracking-[0.2em] text-sky-500">
+                        MCP
+                      </span>
+                    ) : null}
                     {person.onboarded ? null : (
                       <span className="ml-2 text-[10px] uppercase tracking-[0.2em] text-neutral-300">
                         не дошёл
@@ -274,9 +370,18 @@ export function PeopleRegister({
                   </div>
                 </button>
 
-                <div className="hidden w-[124px] shrink-0 text-right font-mono text-[11px] text-neutral-500 tabular-nums sm:block">
-                  {formatNumber(person.cellCount)} яч ·{" "}
-                  {formatNumber(person.messageCount)} сооб
+                <div className="hidden w-[190px] shrink-0 text-right font-mono text-[11px] text-neutral-500 tabular-nums lg:block">
+                  <div>
+                    {formatNumber(person.cellCount)} яч ·{" "}
+                    {formatNumber(person.messageCount)} сооб
+                  </div>
+                  <div className="mt-0.5 text-neutral-400">
+                    {formatNumber(person.aiRequestCount)} запр ·{" "}
+                    {formatCents(person.spendCents)}
+                  </div>
+                  <div className="mt-0.5 text-neutral-400">
+                    {formatNumber(person.activeKeyCount)} актив. ключ
+                  </div>
                 </div>
 
                 <PulseLine state={state} values={person.series} />

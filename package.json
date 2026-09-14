@@ -1,5 +1,5 @@
 {
-  "name": "avrora-area",
+  "name": "orbital",
   "version": "3.1.0",
   "private": true,
   "bin": {
@@ -150,5 +150,5 @@
     "typescript-eslint": "^8.60.1",
     "vitest": "^4.0.14"
   },
-  "packageManager": "pnpm@11.15.1"
+  "packageManager": "pnpm@12.4.1"
 }

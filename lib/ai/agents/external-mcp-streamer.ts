@@ -115,7 +115,10 @@ async function callMcpTool(
 
   const response = await fetch(config.endpoint, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { 
+      "Content-Type": "application/json",
+      "Accept": "application/json, text/event-stream",
+    },
     body: JSON.stringify(body),
     signal: abortSignal,
   });

@@ -40,8 +40,13 @@ export type AdminOverview = {
     email: string;
     createdAt: string;
     lastSeen: string | null;
+    mcpEnabled: boolean;
+    admin: boolean;
     cellCount: number;
     messageCount: number;
+    aiRequestCount: number;
+    spendCents: number;
+    activeKeyCount: number;
     onboarded: boolean;
     series: number[];
   }>;

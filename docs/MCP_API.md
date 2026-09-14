@@ -1,5 +1,7 @@
 # MCP API Documentation
 
+> **Implementation authority:** This document is not a protocol specification. Any MCP implementation, migration, review, or documentation update must follow the current official MCP TypeScript SDK documentation at `https://raw.githubusercontent.com/modelcontextprotocol/typescript-sdk/refs/heads/main/docs/index.md` and the MCP specification linked from it. The official SDK, supported transports, schemas, and validation patterns take precedence over examples in this file.
+
 ## Обзор
 
 Model Context Protocol (MCP) API предоставляет программный доступ к Сферам Avrora через стандартизированный JSON-RPC 2.0 интерфейс. Это позволяет внешним приложениям (например, Claude Desktop) взаимодействовать с вашими Сферами, отправлять сообщения и вызывать Avrora AI.

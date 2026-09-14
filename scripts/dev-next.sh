@@ -16,37 +16,6 @@ ok()  { echo -e "${GREEN}✓${NC} $1"; }
 warn(){ echo -e "${YELLOW}⚠${NC} $1"; }
 err() { echo -e "${RED}✗${NC} $1"; }
 
-# --- PostgreSQL ---
-if pg_isready -h localhost -p 5432 >/dev/null 2>&1; then
-  ok "PostgreSQL уже запущен"
-elif [ -d "$PG_APP" ]; then
-  echo -e "${YELLOW}→${NC} Запуск PostgreSQL (Postgres.app)..."
-  "$PG_APP/pg_ctl" -D "$PG_DATA" -l "$PG_DATA/server.log" start >/dev/null 2>&1
-  sleep 1
-  if pg_isready -h localhost -p 5432 >/dev/null 2>&1; then
-    ok "PostgreSQL запущен"
-  else
-    err "PostgreSQL не смог запуститься"
-    exit 1
-  fi
-else
-  warn "Postgres.app не найден — убедись что PostgreSQL запущен"
-fi
-
-# --- Redis ---
-if redis-cli ping >/dev/null 2>&1; then
-  ok "Redis уже запущен"
-else
-  echo -e "${YELLOW}→${NC} Запуск Redis через brew..."
-  brew services start redis >/dev/null 2>&1
-  sleep 1
-  if redis-cli ping >/dev/null 2>&1; then
-    ok "Redis запущен"
-  else
-    err "Redis не смог запуститься"
-    exit 1
-  fi
-fi
 
 # --- .env.local ---
 if [ ! -f ".env.local" ]; then

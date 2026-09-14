@@ -1,5 +1,5 @@
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
-import { requireAdmin } from "@/lib/admin/access";
+import { isAdminEmail, requireAdmin } from "@/lib/admin/access";
 import { db } from "@/lib/db";
 import {
   agentRegistry,
@@ -306,10 +306,14 @@ export async function GET() {
               displayName: user.displayName,
               email: user.email,
               createdAt: user.createdAt,
+              mcpEnabled: user.mcpEnabled,
               settings: user.settings,
               cellCount: sql<number>`(select count(*)::int from ${sferaMember} where ${sferaMember.userId} = ${user.id})`,
               messageCount: sql<number>`(select count(*)::int from ${sferaMessage} where ${sferaMessage.userId} = ${user.id})`,
               lastSeen: sql<string | null>`(select max(${sferaMessage.createdAt})::text from ${sferaMessage} where ${sferaMessage.userId} = ${user.id})`,
+              aiRequestCount: sql<number>`(select count(*)::int from ${aiUsageLog} where ${aiUsageLog.userId} = ${user.id})`,
+              spendCents: sql<number>`(select coalesce(sum(${aiUsageLog.estimatedCost}), 0)::int from ${aiUsageLog} where ${aiUsageLog.userId} = ${user.id})`,
+              activeKeyCount: sql<number>`(select count(*)::int from ${apiKey} where ${apiKey.userId} = ${user.id} and ${apiKey.revokedAt} is null)`,
             })
             .from(user)
             .orderBy(desc(user.createdAt))
@@ -494,8 +498,13 @@ export async function GET() {
         email: person.email,
         createdAt: person.createdAt,
         lastSeen: person.lastSeen,
+        mcpEnabled: person.mcpEnabled,
+        admin: isAdminEmail(person.email),
         cellCount: person.cellCount,
         messageCount: person.messageCount,
+        aiRequestCount: person.aiRequestCount,
+        spendCents: person.spendCents,
+        activeKeyCount: person.activeKeyCount,
         onboarded: person.settings?.onboarding?.completed ?? false,
         series: peoplePulseByUser.get(person.id) ?? pulseDayKeys().map(() => 0),
       })),
