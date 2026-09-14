@@ -21,7 +21,7 @@ import type { AIAgent } from "./types";
 // Mention patterns per agent (mirrors instances without importing server-only deps)
 const AGENT_PATTERNS: Record<string, (string | RegExp)[]> = {
   avrora: [/@avrora/i, /@аврора/i],
-  "cf-kristina": [/@kristina/i, /@кристина/i],
+  "cf-kristina": [/@kristina/i, /@кристина/i, /@cf-kristina/i],
 };
 
 function detectByPatterns(content: string): string[] {
@@ -53,6 +53,12 @@ describe("Mention Pattern Detection", () => {
     expect(detectByPatterns("@кристина привет!")).toEqual(["cf-kristina"]);
   });
 
+  it("detects legacy @cf-kristina as external Kristina", () => {
+    expect(detectByPatterns("@cf-kristina что думаешь?")).toEqual([
+      "cf-kristina",
+    ]);
+  });
+
   it("detects multiple agents", () => {
     const found = detectByPatterns("@avrora и @kristina обсудите это");
     expect(found).toContain("avrora");
@@ -76,10 +82,11 @@ describe("Mention Pattern Detection", () => {
 });
 
 describe("cf-kristina Agent Config", () => {
-  it("has correct mention pattern", () => {
-    expect(cfKristinaAgent.mentionPatterns.length).toBe(2);
+  it("has correct mention patterns", () => {
+    expect(cfKristinaAgent.mentionPatterns.length).toBe(3);
     expect(cfKristinaAgent.mentionPatterns[0]).toEqual(/@kristina/i);
     expect(cfKristinaAgent.mentionPatterns[1]).toEqual(/@кристина/i);
+    expect(cfKristinaAgent.mentionPatterns[2]).toEqual(/@cf-kristina/i);
   });
 
   it("has runtime external-mcp", () => {

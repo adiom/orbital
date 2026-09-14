@@ -16,71 +16,9 @@ import { BANITA_DISPLAY_NAME, BANITA_EMAIL, BANITA_USER_ID } from "@/lib/constan
 
 const ONBOARDING_AGENT_ID = "00000000-0000-0000-0000-000000000009";
 
-const PROACTIVE_AVRORA_COOLDOWN_MS = 10 * 60 * 1000;
-
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
-
-async function shouldTriggerProactiveAvrora({
-  content,
-  sferaId,
-}: {
-  content: string;
-  sferaId: string;
-}) {
-  const trimmedContent = content.trim();
-
-  if (trimmedContent.length < 40) {
-    return false;
-  }
-
-  const lowerContent = trimmedContent.toLowerCase();
-  const looksLikePromptForHelp =
-    trimmedContent.includes("?") ||
-    trimmedContent.length > 180 ||
-    ["как", "почему", "зачем", "что если", "идея", "план", "может", "нужно"].some(
-      (token) => lowerContent.includes(token),
-    );
-
-  if (!looksLikePromptForHelp) {
-    return false;
-  }
-
-  const avroraAgent = getAgentById("avrora");
-  if (!avroraAgent) {
-    return false;
-  }
-
-  const recentMessages = await db
-    .select({
-      id: sferaMessage.id,
-      userId: sferaMessage.userId,
-      createdAt: sferaMessage.createdAt,
-    })
-    .from(sferaMessage)
-    .where(eq(sferaMessage.sferaId, sferaId))
-    .orderBy(sferaMessage.createdAt)
-    .limit(12);
-
-  const lastAvroraMessage = [...recentMessages]
-    .reverse()
-    .find((message) => message.userId === avroraAgent.userId);
-
-  if (
-    lastAvroraMessage &&
-    Date.now() - new Date(lastAvroraMessage.createdAt).getTime() < PROACTIVE_AVRORA_COOLDOWN_MS
-  ) {
-    return false;
-  }
-
-  const recentHumanMessages = [...recentMessages]
-    .reverse()
-    .filter((message) => message.userId !== avroraAgent.userId)
-    .slice(0, 3);
-
-  return recentHumanMessages.length >= 2;
-}
 
 // POST /api/sfera/[id]/messages - Create new message in Sfera
 export async function POST(request: Request, context: RouteContext) {
@@ -247,20 +185,6 @@ export async function POST(request: Request, context: RouteContext) {
       const onboardingAgent = getAgentById("onboarding");
       if (onboardingAgent && !mentionedAgents.some((a) => a.id === "onboarding")) {
         mentionedAgents.push(onboardingAgent);
-      }
-    }
-
-    if (
-      mentionedAgents.length === 0 &&
-      content &&
-      (await shouldTriggerProactiveAvrora({
-        content,
-        sferaId,
-      }))
-    ) {
-      const avroraAgent = getAgentById("avrora");
-      if (avroraAgent) {
-        mentionedAgents.push(avroraAgent);
       }
     }
 

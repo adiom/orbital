@@ -14,7 +14,7 @@ import type { AIAgent } from "../types";
 export const cfKristinaAgent: AIAgent = {
   id: "cf-kristina",
   name: "Кристина",
-  mentionPatterns: [/@kristina/i, /@кристина/i],
+  mentionPatterns: [/@kristina/i, /@кристина/i, /@cf-kristina/i],
   userId: CF_KRISTINA_USER_ID,
   email: "cf-kristina@avrora.click",
   runtime: "external-mcp",
