@@ -4,7 +4,6 @@
  */
 
 import { avroraAgent } from "./instances/avrora";
-import { kristinaAgent } from "./instances/kristina";
 import { cfKristinaAgent } from "./instances/cf-kristina";
 import { onboardingAgent } from "./instances/onboarding";
 import type { AIAgent } from "./types";
@@ -14,7 +13,6 @@ import type { AIAgent } from "./types";
  */
 export const aiAgents: AIAgent[] = [
   avroraAgent,
-  kristinaAgent,
   cfKristinaAgent,
   onboardingAgent,
 ];

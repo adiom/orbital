@@ -1,8 +1,8 @@
 /**
- * cf-kristina - External AI Agent connected via MCP
+ * Kristina - External AI Agent connected via MCP
  *
  * This agent runs outside avrora-area at http://localhost:3000/api/mcp.
- * It is triggered only by @cf-kristina mention in Sfera.
+ * It is triggered by @kristina or @кристина mentions in Sfera.
  */
 
 import { CF_KRISTINA_USER_ID } from "@/lib/constants/system-users";
@@ -13,8 +13,8 @@ import type { AIAgent } from "../types";
  */
 export const cfKristinaAgent: AIAgent = {
   id: "cf-kristina",
-  name: "cf-kristina",
-  mentionPatterns: [/@cf-kristina/i],
+  name: "Кристина",
+  mentionPatterns: [/@kristina/i, /@кристина/i],
   userId: CF_KRISTINA_USER_ID,
   email: "cf-kristina@avrora.click",
   runtime: "external-mcp",
@@ -22,7 +22,7 @@ export const cfKristinaAgent: AIAgent = {
   buildSystemPrompt: () => "", // not used for external agents
 
   externalMcp: {
-    endpoint: "https://kristina-black.vercel.app/api/mcp",
+    endpoint: "http://localhost:31337/api/mcp",
   },
 
   rateLimit: {

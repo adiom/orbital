@@ -36,10 +36,8 @@ type OrbitCreatePromptProps = {
 function detectAgentMention(text: string): string | null {
   const lower = text.toLowerCase();
   if (lower.includes("@avrora") || lower.includes("@аврора")) return "Avrora";
-  if (lower.includes("@cf-kristina") || lower.includes("@cf кристина"))
-    return "cf-kristina";
   if (lower.includes("@kristina") || lower.includes("@кристина"))
-    return "kristina";
+    return "Кристина";
   if (lower.includes("@onboarding") || lower.includes("@гид")) return "Гид";
   return null;
 }

@@ -23,14 +23,8 @@ export const aiAgentsMetadata: AIAgentMetadata[] = [
     userId: AVRORA_USER_ID,
   },
   {
-    id: "kristina",
-    name: "Kristina",
-    email: "kristina@avrora.click",
-    userId: "00000000-0000-0000-0000-000000000002",
-  },
-  {
     id: "cf-kristina",
-    name: "cf-kristina",
+    name: "Кристина",
     email: "cf-kristina@avrora.click",
     userId: CF_KRISTINA_USER_ID,
   },

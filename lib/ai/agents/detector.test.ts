@@ -2,7 +2,7 @@
  * Agent Detection and Dispatch Tests
  *
  * Tests mention pattern detection, agent config, and dispatch logic
- * for internal (Avrora, Kristina) and external (cf-kristina) agents.
+ * for Avrora and the external Kristina agent.
  *
  * NOTE: We test patterns directly (not via registry) to avoid
  * server-only import chain from avrora/kristina instances.
@@ -21,8 +21,7 @@ import type { AIAgent } from "./types";
 // Mention patterns per agent (mirrors instances without importing server-only deps)
 const AGENT_PATTERNS: Record<string, (string | RegExp)[]> = {
   avrora: [/@avrora/i, /@аврора/i],
-  kristina: [/@kristina/i, /@кристина/i],
-  "cf-kristina": [/@cf-kristina/i],
+  "cf-kristina": [/@kristina/i, /@кристина/i],
 };
 
 function detectByPatterns(content: string): string[] {
@@ -46,28 +45,18 @@ describe("Mention Pattern Detection", () => {
     expect(detectByPatterns("@аврора привет")).toEqual(["avrora"]);
   });
 
-  it("detects @kristina", () => {
-    expect(detectByPatterns("@kristina что думаешь?")).toEqual(["kristina"]);
+  it("detects @kristina as external Kristina", () => {
+    expect(detectByPatterns("@kristina что думаешь?")).toEqual(["cf-kristina"]);
   });
 
-  it("detects @кристина (Cyrillic)", () => {
-    expect(detectByPatterns("@кристина привет!")).toEqual(["kristina"]);
-  });
-
-  it("detects @cf-kristina", () => {
-    expect(detectByPatterns("@cf-kristina привет")).toEqual(["cf-kristina"]);
-  });
-
-  it("@cf-kristina does NOT trigger @kristina", () => {
-    const found = detectByPatterns("@cf-kristina hello");
-    expect(found).toContain("cf-kristina");
-    expect(found).not.toContain("kristina");
+  it("detects @кристина (Cyrillic) as external Kristina", () => {
+    expect(detectByPatterns("@кристина привет!")).toEqual(["cf-kristina"]);
   });
 
   it("detects multiple agents", () => {
     const found = detectByPatterns("@avrora и @kristina обсудите это");
     expect(found).toContain("avrora");
-    expect(found).toContain("kristina");
+    expect(found).toContain("cf-kristina");
     expect(found.length).toBe(2);
   });
 
@@ -76,30 +65,21 @@ describe("Mention Pattern Detection", () => {
   });
 
   it("detects agent mid-sentence", () => {
-    expect(detectByPatterns("Кто-нибудь @cf-kristina может помочь?")).toEqual([
+    expect(detectByPatterns("Кто-нибудь @кристина может помочь?")).toEqual([
       "cf-kristina",
     ]);
   });
 
-  it("case insensitive @CF-KRISTINA", () => {
-    expect(detectByPatterns("@CF-KRISTINA test")).toEqual(["cf-kristina"]);
-  });
-
-  it("@kristina does NOT trigger @cf-kristina", () => {
-    const found = detectByPatterns("@kristina привет");
-    expect(found).toContain("kristina");
-    expect(found).not.toContain("cf-kristina");
+  it("case insensitive @KRISTINA", () => {
+    expect(detectByPatterns("@KRISTINA test")).toEqual(["cf-kristina"]);
   });
 });
 
 describe("cf-kristina Agent Config", () => {
   it("has correct mention pattern", () => {
-    expect(cfKristinaAgent.mentionPatterns.length).toBe(1);
-    const pattern = cfKristinaAgent.mentionPatterns[0] as RegExp;
-    expect(pattern.test("@cf-kristina")).toBe(true);
-    expect(pattern.test("@CF-KRISTINA")).toBe(true);
-    expect(pattern.test("@kristina")).toBe(false);
-    expect(pattern.test("@CF_KRISTINA")).toBe(false);
+    expect(cfKristinaAgent.mentionPatterns.length).toBe(2);
+    expect(cfKristinaAgent.mentionPatterns[0]).toEqual(/@kristina/i);
+    expect(cfKristinaAgent.mentionPatterns[1]).toEqual(/@кристина/i);
   });
 
   it("has runtime external-mcp", () => {

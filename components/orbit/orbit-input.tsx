@@ -26,11 +26,6 @@ const CLIENT_AGENTS = {
     userId: "00000000-0000-0000-0000-000000000001",
     email: "avrora@avrora.click",
   },
-  kristina: {
-    id: "kristina",
-    userId: "00000000-0000-0000-0000-000000000002",
-    email: "kristina@avrora.click",
-  },
   "cf-kristina": {
     id: "cf-kristina",
     userId: "00000000-0000-0000-0000-000000000003",
@@ -883,7 +878,7 @@ export function OrbitInput({
               >
                 <Sparkles className="mr-1.5 h-3.5 w-3.5 text-gray-500" />
                 <span className="font-medium text-gray-700 text-xs">
-                  cf-kristina
+                  Кристина
                 </span>
               </Button>
             </div>

@@ -336,7 +336,7 @@ function MessageRendererComponent({
             {isCfKristinaMessage && (
               <div className="flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1">
                 <Bot className="h-3 w-3 text-white" />
-                <span className="font-semibold text-white">cf-kristina</span>
+                <span className="font-semibold text-white">Кристина</span>
               </div>
             )}
             {isBanitaMessage && (

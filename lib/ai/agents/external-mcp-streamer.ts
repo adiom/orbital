@@ -10,6 +10,11 @@ import { db } from "@/lib/db";
 import { sfera, sferaMessage, user } from "@/lib/db/schema";
 import { resolveAgent, silenceAgent } from "./resolve";
 import { emitAgentResponseEvent } from "./stream-events";
+import {
+  buildExternalUserProfile,
+  buildMemoryDebugToolResult,
+  canAccessPrivateKristinaMemory,
+} from "./external-agent-profile";
 import type { AIAgent, ExternalMcpConfig } from "./types";
 import type { AgentResponseContext, AgentResponseResult } from "./types";
 
@@ -242,6 +247,14 @@ export async function streamExternalMcpAgentResponse(
       throw new Error("Trigger message not found");
     }
 
+    const triggerUserId = triggerMessage.userId;
+    const [triggerUser] = await db
+      .select({ id: user.id, email: user.email, settings: user.settings })
+      .from(user)
+      .where(eq(user.id, triggerUserId))
+      .limit(1);
+    const userProfile = buildExternalUserProfile(triggerUser?.settings);
+    const privateMemoryAccess = canAccessPrivateKristinaMemory(triggerUser);
     const userName = triggerMessage.userEmail.split("@")[0];
 
     // Build the AgentContext payload for cf-kristina
@@ -251,13 +264,14 @@ export async function streamExternalMcpAgentResponse(
       serviceName: "Avrora Area",
       spaceId: sferaId,
       spaceName: sferaData.title,
-      userId: requestingUserId,
+      userId: triggerUserId,
       userName,
+      userProfile,
       trigger: "mention",
       responseMode: "public",
       conversationHistory,
       memoryAccess: {
-        own: true,
+        own: privateMemoryAccess,
         user: true,
         space: true,
         service: true,
@@ -275,11 +289,18 @@ export async function streamExternalMcpAgentResponse(
 
     // Parse AgentResult from the MCP response
     let agentResultText: string;
+    let agentResult: { text?: unknown; sources?: unknown; metadata?: unknown };
     try {
-      const agentResult = JSON.parse(rawResultText);
-      agentResultText = agentResult.text || rawResultText;
+      const parsedResult = JSON.parse(rawResultText);
+      agentResult =
+        typeof parsedResult === "object" && parsedResult !== null
+          ? parsedResult
+          : {};
+      agentResultText =
+        typeof agentResult.text === "string" ? agentResult.text : rawResultText;
     } catch {
-      // If JSON parse fails, use raw text as fallback
+      // If JSON parse fails, use raw text as fallback.
+      agentResult = {};
       agentResultText = rawResultText;
     }
 
@@ -288,12 +309,26 @@ export async function streamExternalMcpAgentResponse(
     currentText = agentResultText.trim();
 
     // Save the response into the placeholder message
+    const messageUpdate: {
+      content: string;
+      isGenerating: boolean;
+      toolResults?: Array<{
+        toolName: string;
+        success: boolean;
+        [key: string]: unknown;
+      }>;
+    } = {
+      content: currentText,
+      isGenerating: false,
+    };
+
+    if (process.env.CF_KRISTINA_MEMORY_DEBUG === "true") {
+      messageUpdate.toolResults = [buildMemoryDebugToolResult(agentResult)];
+    }
+
     await db
       .update(sferaMessage)
-      .set({
-        content: currentText,
-        isGenerating: false,
-      })
+      .set(messageUpdate)
       .where(eq(sferaMessage.id, targetMessageId));
 
     // Update Sfera's updatedAt

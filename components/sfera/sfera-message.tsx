@@ -161,7 +161,7 @@ export const SferaMessage = memo(
                 <div className="flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 border border-blue-500/20">
                   <Bot className="h-3 w-3 text-blue-500" />
                   <span className="font-medium text-blue-500 text-[10px] uppercase tracking-wider">
-                    cf-kristina
+                    Кристина
                   </span>
                 </div>
               )}

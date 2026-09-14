@@ -9,6 +9,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  Brain,
   CheckCircle2,
   Download,
   ExternalLink,
@@ -78,8 +79,17 @@ type ToolResult = {
   searchDepth?: "basic" | "advanced";
   // Generic results
   message?: string;
+  memories?: Array<{
+    id?: string;
+    snippet: string;
+    similarity?: number;
+    source?: string;
+    sourceType?: string;
+  }>;
   [key: string]: unknown;
 };
+
+type MemoryDebugItem = NonNullable<ToolResult["memories"]>[number];
 
 type ToolResultDisplayProps = {
   result: ToolResult;
@@ -157,6 +167,12 @@ export function ToolResultDisplay({
       : result;
 
   console.log("✅ [ToolResultDisplay] Normalized result:", normalizedResult);
+  const sourceLabels: Record<string, string> = {
+    own: "своя",
+    user: "пользовательская",
+    space: "пространства",
+    service: "сервиса",
+  };
 
   // Error state
   if (!normalizedResult.success && normalizedResult.error) {
@@ -568,6 +584,56 @@ export function ToolResultDisplay({
         specVersion={normalizedResult.specVersion}
         title={normalizedResult.title}
       />
+    );
+  }
+
+  if (normalizedResult.toolName === "cf-kristina-memory-debug") {
+    return (
+      <div
+        className={cn(
+          "rounded-lg border border-indigo-200 bg-indigo-50 p-4 text-sm dark:border-indigo-900 dark:bg-indigo-950",
+          className
+        )}
+      >
+        <div className="flex items-center gap-2">
+          <Brain className="h-5 w-5 flex-shrink-0 text-indigo-600" />
+          <p className="font-semibold text-indigo-950 dark:text-indigo-100">
+            Память Кристины
+          </p>
+        </div>
+        <p className="mt-2 text-indigo-800 dark:text-indigo-200">
+          {normalizedResult.message}
+        </p>
+        {normalizedResult.memories?.length ? (
+          <ul className="mt-3 space-y-2">
+            {normalizedResult.memories.map((memory: MemoryDebugItem, index: number) => (
+              <li
+                className="rounded-md border border-indigo-100 bg-white/80 p-3 dark:border-indigo-900 dark:bg-indigo-900/30"
+                key={memory.id ?? `memory-${index}`}
+              >
+                <div className="flex flex-wrap items-center gap-2 text-xs text-indigo-700 dark:text-indigo-300">
+                  {memory.source && (
+                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 dark:bg-indigo-900">
+                      {sourceLabels[memory.source] ?? memory.source}
+                    </span>
+                  )}
+                  {memory.sourceType && <span>{memory.sourceType}</span>}
+                  {typeof memory.similarity === "number" && (
+                    <span>{Math.round(memory.similarity * 100)}%</span>
+                  )}
+                </div>
+                <p className="mt-2 line-clamp-3 whitespace-pre-wrap text-indigo-950 dark:text-indigo-100">
+                  {memory.snippet}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-xs text-indigo-700 dark:text-indigo-300">
+            Подходящих воспоминаний нет.
+          </p>
+        )}
+      </div>
     );
   }
 
