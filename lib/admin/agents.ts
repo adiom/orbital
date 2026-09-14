@@ -407,5 +407,5 @@ export async function readAgents(): Promise<AgentsSnapshot> {
 
 /** Total tool count, used by the console header. */
 export function toolCount(): number {
-  return getSferaTools().length;
+  return Object.keys(getSferaTools()).length;
 }

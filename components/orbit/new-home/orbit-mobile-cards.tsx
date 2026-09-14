@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import {
+  formatMessageCount,
+  getDepthTier,
+  getDepthTone,
+} from "@/lib/orbit/depth-tone";
 import type { ForkRelationship, Orbit } from "@/hooks/use-orbit-layout";
 import { OrbitMobileCard } from "./orbit-mobile-card";
 
@@ -52,19 +57,6 @@ function getDataScore(
 function isDeadCard(orbit: Orbit, childCount: number): boolean {
   const msgCount = orbit.messageCount || 0;
   return msgCount === 0 && !orbit.description && childCount === 0;
-}
-
-function getLifeState(
-  orbit: Orbit,
-  childCount: number
-): "born" | "alive" | "settled" | "quiet" {
-  const updatedAt = new Date(orbit.updatedAt).getTime();
-  const ageInHours = (Date.now() - updatedAt) / (1000 * 60 * 60);
-
-  if (ageInHours < 12) return "alive";
-  if (ageInHours < 72 || childCount > 0) return "settled";
-  if (ageInHours < 168) return "born";
-  return "quiet";
 }
 
 function getActivityLabel(orbit: Orbit, childCount: number) {
@@ -216,7 +208,7 @@ export function OrbitMobileCards({
           }}
         >
           {sortedNew.map((orbit) => {
-            const lifeState = getLifeState(orbit, 0);
+            const tone = getDepthTone(getDepthTier(orbit.messageCount || 0));
 
             return (
               <button
@@ -229,11 +221,9 @@ export function OrbitMobileCards({
                 }}
               >
                 <div className="mb-1.5 flex items-center gap-1">
+                  <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />
                   <span className="text-[8px] uppercase tracking-[0.15em] text-neutral-400">
-                    {lifeState === "alive" && "живет"}
-                    {lifeState === "born" && "родилось"}
-                    {lifeState === "settled" && "созревает"}
-                    {lifeState === "quiet" && "тихо"}
+                    {formatMessageCount(orbit.messageCount || 0)}
                   </span>
                 </div>
                 <p className="w-full truncate text-center text-[11px] font-medium text-neutral-900 leading-tight">
@@ -273,7 +263,6 @@ export function OrbitMobileCards({
               const childCount = getChildCount(orbit.id, forkRelationships);
               const forks = getForks(orbit.id, forkRelationships);
               const density = getDensity(orbit, childCount);
-              const lifeState = getLifeState(orbit, childCount);
               const activityLabel = getActivityLabel(orbit, childCount);
               const isOwner = currentUserId === orbit.ownerId;
 
@@ -283,7 +272,7 @@ export function OrbitMobileCards({
                     orbit={orbit}
                     childCount={childCount}
                     density={density}
-                    lifeState={lifeState}
+                    depthTier={getDepthTier(orbit.messageCount || 0)}
                     activityLabel={activityLabel}
                     isOwner={isOwner}
                     onOpen={() => handleOpen(orbit.id)}
@@ -296,7 +285,6 @@ export function OrbitMobileCards({
                         const forkOrbit = orbits.find((o) => o.id === forkId);
                         if (!forkOrbit) return null;
                         const forkDensity = getDensity(forkOrbit, 0);
-                        const forkLifeState = getLifeState(forkOrbit, 0);
                         const forkActivityLabel = getActivityLabel(forkOrbit, 0);
                         return (
                           <OrbitMobileCard
@@ -304,7 +292,7 @@ export function OrbitMobileCards({
                             orbit={forkOrbit}
                             childCount={0}
                             density={forkDensity}
-                            lifeState={forkLifeState}
+                            depthTier={getDepthTier(forkOrbit.messageCount || 0)}
                             activityLabel={forkActivityLabel}
                             isFork
                             onOpen={() => handleOpen(forkId)}

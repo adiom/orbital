@@ -51,11 +51,11 @@ export function getSferaToolMap(): Record<string, Tool<any, any>> {
 }
 
 /**
- * Get all tools available for Sfera
- * Returns an array of tools that the AI can use based on context
+ * Get all tools available for Sfera.
+ * Returns a keyed object map so it matches the agent contract used by the AI SDK.
  */
-export function getSferaTools(): Tool<any, any>[] {
-  return Object.values(getSferaToolMap());
+export function getSferaTools(): Record<string, Tool<any, any>> {
+  return getSferaToolMap();
 }
 
 /**

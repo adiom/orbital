@@ -33,6 +33,14 @@ import type { ForkRelationship, Orbit } from "@/hooks/use-orbit-layout";
 import { useOrbitViewMode } from "@/hooks/use-orbit-view-mode";
 import { findClusters } from "@/lib/orbit/cluster-detection";
 import { computeForceLayout } from "@/lib/orbit/force-layout";
+import { getDepthRgb, getDepthTier } from "@/lib/orbit/depth-tone";
+import {
+  getDataScore,
+  getOrbitCollideRadius,
+  getOrbitNodeSize,
+  getOrbitPresentation,
+  type NodeSize,
+} from "@/lib/orbit/node-scale";
 import { ClusterOverlay } from "./cluster-overlay";
 import { OrbitControlBar } from "./orbit-control-bar";
 import { OrbitEdge } from "./orbit-edge";
@@ -68,13 +76,6 @@ const NODE_WIDTH = 280;
 const NODE_HEIGHT = 200;
 const CANVAS_CENTER_X = 720;
 const ROOT_Y = 80;
-
-const LIFE_STATE_COLORS: Record<string, string> = {
-  born: "96,165,250",
-  alive: "16,185,129",
-  settled: "168,85,247",
-  quiet: "148,163,184",
-};
 
 function getChildCount(orbitId: string, forkRelationships: ForkRelationship[]) {
   return forkRelationships.filter((r) => r.parentSferaId === orbitId).length;
@@ -119,13 +120,21 @@ function getDensity(orbit: Orbit, childCount: number) {
   return Math.min(1, 0.10 + hasDescription + forkDensity + messageDensity + memberDensity);
 }
 
-function getDataScore(childCount: number, messageCount: number, density: number): number {
-  return messageCount + childCount * 8 + density * 10;
-}
-
 function isDeadCard(orbit: Orbit, childCount: number): boolean {
   const msgCount = orbit.messageCount || 0;
   return msgCount === 0 && !orbit.description && childCount === 0;
+}
+
+function getIsQuietSingleton(
+  orbit: Orbit,
+  childCount: number,
+  forkChildIds: Set<string>
+): boolean {
+  return (
+    getLifeState(orbit, childCount) === "quiet" &&
+    childCount === 0 &&
+    !forkChildIds.has(orbit.id)
+  );
 }
 
 function getOrganicOffset(index: number) {
@@ -140,16 +149,47 @@ function getOrganicOffset(index: number) {
  *
  * Persisted coords (positionX/Y) are used as-is and pinned; orbits without a
  * saved position are placed by a force simulation that settles them around the
- * pinned ones. The simulation runs in "center space" (node midpoints) and the
- * result is converted back to top-left so persisted nodes round-trip exactly.
+ * pinned ones. The simulation runs in "center space" (node midpoints) with
+ * per-node collision radii (cards scale with life score, quiet singletons are
+ * star dots), and the result is converted back to top-left so persisted nodes
+ * round-trip exactly.
  */
 function computePositions(
   visibleOrbits: Orbit[],
   forkRelationships: ForkRelationship[],
   ignorePersisted = false
 ) {
-  const halfW = NODE_WIDTH / 2;
-  const halfH = NODE_HEIGHT / 2;
+  const childCountMap = new Map<string, number>();
+  for (const orbit of visibleOrbits) {
+    childCountMap.set(orbit.id, getChildCount(orbit.id, forkRelationships));
+  }
+  const forkChildIds = new Set(
+    forkRelationships.map((r) => r.forkedSferaId)
+  );
+
+  const sizes = new Map<string, NodeSize>();
+  const nodeRadii = new Map<string, number>();
+  const presentations = new Map<string, "full" | "compact" | "dot">();
+  for (const orbit of visibleOrbits) {
+    const childCount = childCountMap.get(orbit.id) || 0;
+    const messageCount = orbit.messageCount || 0;
+    const density = getDensity(orbit, childCount);
+    const presentation = getOrbitPresentation(
+      childCount,
+      density,
+      messageCount,
+      getIsQuietSingleton(orbit, childCount, forkChildIds)
+    );
+    presentations.set(orbit.id, presentation);
+    sizes.set(
+      orbit.id,
+      getOrbitNodeSize(childCount, density, messageCount, presentation)
+    );
+    nodeRadii.set(
+      orbit.id,
+      getOrbitCollideRadius(childCount, density, messageCount, presentation)
+    );
+  }
 
   const existingPositions = new Map<string, { x: number; y: number }>();
   const pinnedIds = new Set<string>();
@@ -161,9 +201,13 @@ function computePositions(
         typeof orbit.positionY === "number"
       ) {
         // Stored as top-left → seed the sim with the center point.
+        const size = sizes.get(orbit.id) ?? {
+          width: NODE_WIDTH,
+          height: NODE_HEIGHT,
+        };
         existingPositions.set(orbit.id, {
-          x: orbit.positionX + halfW,
-          y: orbit.positionY + halfH,
+          x: orbit.positionX + size.width / 2,
+          y: orbit.positionY + size.height / 2,
         });
         pinnedIds.add(orbit.id);
       }
@@ -178,26 +222,35 @@ function computePositions(
     )
     .map((rel) => ({ source: rel.parentSferaId, target: rel.forkedSferaId }));
 
-  const spread = Math.max(1200, Math.sqrt(visibleOrbits.length) * 460);
+  // Box the simulation into: area scales with card count (dots weigh little),
+  // aspect follows the viewport so fitView doesn't zoom out further than needed.
+  const vw = typeof window !== "undefined" ? window.innerWidth : 1440;
+  const vh = typeof window !== "undefined" ? window.innerHeight : 800;
+  const aspect = Math.min(2.4, Math.max(1.0, vw / vh));
+  const effectiveCount = visibleOrbits.reduce(
+    (sum, o) => sum + (presentations.get(o.id) === "dot" ? 0.15 : 1),
+    0
+  );
+  const spread = Math.max(1500, Math.sqrt(effectiveCount) * 430);
 
   const centers = computeForceLayout(
     visibleOrbits.map((o) => ({ id: o.id })),
     links,
     {
       width: spread,
-      height: spread * 0.72,
-      nodeRadius: 165,
-      linkDistance: 280,
-      chargeStrength: -1500,
+      height: spread / aspect,
+      nodeRadii,
+      linkDistance: 320,
       existingPositions,
       pinnedIds,
     }
   );
 
-  // Convert centers → top-left.
+  // Convert centers → top-left using each node's real rendered size.
   const positions = new Map<string, { x: number; y: number }>();
   for (const [id, c] of centers) {
-    positions.set(id, { x: c.x - halfW, y: c.y - halfH });
+    const size = sizes.get(id) ?? { width: NODE_WIDTH, height: NODE_HEIGHT };
+    positions.set(id, { x: c.x - size.width / 2, y: c.y - size.height / 2 });
   }
   return positions;
 }
@@ -214,6 +267,9 @@ function buildGraph(
   for (const orbit of orbits) {
     childCountMap.set(orbit.id, getChildCount(orbit.id, forkRelationships));
   }
+  const forkChildIds = new Set(
+    forkRelationships.map((r) => r.forkedSferaId)
+  );
 
   const deadIds = new Set<string>();
   const hiddenForkIds = new Set<string>();
@@ -266,12 +322,18 @@ function buildGraph(
     const childCount = childCountMap.get(orbit.id) || 0;
     const density = getDensity(orbit, childCount);
     const lifeState = getLifeState(orbit, childCount);
+    const messageCount = orbit.messageCount || 0;
+    const presentation = getOrbitPresentation(
+      childCount,
+      density,
+      messageCount,
+      getIsQuietSingleton(orbit, childCount, forkChildIds)
+    );
     // Only jitter unplaced (never-persisted) nodes; pinned ones keep exact coords.
     const isPinned =
       typeof orbit.positionX === "number" &&
       typeof orbit.positionY === "number";
     const offset = isPinned ? { x: 0, y: 0 } : getOrganicOffset(index);
-    const messageCount = orbit.messageCount || 0;
 
     return {
       id: orbit.id,
@@ -293,10 +355,11 @@ function buildGraph(
         updatedAt: orbit.updatedAt,
         activityLabel: getActivityLabel(orbit, childCount),
         lifeState,
+        depthTier: getDepthTier(messageCount),
         density,
-        isSleeping: false,
+        presentation,
         recentParticipants: orbit.recentParticipants || [],
-        insightBadges: [],
+        insightBadges: orbit.description ? ["summary"] : [],
         currentUserId,
         onSettingsClick: () => onSettingsClick?.(orbit),
         onDeleteClick: () => onDeleteClick?.(orbit),
@@ -312,12 +375,12 @@ function buildGraph(
     .map((rel) => {
       const parentOrbit = orbits.find((o) => o.id === rel.parentSferaId);
       const childOrbit = orbits.find((o) => o.id === rel.forkedSferaId);
-      const parentCC = childCountMap.get(rel.parentSferaId) || 0;
-      const childCC = childCountMap.get(rel.forkedSferaId) || 0;
-      const parentLife = parentOrbit ? getLifeState(parentOrbit, parentCC) : "quiet";
-      const childLife = childOrbit ? getLifeState(childOrbit, childCC) : "quiet";
-      const parentColor = LIFE_STATE_COLORS[parentLife] || LIFE_STATE_COLORS.quiet;
-      const childColor = LIFE_STATE_COLORS[childLife] || LIFE_STATE_COLORS.quiet;
+      const parentColor = getDepthRgb(
+        parentOrbit ? getDepthTier(parentOrbit.messageCount || 0) : "empty"
+      );
+      const childColor = getDepthRgb(
+        childOrbit ? getDepthTier(childOrbit.messageCount || 0) : "empty"
+      );
       const parentMsg = parentOrbit?.messageCount || 0;
       const childMsg = childOrbit?.messageCount || 0;
       const intensity = Math.min(1, (parentMsg + childMsg) / 30);

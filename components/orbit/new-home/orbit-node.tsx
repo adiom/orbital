@@ -1,9 +1,15 @@
 "use client";
 
-import { Brain, GitBranch, Settings, Sparkles, Trash2 } from "lucide-react";
+import { Brain, GitBranch, Settings, Trash2 } from "lucide-react";
 import { Handle, Position } from "@xyflow/react";
 import type { KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
+import { getScale } from "@/lib/orbit/node-scale";
+import {
+  formatMessageCount,
+  getDepthTone,
+  type DepthTier,
+} from "@/lib/orbit/depth-tone";
 import { cn } from "@/lib/utils";
 
 export type OrbitNodeData = {
@@ -18,9 +24,13 @@ export type OrbitNodeData = {
   createdAt: Date;
   updatedAt: Date;
   activityLabel: string;
+  /** Recency signal (<12h) — drives only the emerald sparkle, not the color. */
   lifeState: "born" | "alive" | "settled" | "quiet";
+  /** How much conversation the orbit holds — drives color and the count label. */
+  depthTier: DepthTier;
   density: number;
-  isSleeping: boolean;
+  /** How the orbit renders: quiet singletons collapse to star dots. */
+  presentation: "full" | "compact" | "dot";
   recentParticipants?: Array<{
     id: string;
     name: string;
@@ -38,55 +48,6 @@ type OrbitNodeProps = {
   data: OrbitNodeData;
   selected?: boolean;
 };
-
-function getDataScore(childCount: number, messageCount: number, density: number): number {
-  return messageCount + childCount * 8 + density * 10;
-}
-
-function getScale(childCount: number, density: number, messageCount: number): number {
-  const score = getDataScore(childCount, messageCount, density);
-
-  if (score <= 0) return 0.55;
-  if (score <= 5) return 0.65;
-  if (score <= 12) return 0.78;
-  if (score <= 25) return 0.92;
-  if (score <= 45) return 1.08;
-  if (score <= 70) return 1.22;
-  return 1.35;
-}
-
-function getLifeTone(lifeState: OrbitNodeData["lifeState"]) {
-  if (lifeState === "born") {
-    return {
-      glow: "rgba(96,165,250,0.22)",
-      ring: "from-sky-300/70 via-blue-200/30 to-transparent",
-      dot: "bg-sky-400",
-      label: "родилось",
-    };
-  }
-  if (lifeState === "alive") {
-    return {
-      glow: "rgba(16,185,129,0.24)",
-      ring: "from-emerald-300/80 via-teal-200/30 to-transparent",
-      dot: "bg-emerald-400",
-      label: "живет",
-    };
-  }
-  if (lifeState === "settled") {
-    return {
-      glow: "rgba(168,85,247,0.20)",
-      ring: "from-violet-300/70 via-fuchsia-200/25 to-transparent",
-      dot: "bg-violet-400",
-      label: "созревает",
-    };
-  }
-  return {
-    glow: "rgba(148,163,184,0.16)",
-    ring: "from-stone-300/50 via-stone-200/20 to-transparent",
-    dot: "bg-stone-300",
-    label: "тихо",
-  };
-}
 
 function getInitials(name: string) {
   return name
@@ -106,10 +67,12 @@ function getDisplayDescription(description: string | null) {
 
 export function OrbitNode({ data, selected }: OrbitNodeProps) {
   const scale = getScale(data.childCount, data.density, data.messageCount);
-  const tone = getLifeTone(data.lifeState);
+  const tone = getDepthTone(data.depthTier);
+  const countLabel = formatMessageCount(data.messageCount);
   const hasParticipants = Boolean(data.recentParticipants?.length);
   const displayDescription = getDisplayDescription(data.description);
-  const isCompact = scale < 0.75;
+  const isCompact = data.presentation === "compact";
+  const isDot = data.presentation === "dot";
 
   const handleOrbitClick = () => {
     data.onSelectOrbit?.(data.id);
@@ -122,16 +85,44 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
     }
   };
 
-  const nodeAriaLabel = `${data.title} — ${tone.label}`;
+  const nodeAriaLabel = `${data.title} — ${countLabel}`;
 
   const isOwner = data.currentUserId === data.ownerId;
 
-  if (data.isSleeping) {
+  // Quiet singletons render as star dots: just a glowing point of life.
+  if (isDot) {
     return (
       <div
-        className="pointer-events-none rounded-[20px] bg-white/20 opacity-0"
-        style={{ width: 100, minHeight: 60 }}
-      />
+        aria-label={nodeAriaLabel}
+        className={cn(
+          "pointer-events-auto group relative cursor-pointer rounded-full transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400",
+          data.dimmed && "opacity-35"
+        )}
+        data-orbit-title={data.title}
+        data-testid="orbit-node"
+        onClick={handleOrbitClick}
+        onKeyDown={handleOrbitKeyDown}
+        role="button"
+        style={{
+          width: 16,
+          height: 16,
+          boxShadow: `0 0 24px ${tone.glow}`,
+        }}
+        tabIndex={0}
+        title={`${data.title} — ${countLabel}`}
+      >
+        <Handle position={Position.Top} type="target" className="!h-0 !w-0 !border-0 !bg-transparent" />
+
+        <span
+          className={cn(
+            "block h-4 w-4 rounded-full",
+            tone.dot,
+            "transition-transform group-hover:scale-125"
+          )}
+        />
+
+        <Handle position={Position.Bottom} type="source" className="!h-0 !w-0 !border-0 !bg-transparent" />
+      </div>
     );
   }
 
@@ -182,13 +173,19 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
 
   return (
     <div
+      aria-label={nodeAriaLabel}
       className={cn(
-        "pointer-events-auto group relative cursor-grab rounded-[28px] bg-white/72 px-4 py-3 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-opacity active:cursor-grabbing",
+        "pointer-events-auto group relative cursor-grab rounded-[28px] bg-white/72 px-4 py-3 shadow-[0_24px_80px_rgba(15,23,42,0.10)] backdrop-blur-2xl transition-opacity active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400",
         selected
           ? "ring-2 ring-violet-400/80"
           : "ring-1 ring-white/70 hover:ring-neutral-200/80",
         data.dimmed && "opacity-35"
       )}
+      data-orbit-title={data.title}
+      data-testid="orbit-node"
+      onClick={handleOrbitClick}
+      onKeyDown={handleOrbitKeyDown}
+      role="button"
       style={{
         width: 230 * scale,
         minHeight: 148 * scale,
@@ -197,6 +194,7 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
           ? `0 22px ${54 * scale}px rgba(15, 23, 42, 0.12), 0 0 0 6px rgba(168,85,247,0.10), 0 0 ${42 * scale}px ${tone.glow}`
           : `0 22px ${54 * scale}px rgba(15, 23, 42, 0.10), 0 0 ${42 * scale}px ${tone.glow}`,
       }}
+      tabIndex={0}
     >
       {/* Gradient glow ring */}
       <div
@@ -214,17 +212,11 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
         <div className="flex items-center gap-2">
           <span className="relative flex h-2.5 w-2.5">
             <span
-              className={cn(
-                "relative inline-flex h-2.5 w-2.5 rounded-full",
-                data.lifeState === "born" && "bg-sky-400",
-                data.lifeState === "alive" && "bg-emerald-400",
-                data.lifeState === "settled" && "bg-violet-400",
-                data.lifeState === "quiet" && "bg-stone-300"
-              )}
+              className={cn("relative inline-flex h-2.5 w-2.5 rounded-full", tone.dot)}
             />
           </span>
           <span className="font-medium text-[10px] uppercase tracking-[0.2em] text-neutral-400">
-            {tone.label}
+            {countLabel}
           </span>
         </div>
         <div className="flex items-center gap-1.5 text-neutral-400">
@@ -240,27 +232,18 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
         </div>
       </div>
 
-      <button
-        aria-label={nodeAriaLabel}
-        className="w-full cursor-pointer rounded-xl text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
-        data-orbit-title={data.title}
-        data-testid="orbit-node"
-        onClick={handleOrbitClick}
-        type="button"
+      <h3
+        className="mb-2 line-clamp-2 font-medium leading-tight text-neutral-950 tracking-[-0.01em]"
+        style={{ fontSize: 16 * scale }}
       >
-        <h3
-          className="mb-2 line-clamp-2 font-medium leading-tight text-neutral-950 tracking-[-0.01em]"
-          style={{ fontSize: 16 * scale }}
-        >
-          {data.title}
-        </h3>
-        <p
-          className="line-clamp-2 leading-snug text-neutral-500"
-          style={{ fontSize: 11.5 * scale }}
-        >
-          {displayDescription}
-        </p>
-      </button>
+        {data.title}
+      </h3>
+      <p
+        className="line-clamp-2 leading-snug text-neutral-500"
+        style={{ fontSize: 11.5 * scale }}
+      >
+        {displayDescription}
+      </p>
 
       <div className="mt-5 h-1 overflow-hidden rounded-full bg-neutral-100/80">
         <div
@@ -275,11 +258,6 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
             {data.activityLabel}
           </p>
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {data.description && (
-              <span className="rounded-full bg-white/70 px-2 py-1 text-[10px] text-neutral-500 shadow-sm">
-                суть есть
-              </span>
-            )}
             {data.childCount > 0 && (
               <span className="rounded-full bg-white/70 px-2 py-1 text-[10px] text-neutral-500 shadow-sm">
                 растет
@@ -311,43 +289,37 @@ export function OrbitNode({ data, selected }: OrbitNodeProps) {
         <div className="pointer-events-none absolute -right-1 top-12 h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.55)]" />
       )}
 
-      {/* Hover action bar */}
-      <div className="mt-4 flex items-center justify-between border-white/60 border-t pt-3 opacity-0 group-hover:opacity-100">
-        <div className="flex items-center gap-1.5 text-[10px] text-neutral-400">
-          <Sparkles className="h-3 w-3" />
-          Открыть
+      {/* Owner actions — hover overlay, reserves no layout space */}
+      {isOwner && (
+        <div className="nodrag absolute bottom-3 right-3 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <Button
+            aria-label={`Настройки: ${data.title}`}
+            className="h-6 w-6 rounded-full bg-white/60 text-neutral-400 shadow-sm hover:bg-white hover:text-neutral-700"
+            data-testid="orbit-node-settings"
+            onClick={(e) => {
+              e.stopPropagation();
+              data.onSettingsClick?.();
+            }}
+            size="icon"
+            variant="ghost"
+          >
+            <Settings className="h-3 w-3" />
+          </Button>
+          <Button
+            aria-label={`Удалить: ${data.title}`}
+            className="h-6 w-6 rounded-full bg-white/60 text-neutral-300 shadow-sm hover:bg-red-50 hover:text-red-500"
+            data-testid="orbit-node-delete"
+            onClick={(e) => {
+              e.stopPropagation();
+              data.onDeleteClick?.();
+            }}
+            size="icon"
+            variant="ghost"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
         </div>
-        {isOwner && (
-          <div className="nodrag flex items-center gap-1">
-            <Button
-              aria-label={`Настройки: ${data.title}`}
-              className="h-6 w-6 rounded-full bg-white/60 text-neutral-400 hover:bg-white hover:text-neutral-700"
-              data-testid="orbit-node-settings"
-              onClick={(e) => {
-                e.stopPropagation();
-                data.onSettingsClick?.();
-              }}
-              size="icon"
-              variant="ghost"
-            >
-              <Settings className="h-3 w-3" />
-            </Button>
-            <Button
-              aria-label={`Удалить: ${data.title}`}
-              className="h-6 w-6 rounded-full bg-white/60 text-neutral-300 hover:bg-red-50 hover:text-red-500"
-              data-testid="orbit-node-delete"
-              onClick={(e) => {
-                e.stopPropagation();
-                data.onDeleteClick?.();
-              }}
-              size="icon"
-              variant="ghost"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
-      </div>
+      )}
 
       <Handle position={Position.Bottom} type="source" className="!h-0 !w-0 !border-0 !bg-transparent" />
     </div>

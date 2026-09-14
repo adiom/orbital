@@ -3,6 +3,7 @@
  * Creative and enthusiastic AI assistant for Sfera discussions
  */
 
+import { getSferaTools } from "@/lib/ai/sfera-tools";
 import { buildSferaPrompt } from "@/lib/ai/prompts/index";
 import type { AIAgent } from "../types";
 
@@ -21,7 +22,7 @@ export const avroraAgent: AIAgent = {
   model: "chat-model", // gpt-5-mini
   runtime: "internal",
   temperature: 0.7,
-  maxSteps: 1,
+  maxSteps: 3,
 
   buildSystemPrompt: (context) => {
     return buildSferaPrompt(
@@ -35,7 +36,7 @@ export const avroraAgent: AIAgent = {
 
   // Tools available to Avrora
   get tools() {
-    return {};
+    return getSferaTools();
   },
 
   // Rate limiting

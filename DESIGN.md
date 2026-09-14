@@ -18,10 +18,11 @@ colors:
   ink-faint: "#A3A3A3"
   accent: "#A78BFA"
   danger: "#DC2626"
-  life-born: "#38BDF8"
-  life-alive: "#34D399"
-  life-settled: "#A78BFA"
-  life-quiet: "#D6D3D1"
+  depth-empty: "#D6D3D1"
+  depth-spark: "#38BDF8"
+  depth-living: "#34D399"
+  depth-deep: "#A78BFA"
+  depth-profound: "#FBBF24"
 typography:
   headline-lg:
     fontFamily: Geist
@@ -183,20 +184,24 @@ components:
     backgroundColor: "{colors.accent}"
     rounded: "{rounded.full}"
     size: 12px
-  life-indicator-born:
-    backgroundColor: "{colors.life-born}"
+  depth-indicator-empty:
+    backgroundColor: "{colors.depth-empty}"
     rounded: "{rounded.full}"
     size: 10px
-  life-indicator-alive:
-    backgroundColor: "{colors.life-alive}"
+  depth-indicator-spark:
+    backgroundColor: "{colors.depth-spark}"
     rounded: "{rounded.full}"
     size: 10px
-  life-indicator-settled:
-    backgroundColor: "{colors.life-settled}"
+  depth-indicator-living:
+    backgroundColor: "{colors.depth-living}"
     rounded: "{rounded.full}"
     size: 10px
-  life-indicator-quiet:
-    backgroundColor: "{colors.life-quiet}"
+  depth-indicator-deep:
+    backgroundColor: "{colors.depth-deep}"
+    rounded: "{rounded.full}"
+    size: 10px
+  depth-indicator-profound:
+    backgroundColor: "{colors.depth-profound}"
     rounded: "{rounded.full}"
     size: 10px
 ---
@@ -209,7 +214,7 @@ file explorer, a board, a UML graph, a mind map, or a diagram editor — and the
 UI copy never forces a fixed noun onto the user's object. Internally the code
 still uses historical names (`orbit`, `Sfera`, routes like `/orbit/[id]`), but
 the public UI speaks in verbs and states: `Создать...`, `Открыть`,
-`Продолжить`, `Развить`, `Настройки`, `Удалить`, `живет`, `созревает`, `тихо`.
+`Продолжить`, `Развить`, `Настройки`, `Удалить`, `12 сообщений`, `пусто`.
 
 ## Overview
 
@@ -233,8 +238,8 @@ Two rules animate every screen:
 ## Colors
 
 A warm off-white foundation, deep neutral inks, and a single signature accent.
-All hues beside the accent come from the **life states** — the four moods a
-thought passes through: born, alive, settled, quiet.
+All hues beside the accent come from the **depth scale** — how much conversation
+a thought has accumulated, measured in messages.
 
 ### Canvas and surface
 
@@ -269,20 +274,26 @@ thought passes through: born, alive, settled, quiet.
 scale. Used for: selected node ring, focus rings, the empty-state orb, archive
 dots, AI insight badges. Glow `rgba(168,85,247,0.20)`.
 
-### Life states (the living DNA)
+### Depth scale (the living DNA)
 
-Each card reports its mood through a dot, a glow, and a label. These hues carry
-most of the color perception on the map:
+Each card reports how much life it holds — message count — through a dot, a
+glow, and the count itself as the label («12 сообщений», «пусто»). Hue and
+number tell one story; these hues carry most of the color perception on the
+map:
 
-| State (token) | Label (RU) | Dot | Glow |
+| Tier (token) | Messages | Dot | Glow |
 |---|---|---|---|
-| `life-born` | `родилось` | `#38BDF8` sky-400 | `rgba(96,165,250,0.22)` |
-| `life-alive` | `живет` | `#34D399` emerald-400 | `rgba(16,185,129,0.24)` |
-| `life-settled` | `созревает` | `#A78BFA` violet-400 | `rgba(168,85,247,0.20)` |
-| `life-quiet` | `тихо` | `#D6D3D1` stone-300 | `rgba(148,163,184,0.16)` |
+| `depth-empty` | 0 («пусто») | `#D6D3D1` stone-300 | `rgba(148,163,184,0.16)` |
+| `depth-spark` | 1–10 | `#38BDF8` sky-400 | `rgba(96,165,250,0.22)` |
+| `depth-living` | 11–40 | `#34D399` emerald-400 | `rgba(16,185,129,0.24)` |
+| `depth-deep` | 41–100 | `#A78BFA` violet-400 | `rgba(168,85,247,0.20)` |
+| `depth-profound` | 100+ | `#FBBF24` amber-400 | `rgba(251,191,36,0.22)` |
 
-Rule: **never** use an outside hue for a life signal. Multiplicity is
-expressed through dot + glow + label (10px caps, `+0.2em`).
+Rules: **never** use an outside hue for a depth signal. The count label sits
+in the `label-state` slot (10px caps, `+0.2em`), pluralized correctly
+(«1 сообщение», «3 сообщения», «12 сообщений»). Recency is a separate
+micro-signal: an emerald sparkle glint on cards updated in the last 12 hours —
+it never changes the card's hue.
 
 ### Danger & signals
 
@@ -313,7 +324,7 @@ slightly negative tracking on headlines. No bold stacks, no weight above 600.
 | `button` | buttons | 14px | 500 | — |
 | `label-form` | form labels | 14px | 600 | — |
 | `label-caps-brand` | `ORBITAL` wordmark, empty-state eyebrow | 11px | 500 | `+0.34em`, uppercase |
-| `label-state` | life-state labels | 10px | 500 | `+0.2em`, uppercase |
+| `label-state` | depth count labels («12 сообщений») | 10px | 500 | `+0.2em`, uppercase |
 | `meta-activity` | «ожило недавно» etc. | 10.5px | 400 | `leading-none` |
 | `stats` | stats bar | 11px | 400 | — |
 | `chip` | badges/pills | 10px | 400 | — |
@@ -447,7 +458,7 @@ eyebrow (`label-caps-brand`), the poetic invite, and (mobile) the FAB:
 ## Do's and Don'ts
 
 - **Do** speak in verbs and states: `Создать...`, `Открыть`, `Продолжить`,
-  `живет`, `созревает`. Avoid nouns only; never `Create Orbit`, `New Orbit`,
+  `12 сообщений`, `пусто`. Avoid nouns only; never `Create Orbit`, `New Orbit`,
   `All Orbits`, `Orbit Settings`, `Forked from:` → use `Продолжение:`.
 - **Do** let the map breathe; a full-screen, partially empty constellation is
   the product.

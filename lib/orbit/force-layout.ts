@@ -14,6 +14,8 @@ export type ForceLayoutOptions = {
   width: number;
   height: number;
   nodeRadius?: number;
+  /** Per-node collision radii (e.g. card size varies with life score). */
+  nodeRadii?: Map<string, number>;
   iterations?: number;
   linkDistance?: number;
   chargeStrength?: number;
@@ -49,6 +51,7 @@ export function computeForceLayout(
     width,
     height,
     nodeRadius = 150,
+    nodeRadii,
     linkDistance = 260,
     chargeStrength = -1400,
     existingPositions,
@@ -88,7 +91,15 @@ export function computeForceLayout(
     }));
 
   const simulation = forceSimulation<SimNode>(nodes)
-    .force("charge", forceManyBody().strength(chargeStrength))
+    // Charge scales with node size so star dots don't push cards around.
+    .force(
+      "charge",
+      forceManyBody<SimNode>().strength((d) =>
+        nodeRadii
+          ? -(nodeRadii.get(d.id) ?? nodeRadius) * 9
+          : chargeStrength
+      )
+    )
     .force(
       "link",
       forceLink<SimNode, SimulationLinkDatum<SimNode>>(simLinks)
@@ -97,9 +108,9 @@ export function computeForceLayout(
         .strength(0.55)
     )
     .force("center", forceCenter(cx, cy))
-    .force("collide", forceCollide(nodeRadius).strength(0.9))
-    .force("x", forceX(cx).strength(0.04))
-    .force("y", forceY(cy).strength(0.04))
+    .force("collide", forceCollide((d: SimNode) => nodeRadii?.get(d.id) ?? nodeRadius).strength(0.9))
+    .force("x", forceX(cx).strength(0.1))
+    .force("y", forceY(cy).strength(0.1))
     .stop();
 
   for (let i = 0; i < iterations; i++) {

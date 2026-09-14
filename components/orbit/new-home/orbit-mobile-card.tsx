@@ -2,9 +2,12 @@
 
 import { GitBranch, Settings, Sparkles, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  formatMessageCount,
+  getDepthTone,
+  type DepthTier,
+} from "@/lib/orbit/depth-tone";
 import { cn } from "@/lib/utils";
-
-type LifeState = "born" | "alive" | "settled" | "quiet";
 
 type OrbitMobileCardProps = {
   orbit: {
@@ -25,7 +28,7 @@ type OrbitMobileCardProps = {
   };
   childCount: number;
   density: number;
-  lifeState: LifeState;
+  depthTier: DepthTier;
   activityLabel: string;
   isFork?: boolean;
   isOwner?: boolean;
@@ -33,39 +36,6 @@ type OrbitMobileCardProps = {
   onSettingsClick?: () => void;
   onDeleteClick?: () => void;
 };
-
-function getLifeTone(lifeState: LifeState) {
-  if (lifeState === "born") {
-    return {
-      glow: "rgba(96,165,250,0.22)",
-      ring: "from-sky-300/70 via-blue-200/30 to-transparent",
-      dot: "bg-sky-400",
-      label: "родилось",
-    };
-  }
-  if (lifeState === "alive") {
-    return {
-      glow: "rgba(16,185,129,0.24)",
-      ring: "from-emerald-300/80 via-teal-200/30 to-transparent",
-      dot: "bg-emerald-400",
-      label: "живет",
-    };
-  }
-  if (lifeState === "settled") {
-    return {
-      glow: "rgba(168,85,247,0.20)",
-      ring: "from-violet-300/70 via-fuchsia-200/25 to-transparent",
-      dot: "bg-violet-400",
-      label: "созревает",
-    };
-  }
-  return {
-    glow: "rgba(148,163,184,0.16)",
-    ring: "from-stone-300/50 via-stone-200/20 to-transparent",
-    dot: "bg-stone-300",
-    label: "тихо",
-  };
-}
 
 function getDisplayDescription(description: string | null) {
   if (!description) return "Смысл еще формируется";
@@ -87,7 +57,7 @@ export function OrbitMobileCard({
   orbit,
   childCount,
   density,
-  lifeState,
+  depthTier,
   activityLabel,
   isFork = false,
   isOwner = false,
@@ -95,7 +65,8 @@ export function OrbitMobileCard({
   onSettingsClick,
   onDeleteClick,
 }: OrbitMobileCardProps) {
-  const tone = getLifeTone(lifeState);
+  const tone = getDepthTone(depthTier);
+  const countLabel = formatMessageCount(orbit.messageCount || 0);
   const displayDescription = getDisplayDescription(orbit.description);
 
   if (isFork) {
@@ -118,7 +89,7 @@ export function OrbitMobileCard({
           </h3>
           {orbit.messageCount && orbit.messageCount > 0 && (
             <p className="mt-0.5 text-[10px] text-neutral-400">
-              {orbit.messageCount} сообщений
+              {countLabel}
             </p>
           )}
         </div>
@@ -153,7 +124,7 @@ export function OrbitMobileCard({
         <div className="flex items-center gap-2">
           <span className={cn("h-2.5 w-2.5 rounded-full", tone.dot)} />
           <span className="text-[10px] uppercase tracking-[0.2em] text-neutral-400">
-            {tone.label}
+            {countLabel}
           </span>
         </div>
         {childCount > 0 && (

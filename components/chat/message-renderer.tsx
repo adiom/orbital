@@ -497,7 +497,7 @@ function MessageRendererComponent({
           <button
             className="flex items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-gray-600"
             onClick={onReply}
-            title="Reply to this message"
+            title="Reply to this message (component chat)"
             type="button"
           >
             <Reply className="h-3.5 w-3.5" />
